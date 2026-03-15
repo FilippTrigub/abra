@@ -6,9 +6,88 @@ This agent transforms raw inputs into polished, multi-channel social media conte
 
 Starting from this version, the agent also acts as an **Orchestrator**: the user can describe any creative or publishing goal in plain language, and the agent will resolve it into an ordered sequence of skills, explain the plan, and execute it step by step.
 
+The primary input interface is a **Telegram Bot** — the user sends videos, images, voice messages, or text commands directly from Telegram, and the agent handles the rest.
+
 ---
 
-## 🧠 Orchestrator Mode (NEW)
+## 📱 Telegram Bot Input Channel
+
+### How It Works
+
+The Telegram bot (`telegram-bot` service in `docker-compose.yml`) acts as the **front door** to the Orchestrator. It:
+
+1. **Receives messages** from the authorised Telegram user (text, video, photo, voice, document)
+2. **Downloads media files** to `~/.openclaw/workspace/input/telegram/<job-id>/`
+3. **Forwards the request + file paths** to the `openclaw-gateway` via the internal `bot-shared` Docker network
+4. **Receives the execution plan** from the Orchestrator and sends it back to the user as a Telegram message
+5. **Waits for user confirmation** (inline keyboard: ✅ Proceed / ✏️ Adjust / ❌ Cancel)
+6. **Streams progress updates** back to the user as each skill step completes
+7. **Delivers the final result** — sends the processed video/image/caption back to Telegram and confirms scheduling
+
+### Message Types & Automatic Intent Detection
+
+The bot auto-detects intent from what the user sends:
+
+| User sends | Auto-detected intent | Default skill plan triggered |
+|------------|---------------------|-----------------------------|
+| Video file(s) + text | Video processing request | verbatim → snip → demix → score → mux → persona → buffer |
+| Video file(s) only | Video processing request | verbatim → snip → mux → persona → buffer |
+| Photo(s) + text | Image post request | grade → knockout → portrait → filter → alt → persona → buffer |
+| Photo(s) only | Image post request | grade → filter → alt → persona → buffer |
+| Voice message | Transcription + post | verbatim → persona → buffer |
+| Text only | Orchestrator request | Plan resolved by Orchestrator from text |
+| `/start` | Onboarding | Show available commands |
+| `/init` | Brand init phase | Trigger brand-awareness → generate BRAND.md |
+| `/status` | Job status check | Report current running job and step |
+| `/cancel` | Cancel current job | Stop execution, clean up tmp files |
+
+### Telegram Conversation Flow
+
+```
+User                          Telegram Bot                    Orchestrator / Skills
+ │                                │                                  │
+ │── sends video + "make a reel" ─▶│                                  │
+ │                                 │── download file to workspace ───▶│
+ │                                 │── forward request + path ────────▶│
+ │                                 │                                  │ resolve skill graph
+ │                                 │◀─ execution plan ────────────────│
+ │◀─ 📋 Plan: Step 1 verbatim... ──│                                  │
+ │   [✅ Proceed] [✏️ Adjust] [❌]  │                                  │
+ │── taps ✅ Proceed ─────────────▶│                                  │
+ │                                 │── confirm execution ─────────────▶│
+ │◀─ ▶ Step 1 verbatim — running ──│◀─ step progress ─────────────────│
+ │◀─ ✓ Step 1 done ────────────────│◀─ step done ─────────────────────│
+ │◀─ ▶ Step 2 snip — running ──────│◀─ step progress ─────────────────│
+ │   ...                           │                                  │
+ │◀─ 🏁 Done! Here's your reel ────│◀─ final output path ─────────────│
+ │◀─ [video file sent] ────────────│                                  │
+ │◀─ Scheduled for Instagram ✅ ───│                                  │
+```
+
+### Sending Multiple Videos (Fragments)
+
+To send multiple video fragments for merging:
+
+1. Send all video files as a **media group** (album) in one Telegram message
+2. Add a caption describing the goal: *"merge these into one reel"*
+3. The bot groups all files under the same `job-id` and passes them together to the Orchestrator
+4. The Orchestrator processes them as a batch through `verbatim` → `snip` → ... → `mux`
+
+Alternatively, send videos one by one and use `/merge` to combine the last N uploads.
+
+### Authorisation
+
+Only messages from `TELEGRAM_ALLOWED_USER_IDS` (set in `.env`) are processed. All other users receive a silent ignore or a polite rejection message.
+
+```bash
+# .env
+TELEGRAM_BOT_TOKEN=your-bot-token
+TELEGRAM_ALLOWED_USER_IDS=123456789,987654321   # comma-separated Telegram user IDs
+```
+
+---
+
+## 🧠 Orchestrator Mode
 
 ### What It Is
 
@@ -83,7 +162,7 @@ The agent uses this table to resolve which skills to include and in what order.
 
 ### Example Request Resolutions
 
-#### "Create a video from different fragments"
+#### "Create a video from different fragments" (sent via Telegram)
 ```
 🎯 GOAL: Combine multiple raw video fragments into one polished, brand-aligned video.
 
@@ -171,6 +250,7 @@ The agent applies these rules when building the execution plan:
 | Ambiguous request | Ask one clarifying question (goal or channel) |
 | No BRAND.md | Auto-trigger Init phase before any brand-related step |
 | Unsupported output format | Suggest closest alternative skill |
+| Telegram file too large (>2 GB) | Ask user to split into smaller files or use `/upload` CLI |
 
 ---
 
@@ -192,7 +272,7 @@ The agent applies these rules when building the execution plan:
 
 **Goal**: Process raw input into ready-to-publish content
 
-> **Tip**: In Orchestrator Mode, you don't need to follow these steps manually. Simply describe your goal and the agent will resolve the plan automatically. The steps below are the manual equivalent for reference.
+> **Tip**: In Orchestrator Mode (via Telegram or CLI), you don't need to follow these steps manually. Simply describe your goal and the agent will resolve the plan automatically. The steps below are the manual equivalent for reference.
 
 ### 2.1 Read Raw Input
 ```
@@ -219,62 +299,34 @@ Output: Brand-aligned post ready for channel formatting
 
 **Images** — use the `filter` skill:
 ```bash
-# Install deps (first run only)
 cd skills/filter/scripts && uv sync && npm install
-
-# Run the pipeline
 uv run --project skills/filter/scripts \
   python skills/filter/scripts/process.py --config config.json
 ```
-Output lands in `output/` (path set in `config.json`).
 
 **Videos** — use the `mux` skill:
 ```bash
-# Install deps (first run only)
 cd ~/.openclaw/skills/mux && uv sync
-
-# Cinematic preset with futuristic captions
-cd ~/.openclaw/skills/mux && uv run python scripts/caption_service.py \
+uv run python scripts/caption_service.py \
   --output output --preset cinematic \
   --css ~/.openclaw/skills/mux/scripts/futuristic.css
 ```
-Output lands in `~/.openclaw/skills/clawvig/output/`.
 
 ### 2.5 Organize Output
 ```
-Input: Final post text + media files
-Action: Save to local output directory
-Organize by: channel / date (YYYY/MM/DD) / status
-Output: Files stored in output/[channel]/[date]/
+Files stored in output/[channel]/[YYYY-MM-DD]/
 ```
 
 ### 2.6 Schedule with Buffer
-
-Use the `buffer` skill scripts from `skills/buffer/scripts/`:
-
 ```bash
-# Get your org ID (one-time)
-uv run organizations.py list
-
-# Schedule an image post
 uv run posts.py create \
   --channel-id CHANNEL_ID \
-  --text "Post text here" \
-  --mode customScheduled \
-  --due-at "2026-04-01T12:00:00Z" \
-  --image-url output/instagram/2026-04-01/photo.jpg
-
-# Schedule a video reel (local file served automatically via cloudflared)
-uv run posts.py create \
-  --channel-id CHANNEL_ID \
-  --text "Reel caption here" \
+  --text "Post caption" \
   --mode customScheduled \
   --due-at "2026-04-01T12:00:00Z" \
   --video-url output/instagram/2026-04-01/video.mp4 \
   --ig-type reel
 ```
-
-Local file paths for `--image-url` and `--video-url` are handled automatically — no manual upload step required. See the `buffer` skill for full details.
 
 ---
 
@@ -286,18 +338,22 @@ claw-parade/
 ├── BRAND.md                   # Brand identity (generated)
 ├── WORKFLOW.md                # This file
 ├── skills/
-│   ├── persona/
-│   │   └── SKILL.md          # Brand awareness skill definition
+│   ├── persona/               # Brand identity maintenance
 │   ├── mux/                   # Video enhancement and captioning
 │   ├── filter/                # Image resize, crop, and filtering
-│   └── buffer/                # Schedule and publish posts
+│   ├── buffer/                # Schedule and publish posts
+│   └── ...                    # All other skills
 ├── input/                     # Raw input files
 │   └── [user-provided content]
-└── output/                    # Processed outputs
-    ├── instagram/
-    │   └── [YYYY/MM/DD]/
-    ├── linkedin/
-    └── twitter/
+├── output/                    # Processed outputs
+│   ├── instagram/
+│   │   └── [YYYY/MM/DD]/
+│   ├── linkedin/
+│   └── twitter/
+└── workspace/
+    └── input/
+        └── telegram/          # Files received from Telegram bot
+            └── <job-id>/      # One folder per job
 ```
 
 ---
@@ -305,7 +361,7 @@ claw-parade/
 ## Skill Integration Map
 
 | Skill | Location | Purpose |
-|-------|----------|---------| 
+|-------|----------|---------|
 | persona | `skills/persona/` | Brand identity maintenance |
 | mux | `skills/mux/` | Video enhancement and captioning |
 | filter | `skills/filter/` | Image resize, crop, and filtering |
@@ -327,58 +383,26 @@ claw-parade/
 
 ---
 
-## Quick Start
-
-### First Time Setup
-```bash
-# 1. Initialize brand (init phase)
-# Provide raw input files in input/, then run brand-awareness skill
-
-# 2. Process media
-cd skills/image-processing/scripts && uv sync && npm install
-cd skills/video-processing && uv sync
-
-# 3. Install Buffer script deps
-cd skills/buffer/scripts && uv sync
-```
-
-### Orchestrator Mode (Recommended)
-Just describe what you want:
-```
-> create a video from my talk fragments and post it to Instagram
-> make a portrait photo post for LinkedIn
-> generate a teaser with background music from my podcast clip
-```
-
-The agent will build and confirm the execution plan before running anything.
-
-### Manual Skill Execution
-```bash
-# Process images
-uv run --project skills/filter/scripts \
-  python skills/filter/scripts/process.py --config config.json
-
-# Process video
-cd ~/.openclaw/skills/mux && uv run python scripts/caption_service.py \
-  --output output --preset cinematic
-```
-
----
-
 ## Configuration
 
 ### Environment Variables
 ```bash
-BUFFER_API_KEY=your-buffer-token   # Required for scheduling
-CLAW_BRAND_FILE=./BRAND.md         # Path to brand spec
-CLAW_INPUT_DIR=./input/            # Raw input location
-CLAW_OUTPUT_DIR=./output/          # Processed output location
-CLAW_BUFFER_DAYS=5                 # Default buffer days
-CLAW_DEFAULT_CHANNEL=instagram     # Default target channel
-```
+# Core
+BUFFER_API_KEY=your-buffer-token
+CLAW_BRAND_FILE=./BRAND.md
+CLAW_INPUT_DIR=./input/
+CLAW_OUTPUT_DIR=./output/
+CLAW_BUFFER_DAYS=5
+CLAW_DEFAULT_CHANNEL=instagram
 
-### BRAND.md Location
-The BRAND.md file should be in the project root. If missing, the agent will trigger the Init phase automatically.
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=your-bot-token
+TELEGRAM_ALLOWED_USER_IDS=123456789
+
+# Gateway
+OPENCLAW_GATEWAY_TOKEN=your-gateway-token
+OPENCLAW_GATEWAY_PORT=18789
+```
 
 ---
 
@@ -391,15 +415,16 @@ The BRAND.md file should be in the project root. If missing, the agent will trig
 | Media generation fail | Fall back to templates |
 | Scheduling fail | Queue to manual review |
 | Channel not supported | Suggest alternative channels |
+| Telegram file >2 GB | Ask user to split or use CLI upload |
 
 ---
 
 ## Best Practices
 
-1. **Use Orchestrator Mode** - Describe your goal, let the agent plan the skill sequence
-2. **Start with Init** - Don't skip brand setup
-3. **Keep inputs clean** - Clear, well-formatted input = better output
-4. **Review before schedule** - Always check final content before confirming the plan
-5. **Maintain buffer** - Keep 3-7 days of scheduled content
-6. **Iterate on brand** - Update BRAND.md as persona evolves
-7. **GPU-heavy last** - Run `liven`, `cutlab`, `keyer` when the LLM is idle to avoid VRAM contention
+1. **Use Telegram Bot** — send files and requests directly from your phone, get results back in chat
+2. **Use Orchestrator Mode** — describe your goal, let the agent plan the skill sequence
+3. **Start with Init** — don't skip brand setup (`/init` command in Telegram)
+4. **Review before schedule** — always confirm the execution plan before it runs
+5. **Maintain buffer** — keep 3–7 days of scheduled content
+6. **Iterate on brand** — update BRAND.md as persona evolves
+7. **GPU-heavy last** — run `liven`, `cutlab`, `keyer` when the LLM is idle to avoid VRAM contention
