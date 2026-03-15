@@ -73,8 +73,19 @@ def probe_video(path: Path) -> dict:
         codec_type = stream.get("codec_type")
         if codec_type == "video":
             info["has_video"] = True
-            info["width"] = stream.get("width", 0)
-            info["height"] = stream.get("height", 0)
+            w = stream.get("width", 0)
+            h = stream.get("height", 0)
+            # Detect display rotation from side_data (display matrix) or tags.
+            # FFmpeg auto-rotates decoded frames, so swap w/h for 90°/270° videos.
+            rotation = abs(int(stream.get("tags", {}).get("rotate", 0)))
+            for sd in stream.get("side_data_list", []):
+                if "rotation" in sd:
+                    rotation = abs(int(sd["rotation"]))
+                    break
+            if rotation in (90, 270):
+                w, h = h, w
+            info["width"] = w
+            info["height"] = h
             fps_str = stream.get("r_frame_rate", "30/1")
             num, den = fps_str.split("/")
             info["fps"] = float(int(num) / max(int(den), 1))

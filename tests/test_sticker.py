@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -599,6 +600,82 @@ class TestStickerIntegration:
         ]
         cfg = self._cfg(tmp_path, workdir, effects)
         result = run_skill(self.SKILL, "sticker.py", ["--config", str(cfg)])
-        # May warn about missing bundled assets but should not crash fatally
         _, out = workdir
         assert result.returncode == 0, f"stderr: {result.stderr}"
+
+    def test_gif_overlay_changes_pixels_in_overlay_region(
+        self, tmp_path: Path, workdir: tuple[Path, Path], test_clip: Path
+    ) -> None:
+        trigger = 0.3
+        duration = 1.0
+        gif_width = 200
+        position = "top-right"
+
+        effects = [
+            {
+                "trigger": {"type": "timestamp", "value": trigger},
+                "gif": {
+                    "source": "bundled:heart",
+                    "mode": "positioned",
+                    "position": position,
+                    "width": gif_width,
+                },
+                "duration": duration,
+                "pause_video": False,
+            }
+        ]
+        cfg = self._cfg(tmp_path, workdir, effects)
+        inp, out = workdir
+        result = run_skill(self.SKILL, "sticker.py", ["--config", str(cfg)])
+        assert result.returncode == 0, f"stderr: {result.stderr}"
+
+        sample_t = trigger + duration / 2
+
+        frame_in = tmp_path / "frame_in.png"
+        frame_out = tmp_path / "frame_out.png"
+        input_video = inp / test_clip.name
+        output_video = next(out.glob("*.mp4"))
+
+        for ts, dest, src in [
+            (sample_t, frame_in, input_video),
+            (sample_t, frame_out, output_video),
+        ]:
+            subprocess.run(
+                [
+                    "ffmpeg",
+                    "-y",
+                    "-ss",
+                    f"{ts:.3f}",
+                    "-i",
+                    str(src),
+                    "-vframes",
+                    "1",
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                    str(dest),
+                ],
+                check=True,
+            )
+
+        from PIL import Image
+        import numpy as np
+        from ffmpeg_utils import GifSpec, gif_position
+
+        spec = GifSpec(
+            source="bundled:heart",
+            mode="positioned",
+            position=position,
+            width=gif_width,
+        )
+        x, y = gif_position(spec, 1080, 1920)
+        box = (x, y, x + gif_width, y + gif_width)
+
+        region_in = np.array(Image.open(frame_in).convert("RGB").crop(box), dtype=int)
+        region_out = np.array(Image.open(frame_out).convert("RGB").crop(box), dtype=int)
+        mean_diff = float(np.abs(region_out - region_in).mean())
+
+        assert mean_diff > 10, (
+            f"Overlay region looks unchanged after GIF render "
+            f"(mean pixel diff={mean_diff:.1f}/255, expected >10)"
+        )

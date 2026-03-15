@@ -35,6 +35,19 @@ BUNDLED_GIFS: dict[str, str] = {
     "explosion": "assets/gifs/explosion.gif",
 }
 
+# GIPHY sticker search queries for each bundled preset name.
+# Used by download_giphy_presets() to populate assets/gifs/ with real stickers.
+GIPHY_PRESET_QUERIES: dict[str, str] = {
+    "heart": "heart love",
+    "sparkles": "sparkle glitter",
+    "confetti": "confetti party",
+    "fire": "fire flames",
+    "stars": "stars shining",
+    "thumbsup": "thumbs up",
+    "crown": "crown winner",
+    "explosion": "explosion boom",
+}
+
 BUNDLED_SFX: dict[str, str] = {
     "pop": "assets/sfx/pop.wav",
     "whoosh": "assets/sfx/whoosh.wav",
@@ -150,26 +163,52 @@ def _download_file(url: str, dest: Path) -> Path:
     return dest
 
 
-def _search_giphy(query: str) -> Optional[str]:
-    """Search GIPHY for query, return original GIF URL or None."""
+def _giphy_api_key() -> str:
+    key = os.environ.get("GIPHY_API_KEY", "")
+    if not key:
+        raise ValueError(
+            "GIPHY_API_KEY is not set. "
+            "Get a free key at https://developers.giphy.com/dashboard/ "
+            "then: export GIPHY_API_KEY=your_key"
+        )
+    return key
+
+
+def _search_giphy_sticker(query: str) -> Optional[str]:
     import requests
 
-    api_key = os.environ.get("GIPHY_API_KEY", "")
-    if not api_key:
-        raise ValueError(
-            "GIPHY_API_KEY environment variable is not set. "
-            "Get a free key at https://developers.giphy.com"
-        )
     resp = requests.get(
-        "https://api.giphy.com/v1/gifs/search",
-        params={"api_key": api_key, "q": query, "limit": 1, "rating": "g"},
+        "https://api.giphy.com/v1/stickers/search",
+        params={"api_key": _giphy_api_key(), "q": query, "limit": 1, "rating": "g"},
         timeout=10,
     )
     resp.raise_for_status()
-    data = resp.json()
-    if not data.get("data"):
+    items = resp.json().get("data", [])
+    if not items:
         return None
-    return data["data"][0]["images"]["original"]["url"]
+    images = items[0]["images"]
+    return (images.get("fixed_width") or images.get("downsized") or images["original"])[
+        "url"
+    ]
+
+
+def download_giphy_presets(skill_dir: Path) -> dict[str, Path]:
+    _giphy_api_key()
+    results: dict[str, Path] = {}
+    for name, query in GIPHY_PRESET_QUERIES.items():
+        dest = skill_dir / BUNDLED_GIFS[name]
+        if dest.exists():
+            print(f"  (exists) {name}")
+            results[name] = dest
+            continue
+        url = _search_giphy_sticker(query)
+        if url is None:
+            print(f"  ✗ {name}: no GIPHY result for '{query}'")
+            continue
+        _download_file(url, dest)
+        print(f"  ✓ {name}  ({dest.name})")
+        results[name] = dest
+    return results
 
 
 def _search_freesound(query: str) -> Optional[str]:
@@ -242,7 +281,7 @@ def resolve_gif(source: str, skill_dir: Path, favourites_path: Path) -> Path:
         cache_file = cache_dir / f"giphy_{_cache_key(query)}.gif"
         if cache_file.exists():
             return cache_file
-        url = _search_giphy(query)
+        url = _search_giphy_sticker(query)
         if url is None:
             raise ValueError(f"GIPHY returned no results for query: '{query}'")
         return _download_file(url, cache_file)

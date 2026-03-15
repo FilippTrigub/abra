@@ -9,7 +9,8 @@ metadata:
     "openclaw":
       {
         "emoji": "🎪",
-        "requires": { "bins": ["ffmpeg", "uv"] },
+        "requires": { "bins": ["ffmpeg", "uv"], "env": ["GIPHY_API_KEY"] },
+        "primaryEnv": "GIPHY_API_KEY",
       },
   }
 ---
@@ -36,13 +37,23 @@ Use this skill when the user wants to:
 
 ---
 
-## Setup (first run only)
+## Setup
 
-```bash
-cd "$SKILL_DIR" && uv sync
-```
+1. Go to https://developers.giphy.com/dashboard/ and create a free app
+2. Copy your API key
+3. Set the environment variable:
+   ```bash
+   export GIPHY_API_KEY="your_api_key_here"
+   ```
+4. Install dependencies and download real stickers:
+   ```bash
+   cd "$SKILL_DIR" && uv sync
+   cd "$SKILL_DIR" && uv run python scripts/download_giphy_presets.py
+   ```
 
-Bundled assets are generated automatically on first run.
+The preset download fetches one transparent-background sticker per bundled name (heart, sparkles, confetti, fire, stars, thumbsup, crown, explosion) into `assets/gifs/`. Safe to re-run — existing files are skipped. Add `--force` to refresh.
+
+> **Without a key:** the skill still works using generated geometric placeholder stickers.
 
 ---
 
@@ -87,8 +98,12 @@ Before I add stickers to your video, I need to know:
 🎨 GIF sticker
   - bundled name (bundled:heart|sparkles|confetti|fire|stars|thumbsup|crown|explosion)
   - custom file (./stickers/my_emoji.gif)
-  - GIPHY search (giphy:trolly_girl or jeans_rolling_hills)
-  - favourite (favourite:my_fav -- loaded from favourites.json)
+  - GIPHY search (giphy:dancing cat) — requires GIPHY_API_KEY env var
+  - favourite (favourite:my_fav) — loaded from favourites.json
+
+  ⚠️  Before using GIPHY search or downloading preset stickers:
+  Check if GIPHY_API_KEY is set. If not, ask the user to follow the
+  "GIPHY API Key" section in this SKILL.md before proceeding.
 
 🔖 Save to favourites?
   After the run succeeds, should I save:
@@ -139,11 +154,10 @@ Tell the user:
 | `effects[].duration` | float | `3.0` | Effect duration in seconds |
 
 ### GIF source values:
-- `"bundled:heart"` — one of 8 built-in animations (heart, sparkles, confetti, fire, stars, thumbsup, crown, explosion)
-- `"favourite:<name>` — loaded from `favourites.json`
-- `"giphy:trolly_girl"` — download from GIPHY (requires API key)
+- `"bundled:heart"` — one of 8 preset names; uses real GIPHY stickers if downloaded, else generated fallback
+- `"favourite:<name>"` — loaded from `favourites.json`
+- `"giphy:<query>"` — search GIPHY Stickers API (transparent background); requires `GIPHY_API_KEY` env var; cached in `assets/gifs/cache/`
 - `/path/to/file.gif` — local file path
-- `"custom"` combined with `gif.source.filename` for runtime discovery
 
 ### SFX source values:
 - `"bundled:pop"` — one of 8 built-in sound effects
@@ -299,4 +313,7 @@ Then reuse in config:
   - Transcript path (`--transcript ./input/subtitle.srt`)
   - Or set `trigger.type` to `"timestamp"` instead
 - **GIF/SFX not found**: Bundled assets are created automatically; custom paths must exist
-- **GIPHY/Freesound API failure**: Require valid API key in config. Fall back to bundled or skip effect.
+- **GIPHY_API_KEY not set**: Skill raises `ValueError` with setup URL. Tell user to follow the "GIPHY API Key" section and re-run.
+- **GIPHY no results**: Raises `ValueError` with the search query. Suggest a different query or use a bundled/local sticker.
+- **FREESOUND_API_KEY not set**: Same pattern — raises with registration URL.
+- **Bundled sticker is a placeholder**: Run `uv run python scripts/download_giphy_presets.py` to replace with real stickers.
