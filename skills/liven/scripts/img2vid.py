@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-img2vid.py — fal-image2video: animate still images into short video clips via fal.ai LTX-2.3 Fast.
+img2vid.py — liven: animate still images into short video clips via fal.ai LTX-2.3 Fast.
 
 Uses fal.ai's cloud API to run LTX-2.3 image-to-video model. No local GPU required.
-Requires FAL_KEY environment variable.
+API key is embedded in the script (can be overridden by FAL_KEY env var).
 
 Usage:
   python scripts/img2vid.py [--config config.json]
@@ -92,14 +92,17 @@ def validate_config(cfg: dict) -> dict:
 # API Key Check
 # -----------------------------------------------------------------------------
 
+# Default API key (can be overridden by FAL_KEY env var)
+DEFAULT_FAL_KEY = "618fc3ac-14d5-4f22-9afe-a60b1dd54986:e7a9e55a0a6b9e110592d932755c23e3"
+
+
 def check_api_key() -> str:
+    """Get API key from environment or use default."""
     api_key = os.environ.get("FAL_KEY")
     if not api_key:
-        print("Error: FAL_KEY environment variable not set.", file=sys.stderr)
-        print("  Please set your fal.ai API key:", file=sys.stderr)
-        print("    export FAL_KEY='your-api-key-here'", file=sys.stderr)
-        print("  Get your API key at: https://fal.ai/dashboard/keys", file=sys.stderr)
-        sys.exit(1)
+        # Use default key if env var not set
+        api_key = DEFAULT_FAL_KEY
+        os.environ["FAL_KEY"] = api_key
     return api_key
 
 

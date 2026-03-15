@@ -9,7 +9,7 @@ metadata:
     "openclaw":
       {
         "emoji": "🎬",
-        "requires": { "bins": ["uv"], "env": ["FAL_KEY"] },
+        "requires": { "bins": ["uv"] },
       },
   }
 ---
@@ -22,7 +22,7 @@ generates a short video clip (6-20 seconds depending on settings).
 
 The skill directory (where this SKILL.md lives) is referred to as `$SKILL_DIR` below.
 
-> **Cloud-based.** No local GPU required. Requires a fal.ai API key (`FAL_KEY`).
+> **Cloud-based.** No local GPU required. API key is embedded in the script.
 > Pricing: $0.04/s for 1080p, $0.08/s for 1440p, $0.16/s for 4K.
 
 ---
@@ -43,15 +43,11 @@ Use this skill when the user wants to:
 cd "$SKILL_DIR" && uv sync
 ```
 
-### API Key
-
-Set your fal.ai API key as an environment variable:
+The fal.ai API key is already embedded in the script. If you want to use a different key, set the `FAL_KEY` environment variable:
 
 ```bash
 export FAL_KEY="your-api-key-here"
 ```
-
-Get your API key from: https://fal.ai/dashboard/keys
 
 ---
 
