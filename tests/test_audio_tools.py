@@ -29,6 +29,7 @@ from conftest import (
 # clawsep — Audio Source Separation (Demucs)
 # ===========================================================================
 
+
 class TestClawSep:
     """
     Expected behaviour:
@@ -61,9 +62,18 @@ class TestClawSep:
         """Output video exists with audio track, duration within ±0.5 s."""
         inp, out = workdir
         result = run_skill(
-            self.SKILL, "separate.py",
-            ["--input", str(inp), "--output", str(out),
-             "--stem", "vocals", "--device", DEVICE],
+            self.SKILL,
+            "separate.py",
+            [
+                "--input",
+                str(inp),
+                "--output",
+                str(out),
+                "--stem",
+                "vocals",
+                "--device",
+                DEVICE,
+            ],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -80,9 +90,18 @@ class TestClawSep:
         """no_vocals (instrumental) stem also produces valid output."""
         inp, out = workdir
         result = run_skill(
-            self.SKILL, "separate.py",
-            ["--input", str(inp), "--output", str(out),
-             "--stem", "no_vocals", "--device", DEVICE],
+            self.SKILL,
+            "separate.py",
+            [
+                "--input",
+                str(inp),
+                "--output",
+                str(out),
+                "--stem",
+                "no_vocals",
+                "--device",
+                DEVICE,
+            ],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         out_files = list(out.glob("*.mp4"))
@@ -92,9 +111,18 @@ class TestClawSep:
         """Separated video retains its video stream."""
         inp, out = workdir
         run_skill(
-            self.SKILL, "separate.py",
-            ["--input", str(inp), "--output", str(out),
-             "--stem", "vocals", "--device", DEVICE],
+            self.SKILL,
+            "separate.py",
+            [
+                "--input",
+                str(inp),
+                "--output",
+                str(out),
+                "--stem",
+                "vocals",
+                "--device",
+                DEVICE,
+            ],
         )
         out_file = next(out.glob("*.mp4"))
         info = video_info(out_file)
@@ -107,7 +135,8 @@ class TestClawSep:
         out = tmp_path / "output"
         out.mkdir()
         result = run_skill(
-            self.SKILL, "separate.py",
+            self.SKILL,
+            "separate.py",
             ["--input", str(inp), "--output", str(out), "--stem", "vocals"],
         )
         assert result.returncode == 0
@@ -116,6 +145,7 @@ class TestClawSep:
 # ===========================================================================
 # clawbeat — Music Generation (MusicGen)
 # ===========================================================================
+
 
 class TestClawBeat:
     """
@@ -129,7 +159,7 @@ class TestClawBeat:
     CPU mode is accepted with model=small only.
     """
 
-    SKILL = "music-gen"
+    SKILL = "music-generator"
 
     @pytest.fixture(autouse=True, scope="class")
     def setup_venv(self):
@@ -138,10 +168,18 @@ class TestClawBeat:
     def _audio_duration(self, path: Path) -> float:
         """Return duration of an audio/video file in seconds."""
         probe = subprocess.run(
-            ["ffprobe", "-v", "error",
-             "-show_entries", "format=duration",
-             "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
-            capture_output=True, text=True,
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                str(path),
+            ],
+            capture_output=True,
+            text=True,
         )
         return float(probe.stdout.strip())
 
@@ -151,12 +189,20 @@ class TestClawBeat:
         out_dir = tmp_path / "out"
         out_dir.mkdir()
         result = run_skill(
-            self.SKILL, "generate_music.py",
-            ["--prompt", "calm acoustic guitar ambient",
-             "--duration", "2",
-             "--model", "small",
-             "--device", DEVICE,
-             "--output", str(out_dir)],
+            self.SKILL,
+            "generate_music.py",
+            [
+                "--prompt",
+                "calm acoustic guitar ambient",
+                "--duration",
+                "2",
+                "--model",
+                "small",
+                "--device",
+                DEVICE,
+                "--output",
+                str(out_dir),
+            ],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         out = out_dir / "music.wav"
@@ -170,13 +216,22 @@ class TestClawBeat:
         out_dir = tmp_path / "out"
         out_dir.mkdir()
         result = run_skill(
-            self.SKILL, "generate_music.py",
-            ["--prompt", "upbeat lo-fi beats",
-             "--duration", "2",
-             "--model", "small",
-             "--device", DEVICE,
-             "--video", str(test_clip),
-             "--output", str(out_dir)],
+            self.SKILL,
+            "generate_music.py",
+            [
+                "--prompt",
+                "upbeat lo-fi beats",
+                "--duration",
+                "2",
+                "--model",
+                "small",
+                "--device",
+                DEVICE,
+                "--video",
+                str(test_clip),
+                "--output",
+                str(out_dir),
+            ],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         # script names the output after the input video
@@ -190,16 +245,22 @@ class TestClawBeat:
         """musicgen-medium on CPU should fail with a clear error."""
         out = tmp_path / "music.wav"
         result = run_skill(
-            self.SKILL, "generate_music.py",
-            ["--prompt", "test",
-             "--duration", "3",
-             "--model", "medium",
-             "--device", "cpu",  # intentionally forced to cpu to test the guard
-             "--output", str(out)],
+            self.SKILL,
+            "generate_music.py",
+            [
+                "--prompt",
+                "test",
+                "--duration",
+                "3",
+                "--model",
+                "medium",
+                "--device",
+                "cpu",  # intentionally forced to cpu to test the guard
+                "--output",
+                str(out),
+            ],
         )
-        assert result.returncode != 0, (
-            "Expected failure when using medium model on CPU"
-        )
+        assert result.returncode != 0, "Expected failure when using medium model on CPU"
         err = (result.stderr + result.stdout).lower()
         assert "gpu" in err or "cuda" in err or "cpu" in err, (
             f"Expected informative error, got: {result.stderr[:200]}"
