@@ -337,6 +337,6 @@ uv run python scripts/posts.py create \
 | score | prompt/video | Generate music | ~3 GB | ✅ very slow |
 | liven | images | Image → video clip | ~8 GB | ❌ no |
 | cutlab | video | Edit/inpaint video | ~8 GB | ❌ no |
-| sticker | video | GIF stickers + social sound effects | 0 GB | ✅ instant |
+| sticker | videos | GIF stickers + social sound effects | 0 GB | ✅ instant |
 
 Core: persona, verbatim, snip, render, mux, filter, buffer, canva

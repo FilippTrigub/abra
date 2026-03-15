@@ -131,7 +131,7 @@ Before I add stickers to your video, I need to know:
 ### 3. Run
 
 ```bash
-cd "$SKILL_DIR" && uv run python scripts/apply_stickers.py --config config.json
+cd "$SKILL_DIR" && uv run python scripts/sticker.py
 ```
 
 ### 4. Report results
@@ -195,6 +195,8 @@ Using `"preset": "<name>` in your effect config automatically merges these setti
 | `dramatic` | bundled:fire | bundled:bass_drop, vol=1.0 | 2.0s | bottom-right | yes |
 | `reaction` | bundled:thumbsup | bundled:clap, vol=0.8 | 2.5s | top-left | no |
 | `crown` | bundled:crown | bundled:ding, vol=0.9 | 2.0s | top-right | no |
+
+**Custom presets:** Edit `presets.json` in the skill directory to add or modify presets. The file is user-editable — add your own presets following the same structure.
 
 ---
 
