@@ -395,6 +395,101 @@ class TestFavourites:
 
 
 # ---------------------------------------------------------------------------
+# TestLocalLibrary
+# ---------------------------------------------------------------------------
+
+
+class TestLocalLibrary:
+    """Local sticker library (local:name prefix)."""
+
+    def test_library_list_empty_when_dir_missing(self, tmp_path: Path) -> None:
+        from assets import library_list
+
+        assert library_list(tmp_path) == []
+
+    def test_library_add_copies_file(self, tmp_path: Path, tiny_gif: Path) -> None:
+        from assets import library_add, library_list
+
+        library_add("mystic", tiny_gif, tmp_path)
+        entries = library_list(tmp_path)
+        assert any(name == "mystic" for name, _ in entries)
+
+    def test_library_add_raises_on_missing_source(self, tmp_path: Path) -> None:
+        from assets import library_add
+
+        with pytest.raises(FileNotFoundError):
+            library_add("ghost", Path("/nonexistent/ghost.gif"), tmp_path)
+
+    def test_library_add_raises_on_unsupported_ext(self, tmp_path: Path) -> None:
+        from assets import library_add
+
+        mp4 = tmp_path / "clip.mp4"
+        mp4.write_bytes(b"fake")
+        with pytest.raises(ValueError, match="Unsupported"):
+            library_add("clip", mp4, tmp_path)
+
+    def test_library_resolve_finds_added_file(
+        self, tmp_path: Path, tiny_gif: Path
+    ) -> None:
+        from assets import library_add, library_resolve
+
+        library_add("spark", tiny_gif, tmp_path)
+        result = library_resolve("spark", tmp_path)
+        assert result.exists()
+        assert result.stem == "spark"
+
+    def test_library_resolve_raises_on_missing(self, tmp_path: Path) -> None:
+        from assets import library_resolve
+
+        with pytest.raises(FileNotFoundError, match="not found in library"):
+            library_resolve("doesnotexist", tmp_path)
+
+    def test_library_remove_returns_true_when_found(
+        self, tmp_path: Path, tiny_gif: Path
+    ) -> None:
+        from assets import library_add, library_remove
+
+        library_add("temp", tiny_gif, tmp_path)
+        assert library_remove("temp", tmp_path) is True
+
+    def test_library_remove_returns_false_when_missing(self, tmp_path: Path) -> None:
+        from assets import library_remove
+
+        assert library_remove("ghost", tmp_path) is False
+
+    def test_library_remove_deletes_file(self, tmp_path: Path, tiny_gif: Path) -> None:
+        from assets import library_add, library_remove, library_list
+
+        library_add("gone", tiny_gif, tmp_path)
+        library_remove("gone", tmp_path)
+        assert not any(name == "gone" for name, _ in library_list(tmp_path))
+
+    def test_library_import_dir(self, tmp_path: Path, tiny_gif: Path) -> None:
+        from assets import library_import_dir, library_list
+
+        src_dir = tmp_path / "pack"
+        src_dir.mkdir()
+        for n in ("alpha", "beta", "gamma"):
+            import shutil
+
+            shutil.copy(tiny_gif, src_dir / f"{n}.gif")
+        skill_dir = tmp_path / "skill"
+        imported = library_import_dir(src_dir, skill_dir)
+        assert set(imported) == {"alpha", "beta", "gamma"}
+        names = {n for n, _ in library_list(skill_dir)}
+        assert names == {"alpha", "beta", "gamma"}
+
+    def test_resolve_gif_local_prefix(self, tmp_path: Path, tiny_gif: Path) -> None:
+        from assets import library_add, resolve_gif
+
+        fav_path = tmp_path / "favourites.json"
+        library_add("localtest", tiny_gif, tmp_path)
+        result = resolve_gif("local:localtest", tmp_path, fav_path)
+        assert result.exists()
+        assert result.stem == "localtest"
+
+
+# ---------------------------------------------------------------------------
 # TestAssetResolution
 # ---------------------------------------------------------------------------
 
@@ -673,9 +768,11 @@ class TestStickerIntegration:
 
         region_in = np.array(Image.open(frame_in).convert("RGB").crop(box), dtype=int)
         region_out = np.array(Image.open(frame_out).convert("RGB").crop(box), dtype=int)
-        mean_diff = float(np.abs(region_out - region_in).mean())
+        per_pixel_max = np.abs(region_out - region_in).max(axis=2)
+        changed_px = int((per_pixel_max > 15).sum())
 
-        assert mean_diff > 10, (
+        assert changed_px > 50, (
             f"Overlay region looks unchanged after GIF render "
-            f"(mean pixel diff={mean_diff:.1f}/255, expected >10)"
+            f"(pixels changed >15: {changed_px}, expected >50). "
+            f"GIPHY stickers are sparse/transparent — mean diff is not a reliable metric."
         )

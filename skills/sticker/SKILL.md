@@ -96,10 +96,15 @@ Before I add stickers to your video, I need to know:
   - Freesound search (freesound:fairy_dust if we have API access)
 
 🎨 GIF sticker
-  - bundled name (bundled:heart|sparkles|confetti|fire|stars|thumbsup|crown|explosion)
-  - custom file (./stickers/my_emoji.gif)
-  - GIPHY search (giphy:dancing cat) — requires GIPHY_API_KEY env var
-  - favourite (favourite:my_fav) — loaded from favourites.json
+  - bundled name  (bundled:heart|sparkles|confetti|fire|stars|thumbsup|crown|explosion)
+  - local library (local:myname)  ← preferred, no API key needed
+  - custom file   (./stickers/my_emoji.gif)
+  - GIPHY search  (giphy:dancing cat) — requires GIPHY_API_KEY env var
+  - favourite     (favourite:my_fav) — loaded from favourites.json
+
+  If the user has a folder of GIFs, offer to import them:
+    python scripts/assets.py library import-dir --dir ./my-stickers/
+  Then reference as local:<name> in config.
 
   ⚠️  Before using GIPHY search or downloading preset stickers:
   Check if GIPHY_API_KEY is set. If not, ask the user to follow the
@@ -154,10 +159,11 @@ Tell the user:
 | `effects[].duration` | float | `3.0` | Effect duration in seconds |
 
 ### GIF source values:
-- `"bundled:heart"` — one of 8 preset names; uses real GIPHY stickers if downloaded, else generated fallback
+- `"local:<name>"` — file in `assets/gifs/library/<name>.(gif|webp|png)`; no API key needed; **recommended for personal sticker packs**
+- `"bundled:<name>"` — one of 8 built-in presets; uses real GIPHY stickers if downloaded, else generated fallback
 - `"favourite:<name>"` — loaded from `favourites.json`
-- `"giphy:<query>"` — search GIPHY Stickers API (transparent background); requires `GIPHY_API_KEY` env var; cached in `assets/gifs/cache/`
-- `/path/to/file.gif` — local file path
+- `"giphy:<query>"` — searches GIPHY Stickers API; transparent background; requires `GIPHY_API_KEY`; cached in `assets/gifs/cache/`
+- `/path/to/file.gif` — absolute or relative file path
 
 ### SFX source values:
 - `"bundled:pop"` — one of 8 built-in sound effects
@@ -178,6 +184,44 @@ Using `"preset": "<name>` in your effect config automatically merges these setti
 | `dramatic` | bundled:fire | bundled:bass_drop, vol=1.0 | 2.0s | bottom-right | yes |
 | `reaction` | bundled:thumbsup | bundled:clap, vol=0.8 | 2.5s | top-left | no |
 | `crown` | bundled:crown | bundled:ding, vol=0.9 | 2.0s | top-right | no |
+
+---
+
+## Local Sticker Library
+
+Store your own GIFs locally and reference them as `local:<name>` — no API key required.
+
+**Drop and use** — copy any GIF directly into the library folder and it's immediately available:
+```bash
+cp ~/Downloads/my_sticker.gif "$SKILL_DIR/assets/gifs/library/my_sticker.gif"
+# use as: "source": "local:my_sticker"
+```
+
+**CLI management:**
+```bash
+cd "$SKILL_DIR"
+
+# List everything in the library
+uv run python scripts/assets.py library list
+
+# Add a single sticker
+uv run python scripts/assets.py library add --name party_hat --file ~/Downloads/party_hat.gif
+
+# Bulk import a whole folder
+uv run python scripts/assets.py library import-dir --dir ~/Downloads/my-stickers/
+
+# Remove a sticker
+uv run python scripts/assets.py library remove --name party_hat
+```
+
+**Supported formats:** `.gif`, `.webp`, `.png`, `.apng`
+
+**Use in config:**
+```json
+{
+  "gif": { "source": "local:party_hat", "mode": "positioned", "position": "top-right" }
+}
+```
 
 ---
 
@@ -313,6 +357,7 @@ Then reuse in config:
   - Transcript path (`--transcript ./input/subtitle.srt`)
   - Or set `trigger.type` to `"timestamp"` instead
 - **GIF/SFX not found**: Bundled assets are created automatically; custom paths must exist
+- **`local:<name>` not found**: Sticker not in library. Run `python scripts/assets.py library list` to see available names, or add it with `library add`.
 - **GIPHY_API_KEY not set**: Skill raises `ValueError` with setup URL. Tell user to follow the "GIPHY API Key" section and re-run.
 - **GIPHY no results**: Raises `ValueError` with the search query. Suggest a different query or use a bundled/local sticker.
 - **FREESOUND_API_KEY not set**: Same pattern — raises with registration URL.

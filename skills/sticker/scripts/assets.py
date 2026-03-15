@@ -48,6 +48,9 @@ GIPHY_PRESET_QUERIES: dict[str, str] = {
     "explosion": "explosion boom",
 }
 
+LIBRARY_DIR = "assets/gifs/library"
+LIBRARY_EXTENSIONS = (".gif", ".webp", ".png", ".apng")
+
 BUNDLED_SFX: dict[str, str] = {
     "pop": "assets/sfx/pop.wav",
     "whoosh": "assets/sfx/whoosh.wav",
@@ -240,6 +243,80 @@ def _search_freesound(query: str) -> Optional[str]:
 
 
 # ---------------------------------------------------------------------------
+# Local library
+# ---------------------------------------------------------------------------
+
+
+def library_dir(skill_dir: Path) -> Path:
+    return skill_dir / LIBRARY_DIR
+
+
+def library_list(skill_dir: Path) -> list[tuple[str, Path]]:
+    d = library_dir(skill_dir)
+    if not d.exists():
+        return []
+    return sorted(
+        (p.stem, p)
+        for p in d.iterdir()
+        if p.is_file() and p.suffix.lower() in LIBRARY_EXTENSIONS
+    )
+
+
+def library_resolve(name: str, skill_dir: Path) -> Path:
+    d = library_dir(skill_dir)
+    for ext in LIBRARY_EXTENSIONS:
+        p = d / f"{name}{ext}"
+        if p.exists():
+            return p
+    available = ", ".join(n for n, _ in library_list(skill_dir)) or "(empty)"
+    raise FileNotFoundError(
+        f"Local sticker '{name}' not found in library. "
+        f"Available: {available}. "
+        f"Add with: python scripts/assets.py library add --name {name} --file <path>"
+    )
+
+
+def library_add(name: str, source_path: Path, skill_dir: Path) -> Path:
+    src = Path(source_path)
+    if not src.exists():
+        raise FileNotFoundError(f"Source file not found: {src}")
+    if src.suffix.lower() not in LIBRARY_EXTENSIONS:
+        raise ValueError(
+            f"Unsupported format '{src.suffix}'. "
+            f"Supported: {', '.join(LIBRARY_EXTENSIONS)}"
+        )
+    dest_dir = library_dir(skill_dir)
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    dest = dest_dir / f"{name}{src.suffix.lower()}"
+    import shutil
+
+    shutil.copy2(str(src), str(dest))
+    return dest
+
+
+def library_remove(name: str, skill_dir: Path) -> bool:
+    d = library_dir(skill_dir)
+    for ext in LIBRARY_EXTENSIONS:
+        p = d / f"{name}{ext}"
+        if p.exists():
+            p.unlink()
+            return True
+    return False
+
+
+def library_import_dir(source_dir: Path, skill_dir: Path) -> list[str]:
+    src = Path(source_dir)
+    if not src.exists():
+        raise FileNotFoundError(f"Source directory not found: {src}")
+    imported: list[str] = []
+    for p in sorted(src.iterdir()):
+        if p.is_file() and p.suffix.lower() in LIBRARY_EXTENSIONS:
+            library_add(p.stem, p, skill_dir)
+            imported.append(p.stem)
+    return imported
+
+
+# ---------------------------------------------------------------------------
 # Asset resolution
 # ---------------------------------------------------------------------------
 
@@ -267,6 +344,10 @@ def resolve_gif(source: str, skill_dir: Path, favourites_path: Path) -> Path:
                 "Run: cd skills/sticker && python scripts/generate_bundled_assets.py"
             )
         return path
+
+    if source.startswith("local:"):
+        name = source[len("local:") :]
+        return library_resolve(name, skill_dir)
 
     if source.startswith("favourite:"):
         name = source[len("favourite:") :]
@@ -359,14 +440,66 @@ def _cli_list(favourites_path: Path) -> None:
         print(f"  {entry['name']:20s}  {entry['source']}  [{tags}]")
 
 
+def _cli_library(args: "argparse.Namespace", skill_dir: Path) -> None:
+    if args.library_cmd == "list":
+        entries = library_list(skill_dir)
+        if not entries:
+            print(f"Library is empty. Drop GIFs into {library_dir(skill_dir)}")
+            return
+        print(f"Local sticker library ({len(entries)} stickers):")
+        for name, path in entries:
+            size_kb = path.stat().st_size // 1024
+            print(f"  local:{name:<22s}  {path.name}  ({size_kb} KB)")
+
+    elif args.library_cmd == "add":
+        dest = library_add(args.name, Path(args.file), skill_dir)
+        print(f"Added: local:{args.name}  →  {dest}")
+
+    elif args.library_cmd == "remove":
+        if library_remove(args.name, skill_dir):
+            print(f"Removed: local:{args.name}")
+        else:
+            print(f"Not found: local:{args.name}")
+            sys.exit(1)
+
+    elif args.library_cmd == "import-dir":
+        imported = library_import_dir(Path(args.dir), skill_dir)
+        if imported:
+            print(f"Imported {len(imported)} stickers: {', '.join(imported)}")
+        else:
+            print("No supported GIF files found in directory.")
+
+    else:
+        print("Usage: assets.py library {list|add|remove|import-dir}")
+
+
 def main() -> None:
     skill_dir = Path(__file__).parent.parent
     favourites_path = skill_dir / "favourites.json"
 
-    parser = argparse.ArgumentParser(description="Manage sticker skill favourites")
+    parser = argparse.ArgumentParser(description="Manage sticker skill assets")
     sub = parser.add_subparsers(dest="cmd")
 
     sub.add_parser("list", help="List all favourites")
+
+    p_lib = sub.add_parser("library", help="Manage local sticker library (local:name)")
+    lib_sub = p_lib.add_subparsers(dest="library_cmd")
+    lib_sub.add_parser("list", help="List all stickers in the library")
+    p_lib_add = lib_sub.add_parser("add", help="Add a sticker to the library")
+    p_lib_add.add_argument(
+        "--name", required=True, help="Reference name (used as local:<name>)"
+    )
+    p_lib_add.add_argument(
+        "--file", required=True, help="Source GIF/WebP/PNG file path"
+    )
+    p_lib_rm = lib_sub.add_parser("remove", help="Remove a sticker from the library")
+    p_lib_rm.add_argument("--name", required=True)
+    p_lib_imp = lib_sub.add_parser(
+        "import-dir", help="Bulk import all GIFs from a directory"
+    )
+    p_lib_imp.add_argument(
+        "--dir", required=True, help="Directory containing GIF files"
+    )
 
     p_add_gif = sub.add_parser("add-gif", help="Add a gif favourite")
     p_add_gif.add_argument("--name", required=True)
@@ -386,6 +519,9 @@ def main() -> None:
 
     if args.cmd == "list":
         _cli_list(favourites_path)
+
+    elif args.cmd == "library":
+        _cli_library(args, skill_dir)
 
     elif args.cmd == "add-gif":
         tags = [t.strip() for t in args.tags.split(",") if t.strip()]
