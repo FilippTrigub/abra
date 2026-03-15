@@ -1,24 +1,22 @@
 #!/usr/bin/env python3
 """
-Caption Service: Batch-process videos from INPUT_DIR, add captions, save to OUTPUT_DIR.
+Caption Service: Batch-process videos, burn in animated captions, save to OUTPUT_DIR.
 
 Usage:
     python caption_service.py [--input DIR] [--output DIR] [--template NAME] [--css FILE]
-                               [--preset PRESET] [--watch]
+                               [--watch] [--interval N]
 
 Environment variables:
     INPUT_DIR     - Directory to read videos from  (default: ./input)
     OUTPUT_DIR    - Directory to write videos to   (default: ./output)
     CAPS_TEMPLATE - pycaps template name           (default: minimalist)
     CAPS_CSS      - Path to extra CSS file         (default: none)
-    VIDEO_PRESET  - Enhancement preset name        (default: none)
 """
 
 import argparse
 import logging
 import os
 import sys
-import tempfile
 import time
 from pathlib import Path
 
@@ -37,55 +35,31 @@ def process_video(
     output_path: Path,
     template: str,
     css: Path | None = None,
-    preset: str | None = None,
 ) -> bool:
-    """Optionally enhance a video then add captions. Returns True on success."""
-    tmp_dir: str | None = None
-
+    """Add animated captions to a single video. Returns True on success."""
     try:
-        pycaps_input = input_path
-
-        if preset is not None:
-            from enhance import enhance_video  # type: ignore
-
-            tmp_dir = tempfile.mkdtemp(prefix="pycaps_enhance_")
-            enhanced_path = Path(tmp_dir) / input_path.name
-            log.info("Enhancing with preset '%s': %s", preset, input_path.name)
-            if not enhance_video(input_path, enhanced_path, preset):
-                log.error("Enhancement failed for %s", input_path.name)
-                return False
-            pycaps_input = enhanced_path
-
-        return _run_pycaps(pycaps_input, output_path, template, css)
-
+        return _run_pycaps(input_path, output_path, template, css)
     except Exception as exc:
         log.error("Failed to process %s: %s", input_path.name, exc, exc_info=True)
         return False
-    finally:
-        if tmp_dir is not None:
-            import shutil
-            shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
-def _run_pycaps(input_path: Path, output_path: Path, template: str, css: Path | None) -> bool:
+def _run_pycaps(
+    input_path: Path, output_path: Path, template: str, css: Path | None
+) -> bool:
     """Add captions to a single video using pycaps. Returns True on success."""
     try:
         from pycaps import TemplateLoader  # type: ignore
 
         log.info("Captioning: %s → %s", input_path.name, output_path)
 
-        builder = (
-            TemplateLoader(template)
-            .with_input_video(str(input_path))
-            .load(False)
-        )
+        builder = TemplateLoader(template).with_input_video(str(input_path)).load(False)
 
         if css is not None:
             log.info("Applying custom CSS: %s", css)
             builder = builder.add_css(str(css))
 
         # Override the output path so the result lands in our output dir.
-        # CapsPipelineBuilder exposes with_output_video; check if available.
         if hasattr(builder, "with_output_video"):
             builder = builder.with_output_video(str(output_path))
 
@@ -94,6 +68,7 @@ def _run_pycaps(input_path: Path, output_path: Path, template: str, css: Path | 
         # Some pycaps versions accept output_path as run() kwarg.
         run_kwargs: dict = {}
         import inspect
+
         sig = inspect.signature(pipeline.run)
         if "output_path" in sig.parameters:
             run_kwargs["output_path"] = str(output_path)
@@ -106,7 +81,6 @@ def _run_pycaps(input_path: Path, output_path: Path, template: str, css: Path | 
             if default_out.exists():
                 default_out.rename(output_path)
             else:
-                # Try common pycaps default: same name, same dir as input
                 same_dir_out = input_path.parent / output_path.name
                 if same_dir_out.exists() and same_dir_out != output_path:
                     same_dir_out.rename(output_path)
@@ -118,7 +92,10 @@ def _run_pycaps(input_path: Path, output_path: Path, template: str, css: Path | 
         return True
 
     except ImportError:
-        log.error("pycaps is not installed. Run: pip install 'git+https://github.com/francozanardi/pycaps.git#egg=pycaps[all]'")
+        log.error(
+            "pycaps is not installed. Run: pip install "
+            "'git+https://github.com/francozanardi/pycaps.git#egg=pycaps[all]'"
+        )
         return False
     except Exception as exc:
         log.error("Failed to caption %s: %s", input_path.name, exc, exc_info=True)
@@ -131,8 +108,7 @@ def collect_unprocessed(input_dir: Path, output_dir: Path) -> list[Path]:
     for p in sorted(input_dir.iterdir()):
         if p.suffix.lower() not in VIDEO_EXTENSIONS:
             continue
-        expected_output = output_dir / p.name
-        if not expected_output.exists():
+        if not (output_dir / p.name).exists():
             pending.append(p)
     return pending
 
@@ -142,9 +118,8 @@ def run_batch(
     output_dir: Path,
     template: str,
     css: Path | None = None,
-    preset: str | None = None,
 ) -> tuple[int, int]:
-    """Process all pending videos. Returns (success_count, failure_count)."""
+    """Caption all pending videos. Returns (success_count, failure_count)."""
     pending = collect_unprocessed(input_dir, output_dir)
     if not pending:
         log.info("No new videos to process in %s", input_dir)
@@ -154,7 +129,7 @@ def run_batch(
     success, failure = 0, 0
     for video in pending:
         output_path = output_dir / video.name
-        if process_video(video, output_path, template, css, preset):
+        if process_video(video, output_path, template, css):
             success += 1
         else:
             failure += 1
@@ -167,14 +142,13 @@ def watch_loop(
     output_dir: Path,
     template: str,
     css: Path | None,
-    preset: str | None = None,
     interval: int = 10,
 ) -> None:
     """Poll input_dir every `interval` seconds and process new videos."""
     log.info("Watching %s every %ds. Press Ctrl+C to stop.", input_dir, interval)
     try:
         while True:
-            run_batch(input_dir, output_dir, template, css, preset)
+            run_batch(input_dir, output_dir, template, css)
             time.sleep(interval)
     except KeyboardInterrupt:
         log.info("Watch mode stopped.")
@@ -201,11 +175,6 @@ def parse_args() -> argparse.Namespace:
         "--css",
         default=os.environ.get("CAPS_CSS"),
         help="Path to an extra CSS file to overlay on the template",
-    )
-    parser.add_argument(
-        "--preset",
-        default=os.environ.get("VIDEO_PRESET"),
-        help="Enhancement preset: natural | cinematic | vivid (default: none)",
     )
     parser.add_argument(
         "--watch",
@@ -245,13 +214,11 @@ def main() -> None:
     log.info("Template: %s", args.template)
     if css_path:
         log.info("CSS:      %s", css_path)
-    if args.preset:
-        log.info("Preset:   %s", args.preset)
 
     if args.watch:
-        watch_loop(input_dir, output_dir, args.template, css_path, args.preset, args.interval)
+        watch_loop(input_dir, output_dir, args.template, css_path, args.interval)
     else:
-        success, failure = run_batch(input_dir, output_dir, args.template, css_path, args.preset)
+        success, failure = run_batch(input_dir, output_dir, args.template, css_path)
         log.info("Finished — success: %d, failed: %d", success, failure)
         if failure:
             sys.exit(1)

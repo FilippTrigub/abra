@@ -1,0 +1,11 @@
+[project]
+name = "video-captioner"
+version = "0.1.0"
+description = "Animated caption pipeline: Whisper transcription + pycaps rendering"
+requires-python = ">=3.12"
+dependencies = [
+    "pycaps[all]",
+]
+
+[tool.uv.sources]
+pycaps = { git = "https://github.com/francozanardi/pycaps.git" }

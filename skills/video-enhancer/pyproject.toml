@@ -1,13 +1,9 @@
 [project]
-name = "clawvig"
+name = "video-enhancer"
 version = "0.1.0"
-description = "Instagram video enhancement + captioning pipeline"
+description = "Batch video enhancement: sharpening, colour grading, audio normalisation"
 requires-python = ">=3.12"
 dependencies = [
-    "pycaps[all]",
     "ffmpeg-python",
     "ffmpeg-normalize",
 ]
-
-[tool.uv.sources]
-pycaps = { git = "https://github.com/francozanardi/pycaps.git" }
