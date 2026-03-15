@@ -9,8 +9,8 @@ metadata:
     "openclaw":
       {
         "emoji": "🎬",
-        "requires": { "bins": ["uv"] },
-        "optionalEnv": ["FAL_API_KEY"],
+        "requires": { "bins": ["uv"] , "env": ["FAL_API_KEY"] },
+        "primaryEnv": "FAL_API_KEY",
       },
   }
 ---

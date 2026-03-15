@@ -9,8 +9,7 @@ metadata:
     "openclaw":
       {
         "emoji": "🎪",
-        "requires": { "bins": ["ffmpeg", "uv"], "env": [] },
-        "optionalEnv": ["GIPHY_API_KEY", "FREESOUND_API_KEY", "PIXABAY_API_KEY"],
+        "requires": { "bins": ["ffmpeg", "uv"], "env": ["GIPHY_API_KEY", "FREESOUND_API_KEY", "PIXABAY_API_KEY"] },
         "primaryEnv": "GIPHY_API_KEY",
       },
   }

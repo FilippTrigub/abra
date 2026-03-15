@@ -20,13 +20,14 @@ if [ ! -d "${HOST_OPENCLAW_DIR}/agents/${AGENT_NAME}" ]; then
 fi
 
 mkdir -p "${AGENT_WORKSPACE_HOST}"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="${SCRIPT_DIR}"
+
 cp "${REPO_ROOT}/SOUL.md"     "${AGENT_WORKSPACE_HOST}/SOUL.md"
 cp "${REPO_ROOT}/WORKFLOW.md" "${AGENT_WORKSPACE_HOST}/WORKFLOW.md"
 echo "  ✓ SOUL.md"
 echo "  ✓ WORKFLOW.md"
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="${SCRIPT_DIR}"
 SKILL_SOURCE="${REPO_ROOT}/skills"
 
 if [ ! -d "${SKILL_SOURCE}" ]; then
