@@ -30,6 +30,8 @@ Every tool accepts `--device cpu` to fall back to CPU/RAM:
 | music-generator | ~3 GB | ✅ yes | very slow (~10× realtime) |
 | animate-image | None (cloud) | ✅ N/A | cloud speed |
 | video-editor | ~8 GB | ❌ no | hours per clip |
+| video-enhancer | 0 GB (CPU) | ✅ yes | fast (~15s/clip) |
+| video-captioner | 0 GB (CPU) | ✅ yes | ~30s/clip (Whisper tiny) |
 
 **Recommendation:** When VRAM is limited, prefer tools marked ✅. Generative tools (`animate-image`, `video-editor`) are best run when LLM is idle.
 
@@ -273,16 +275,36 @@ uv run python scripts/score.py --input ./input --output ./output --top 3
 
 ---
 
-### video-enhancer — Video Processing
+### video-enhancer — Video Enhancement
 
-**What it does:** Instagram video enhancement and captioning pipeline. Includes sharpening, colour grading, warmth adjustments, audio normalisation, or burning animated captions.
+**What it does:** Sharpens, colour-grades, and normalises audio for a batch of videos. Three presets: `natural` (subtle), `cinematic` (warm + punchy), `vivid` (high-saturation). CPU-only — no GPU required.
 
-**Requires:** `uv`, GPU recommended
+**Requires:** `uv`, `ffmpeg`
 
 **Usage:**
 ```bash
 cd skills/video-enhancer && uv sync
-uv run python scripts/caption_service.py --output output --preset cinematic
+uv run python scripts/enhance.py --preset cinematic
+# Drop videos in skills/video-enhancer/input/, results appear in skills/video-enhancer/output/
+```
+
+---
+
+### video-captioner — Animated Captions
+
+**What it does:** Transcribes speech with Whisper and burns word-by-word animated captions into videos. Two built-in styles: minimalist (default) and futuristic (gold/magenta glow). CPU-only — no GPU required.
+
+**Requires:** `uv`, `ffmpeg`
+
+**Usage:**
+```bash
+cd skills/video-captioner && uv sync
+# Default minimalist captions
+uv run python scripts/caption_service.py
+
+# Futuristic gold/magenta style
+uv run python scripts/caption_service.py --css scripts/futuristic.css
+# Drop videos in skills/video-captioner/input/, results appear in skills/video-captioner/output/
 ```
 
 ---
@@ -343,5 +365,7 @@ uv run python scripts/posts.py create \
 | animate-image | images | Image → video clip | ~8 GB | ❌ no |
 | video-editor | video | Edit/inpaint video | ~8 GB | ❌ no |
 | sticker | videos | GIF stickers + social sound effects | 0 GB | ✅ instant |
+| video-enhancer | videos | Sharpen, colour grade, normalise audio | 0 GB | ✅ fast |
+| video-captioner | videos | Whisper transcription + animated captions | 0 GB | ✅ ~30s/clip |
 
-Core: brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, social-resizer, post-scheduler, canva-connector
+Core: brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, social-resizer, post-scheduler, canva-connector

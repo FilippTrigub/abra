@@ -164,7 +164,8 @@ claw-parade/
 │   │   ├── SKILL.md      # Skill definition
 │   │   ├── scripts/      # Asset management CLI
 │   │   └── brand-assets/ # Stored brand images & fonts
-│   ├── video-enhancer/   # Video enhancement and captioning
+│   ├── video-enhancer/   # Video sharpening, colour grading, audio normalisation
+│   ├── video-captioner/  # Whisper transcription + animated caption burn-in
 │   ├── social-resizer/   # Image resize and filtering
 │   ├── post-scheduler/   # Schedule and publish posts
 │   └── + 14 standalone skills # AI enhancement tools
@@ -225,8 +226,10 @@ Abra includes 19 specialized skills for personal brand management:
 | **animate-image** | images | Image → animated video clip | ~8 GB |
 | **video-editor** | video | Edit / inpaint video regions via prompt | ~8 GB |
 | **sticker** | videos | Overlay animated GIF stickers + social sound effects | 0 GB |
+| **video-enhancer** | videos | Sharpen, colour grade, normalise audio | 0 GB |
+| **video-captioner** | videos | Whisper transcription + animated caption burn-in | 0 GB |
 
-**Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, social-resizer, post-scheduler, canva-connector
+**Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, social-resizer, post-scheduler, canva-connector
 
 **Usage:** Each skill follows the same conventions (`uv sync`, `--input`, `--output`, `--device cpu` fallback).
 

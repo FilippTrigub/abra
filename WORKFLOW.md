@@ -30,8 +30,8 @@ The bot auto-detects intent from what the user sends:
 
 | User sends | Auto-detected intent | Default skill plan triggered |
 |------------|---------------------|-----------------------------|
-| Video file(s) + text | Video processing request | audio-transcriber → video-cutter → audio-splitter → music-generator → video-enhancer → brand-manager → post-scheduler |
-| Video file(s) only | Video processing request | audio-transcriber → video-cutter → video-enhancer → brand-manager → post-scheduler |
+| Video file(s) + text | Video processing request | audio-transcriber → video-cutter → audio-splitter → music-generator → video-enhancer → video-captioner → brand-manager → post-scheduler |
+| Video file(s) only | Video processing request | audio-transcriber → video-cutter → video-enhancer → video-captioner → brand-manager → post-scheduler |
 | Photo(s) + text | Image post request | photo-picker → background-remover → bokeh-effect → social-resizer → image-captioner → brand-manager → post-scheduler |
 | Photo(s) only | Image post request | photo-picker → social-resizer → image-captioner → brand-manager → post-scheduler |
 | Voice message | Transcription + post | audio-transcriber → brand-manager → post-scheduler |
@@ -152,7 +152,8 @@ The agent uses this table to resolve which skills to include and in what order.
 | `music-generator` | text prompt, video | music file | mid (audio) |
 | `animate-image` | image + prompt | animated clip | mid (animation) |
 | `video-editor` | video + prompt | edited video | mid (editing) |
-| `video-enhancer` | video + captions | final video | late (polish) |
+| `video-enhancer` | video | colour-graded + normalised video | late (polish) |
+| `video-captioner` | video | video with animated captions | late (polish) |
 | `social-resizer` | images | processed images | late (polish) |
 | `brand-manager` | draft + BRAND.md | brand-aligned content | late (brand) |
 | `canva-connector` | assets + design brief | design export | late (design) |
@@ -173,7 +174,8 @@ The agent uses this table to resolve which skills to include and in what order.
   Step 4 — music-generator   →  Generate royalty-free background music
   Step 5 — video-matte      →  Remove video background if needed (optional)
   Step 6 — frame-interpolator →  Smooth transitions to 60fps (optional)
-  Step 7 — video-enhancer   →  Merge captions, colour grade, normalise audio
+  Step 7 — video-enhancer   →  Colour grade and normalise audio
+  Step 7b — video-captioner →  Burn animated captions
   Step 8 — brand-manager    →  Adapt caption text to brand voice
   Step 9 — post-scheduler   →  Schedule final reel to Instagram/LinkedIn
 
@@ -206,7 +208,8 @@ The agent uses this table to resolve which skills to include and in what order.
   Step 3 — audio-splitter   →  Remove background noise, keep clean voice
   Step 4 — music-generator  →  Generate matching background music
   Step 5 — animate-image   →  Animate title card image into intro clip
-  Step 6 — video-enhancer  →  Burn animated captions, colour grade, mix audio
+  Step 6 — video-enhancer  →  Colour grade and normalise audio
+  Step 6b — video-captioner →  Burn animated captions
   Step 7 — brand-manager   →  Write brand-aligned post copy
   Step 8 — post-scheduler  →  Schedule reel
 ```
@@ -231,9 +234,10 @@ The agent applies these rules when building the execution plan:
 
 1. **Transcription first** — if input contains video/audio, `audio-transcriber` always runs before editing skills.
 2. **Selection before enhancement** — `photo-picker` runs before `bokeh-effect`, `background-remover`, or `social-resizer`.
-3. **Clean before composite** — `audio-splitter`/`video-matte` run before `video-enhancer` or `music-generator`.
-4. **Create before polish** — `image-generator`/`animate-image` run before `social-resizer`/`video-enhancer`.
-5. **Brand last before publish** — `brand-manager` always runs after media is finalized, before `post-scheduler`.
+3. **Clean before composite** — `audio-splitter`/`video-matte` run before `video-enhancer`/`video-captioner` or `music-generator`.
+4. **Create before polish** — `image-generator`/`animate-image` run before `social-resizer`/`video-enhancer`/`video-captioner`.
+5. **Enhance before caption** — `video-enhancer` (colour grade) runs before `video-captioner` (caption burn-in) so filters don't affect caption pixels.
+6. **Brand last before publish** — `brand-manager` always runs after media is finalized, before `post-scheduler`.
 6. **Always confirm** — the agent presents the plan and waits for user approval before executing.
 7. **Optional steps flagged** — steps that depend on user preference are marked `(optional)`.
 8. **VRAM budget respected** — if running on limited hardware, the agent recommends `--device cpu` flags or suggests running GPU-heavy steps when the LLM is idle.
@@ -304,12 +308,17 @@ uv run --project skills/social-resizer/scripts \
   python skills/social-resizer/scripts/process.py --config config.json
 ```
 
-**Videos** — use the `video-enhancer` skill:
+**Videos** — colour grade with `video-enhancer`, then caption with `video-captioner`:
 ```bash
-cd ~/.openclaw/skills/video-enhancer && uv sync
-uv run python scripts/caption_service.py \
-  --output output --preset cinematic \
-  --css ~/.openclaw/skills/video-enhancer/scripts/futuristic.css
+# Step 1: colour grade + audio normalisation
+cd skills/video-enhancer && uv sync
+uv run python scripts/enhance.py --preset cinematic
+# Output lands in skills/video-enhancer/output/
+
+# Step 2: animated captions (futuristic style)
+cd ../video-captioner && uv sync
+uv run python scripts/caption_service.py --css scripts/futuristic.css
+# Output lands in skills/video-captioner/output/
 ```
 
 ### 2.5 Organize Output
@@ -339,7 +348,8 @@ claw-parade/
 ├── WORKFLOW.md                # This file
 ├── skills/
 │   ├── brand-manager/        # Brand identity maintenance
-│   ├── video-enhancer/      # Video enhancement and captioning
+│   ├── video-enhancer/      # Video sharpening, colour grading, audio normalisation
+│   ├── video-captioner/     # Whisper transcription + animated caption burn-in
 │   ├── social-resizer/      # Image resize, crop, and filtering
 │   ├── post-scheduler/      # Schedule and publish posts
 │   └── ...                  # All other skills
@@ -363,7 +373,8 @@ claw-parade/
 | Skill | Location | Purpose |
 |-------|----------|---------|
 | brand-manager | `skills/brand-manager/` | Brand identity maintenance |
-| video-enhancer | `skills/video-enhancer/` | Video enhancement and captioning |
+| video-enhancer | `skills/video-enhancer/` | Video sharpening, colour grading, audio normalisation |
+| video-captioner | `skills/video-captioner/` | Whisper transcription + animated caption burn-in |
 | social-resizer | `skills/social-resizer/` | Image resize, crop, and filtering |
 | post-scheduler | `skills/post-scheduler/` | Schedule and publish posts |
 | audio-transcriber | `skills/audio-transcriber/` | Audio/video transcription |
@@ -428,3 +439,4 @@ OPENCLAW_GATEWAY_PORT=18789
 5. **Maintain buffer** — keep 3–7 days of scheduled content
 6. **Iterate on brand** — update BRAND.md as persona evolves
 7. **GPU-heavy last** — run `animate-image`, `video-editor`, `video-matte` when the LLM is idle to avoid VRAM contention
+8. **Enhance then caption** — always run `video-enhancer` before `video-captioner` when using both; colour grading must precede caption burn-in
