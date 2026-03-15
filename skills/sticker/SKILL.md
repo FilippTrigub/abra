@@ -9,7 +9,7 @@ metadata:
     "openclaw":
       {
         "emoji": "🎪",
-        "requires": { "bins": ["ffmpeg", "uv"], "env": ["GIPHY_API_KEY", "FREESOUND_API_KEY"] },
+        "requires": { "bins": ["ffmpeg", "uv"], "env": ["GIPHY_API_KEY", "FREESOUND_API_KEY", "PIXABAY_API_KEY"] },
         "primaryEnv": "GIPHY_API_KEY",
       },
   }
@@ -45,11 +45,15 @@ Use this skill when the user wants to:
    ```bash
    export GIPHY_API_KEY="your_api_key_here"
    ```
-4. Also set your Freesound API key for real sound effects (register free at https://freesound.org/apiv2/apply/):
+4. Also set your Pixabay API key for searching images and short videos (register free at https://pixabay.com/api/docs/):
+   ```bash
+   export PIXABAY_API_KEY="your_pixabay_key"
+   ```
+5. Also set your Freesound API key for real sound effects (register free at https://freesound.org/apiv2/apply/):
    ```bash
    export FREESOUND_API_KEY="your_freesound_key"
    ```
-5. Install dependencies and download real assets:
+6. Install dependencies and download real assets:
    ```bash
    cd "$SKILL_DIR" && uv sync
    cd "$SKILL_DIR" && uv run python scripts/download_giphy_presets.py
@@ -232,6 +236,39 @@ uv run python scripts/assets.py library remove --kind sfx --name whoosh
 { "gif": { "source": "local:party_hat" } }
 { "sfx": { "source": "local:whoosh" } }
 ```
+
+---
+
+## Pixabay Images & Videos
+
+Search and download royalty-free images and short videos from Pixabay. No attribution required.
+
+```bash
+cd "$SKILL_DIR"
+
+# Search images — shows a table of results
+uv run python scripts/pixabay.py images --query "sparkle glitter" --list
+
+# Download the top result to assets/images/
+uv run python scripts/pixabay.py images --query "confetti" --name confetti_bg
+
+# Transparent images only (ideal as static overlays)
+uv run python scripts/pixabay.py images --query "fire flames" --transparent --name fire_img
+
+# Add image directly to the local GIF library (usable as local:<name> in config)
+uv run python scripts/pixabay.py images --query "crown gold" --transparent --name crown_img --add-to-library
+
+# Pick result #3 instead of #1
+uv run python scripts/pixabay.py images --query "sparkle" --name sparkle3 --pick 3
+
+# Search short videos (≤5s)
+uv run python scripts/pixabay.py videos --query "confetti celebration" --max-duration 5 --list
+
+# Download first short video to assets/videos/
+uv run python scripts/pixabay.py videos --query "confetti" --max-duration 5 --name confetti_clip
+```
+
+Images are saved to `assets/images/`, videos to `assets/videos/`. Use `--add-to-library` on images to also copy them to the GIF library for use as `local:<name>` overlays.
 
 ---
 
