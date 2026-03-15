@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
 """
-img2vid.py — clawanimate: animate still images into short video clips via LTX-Video.
+img2vid.py — fal-image2video: animate still images into short video clips via fal.ai LTX-2.3 Fast.
 
-Runs the LTX-Video image-to-video pipeline locally. Model weights are
-downloaded once to ~/.cache/huggingface and reused on subsequent runs.
-
-Requires a CUDA GPU with at least 8 GB free VRAM. Blocks with a clear error
-if VRAM is insufficient.
+Uses fal.ai's cloud API to run LTX-2.3 image-to-video model. No local GPU required.
+Requires FAL_KEY environment variable.
 
 Usage:
   python scripts/img2vid.py [--config config.json]
@@ -16,46 +13,33 @@ Usage:
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
+import fal_client
 from PIL import Image
 
-INPUT_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-MIN_VRAM_GB = 8.0
-DEFAULT_MODEL = "Lightricks/LTX-Video"
+INPUT_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".avif", ".heif"}
+MODEL_ID = "fal-ai/ltx-2.3/image-to-video/fast"
+
+# Pricing per second by resolution
+PRICING = {
+    "1080p": 0.04,
+    "1440p": 0.08,
+    "2160p": 0.16,
+}
+
+# Valid enum values
+VALID_DURATIONS = [6, 8, 10, 12, 14, 16, 18, 20]
+VALID_RESOLUTIONS = ["1080p", "1440p", "2160p"]
+VALID_ASPECT_RATIOS = ["auto", "16:9", "9:16"]
+VALID_FPS = [24, 25, 48, 50]
 
 
-# ---------------------------------------------------------------------------
-# GPU check
-# ---------------------------------------------------------------------------
-
-def check_gpu(required_gb: float = MIN_VRAM_GB) -> None:
-    import torch
-    if not torch.cuda.is_available():
-        print("Error: clawanimate requires a CUDA-capable GPU.", file=sys.stderr)
-        print(f"  Required VRAM: {required_gb:.1f} GB", file=sys.stderr)
-        print("  No CUDA device detected.", file=sys.stderr)
-        sys.exit(1)
-    free, total = torch.cuda.mem_get_info()
-    free_gb = free / 1024 ** 3
-    total_gb = total / 1024 ** 3
-    if free_gb < required_gb:
-        used_gb = total_gb - free_gb
-        print("Error: insufficient GPU VRAM for clawanimate.", file=sys.stderr)
-        print(f"  Required:  {required_gb:.1f} GB", file=sys.stderr)
-        print(f"  Available: {free_gb:.1f} GB  "
-              f"({used_gb:.1f} GB in use, {total_gb:.1f} GB total)", file=sys.stderr)
-        print("  Tip: pause other GPU workloads (e.g. the LLM context) to free VRAM.",
-              file=sys.stderr)
-        sys.exit(1)
-    print(f"GPU: {torch.cuda.get_device_name()} — "
-          f"{free_gb:.1f} GB free / {total_gb:.1f} GB total")
-
-
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Config
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 def load_config(path: Path) -> dict:
     if not path.exists():
@@ -67,109 +51,157 @@ def load_config(path: Path) -> dict:
 
 def validate_config(cfg: dict) -> dict:
     errors = []
+
     if not cfg.get("prompt"):
         errors.append("'prompt' is required")
-    num_frames = cfg.get("num_frames", 81)
-    if not isinstance(num_frames, int) or num_frames < 9:
-        errors.append("'num_frames' must be an integer >= 9")
-    for dim in ("width", "height"):
-        val = cfg.get(dim, 512)
-        if not isinstance(val, int) or val < 64 or val % 32 != 0:
-            errors.append(f"'{dim}' must be a multiple of 32 and at least 64")
+
+    # Validate duration
+    duration = cfg.get("duration", 6)
+    if duration not in VALID_DURATIONS:
+        errors.append(f"'duration' must be one of {VALID_DURATIONS}")
+
+    # Validate resolution
+    resolution = cfg.get("resolution", "1080p")
+    if resolution not in VALID_RESOLUTIONS:
+        errors.append(f"'resolution' must be one of {VALID_RESOLUTIONS}")
+
+    # Validate aspect_ratio
+    aspect_ratio = cfg.get("aspect_ratio", "auto")
+    if aspect_ratio not in VALID_ASPECT_RATIOS:
+        errors.append(f"'aspect_ratio' must be one of {VALID_ASPECT_RATIOS}")
+
+    # Validate fps
+    fps = cfg.get("fps", 25)
+    if fps not in VALID_FPS:
+        errors.append(f"'fps' must be one of {VALID_FPS}")
+
+    # Check constraints: durations > 10s only support 25 FPS and 1080p
+    if duration > 10 and (fps != 25 or resolution != "1080p"):
+        errors.append("durations > 10 seconds only support 25 FPS and 1080p resolution")
+
     if errors:
         print("Config errors:", file=sys.stderr)
         for e in errors:
             print(f"  - {e}", file=sys.stderr)
         sys.exit(1)
+
     return cfg
 
 
-# ---------------------------------------------------------------------------
-# Pipeline
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# API Key Check
+# -----------------------------------------------------------------------------
 
-def load_pipeline(model_id: str):
-    import torch
-    from diffusers import LTXImageToVideoPipeline
-
-    print(f"Loading LTX-Video pipeline from '{model_id}'…")
-    print("  (First run downloads model weights — this may take several minutes.)")
-    pipe = LTXImageToVideoPipeline.from_pretrained(
-        model_id,
-        torch_dtype=torch.bfloat16,
-    )
-    pipe.to("cuda")
-    pipe.enable_model_cpu_offload()  # offload between steps to save VRAM
-    return pipe
+def check_api_key() -> str:
+    api_key = os.environ.get("FAL_KEY")
+    if not api_key:
+        print("Error: FAL_KEY environment variable not set.", file=sys.stderr)
+        print("  Please set your fal.ai API key:", file=sys.stderr)
+        print("    export FAL_KEY='your-api-key-here'", file=sys.stderr)
+        print("  Get your API key at: https://fal.ai/dashboard/keys", file=sys.stderr)
+        sys.exit(1)
+    return api_key
 
 
-def generate(
-    pipe,
-    image: Image.Image,
-    prompt: str,
-    negative_prompt: str,
-    num_frames: int,
-    width: int,
-    height: int,
-    guidance_scale: float,
-    num_inference_steps: int,
-) -> list:
-    import torch
+# -----------------------------------------------------------------------------
+# File Upload
+# -----------------------------------------------------------------------------
 
-    result = pipe(
-        image=image,
-        prompt=prompt,
-        negative_prompt=negative_prompt,
-        num_frames=num_frames,
-        width=width,
-        height=height,
-        guidance_scale=guidance_scale,
-        num_inference_steps=num_inference_steps,
-        generator=torch.Generator("cuda"),
-    )
-    return result.frames[0]  # list of PIL Images
-
-
-def save_video(frames: list, output_path: Path, fps: int = 24) -> None:
+def upload_image(image_path: Path) -> str:
+    """Upload a local image to fal.media and return the URL."""
+    print(f"  Uploading {image_path.name} to fal.media...")
     try:
-        import imageio
-        imageio.mimsave(str(output_path), frames, fps=fps)
-    except ImportError:
-        # Fallback: use ffmpeg via PIL frame dump
-        import subprocess, tempfile
-        with tempfile.TemporaryDirectory() as tmp_str:
-            tmp = Path(tmp_str)
-            for i, frame in enumerate(frames):
-                frame.save(tmp / f"{i:06d}.png")
-            cmd = [
-                "ffmpeg", "-y",
-                "-framerate", str(fps),
-                "-i", str(tmp / "%06d.png"),
-                "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p",
-                str(output_path), "-hide_banner", "-loglevel", "error",
-            ]
-            subprocess.run(cmd, check=True)
+        url = fal_client.upload_file(str(image_path))
+        return url
+    except Exception as e:
+        print(f"  ERROR uploading file: {e}", file=sys.stderr)
+        raise
 
 
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+# Video Generation
+# -----------------------------------------------------------------------------
+
+def generate_video(
+    image_url: str,
+    prompt: str,
+    duration: int,
+    resolution: str,
+    aspect_ratio: str,
+    fps: int,
+    generate_audio: bool,
+    end_image_url: str | None = None,
+) -> dict:
+    """Generate video using fal.ai API."""
+
+    arguments = {
+        "image_url": image_url,
+        "prompt": prompt,
+        "duration": duration,
+        "resolution": resolution,
+        "aspect_ratio": aspect_ratio,
+        "fps": fps,
+        "generate_audio": generate_audio,
+    }
+
+    if end_image_url:
+        arguments["end_image_url"] = end_image_url
+
+    def on_queue_update(update):
+        if isinstance(update, fal_client.InProgress):
+            for log in update.logs:
+                print(f"    {log['message']}")
+
+    print(f"  Submitting to fal.ai (LTX-2.3 Fast)...")
+    print(f"    Duration: {duration}s, Resolution: {resolution}, FPS: {fps}")
+    if generate_audio:
+        print(f"    Audio: enabled")
+
+    result = fal_client.subscribe(
+        MODEL_ID,
+        arguments=arguments,
+        with_logs=True,
+        on_queue_update=on_queue_update,
+    )
+
+    return result
+
+
+def download_video(video_url: str, output_path: Path) -> None:
+    """Download video from URL to local path."""
+    import urllib.request
+
+    print(f"  Downloading video...")
+    try:
+        urllib.request.urlretrieve(video_url, str(output_path))
+    except Exception as e:
+        print(f"  ERROR downloading video: {e}", file=sys.stderr)
+        raise
+
+
+def calculate_cost(duration: int, resolution: str, num_videos: int = 1) -> float:
+    """Calculate estimated cost for video generation."""
+    price_per_sec = PRICING.get(resolution, 0.04)
+    return duration * price_per_sec * num_videos
+
+
+# -----------------------------------------------------------------------------
 # Main pipeline
-# ---------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 def process(config_path: Path) -> None:
     cfg = validate_config(load_config(config_path))
-    check_gpu()
+    check_api_key()
 
     input_dir = Path(cfg.get("input_dir", "./input"))
     output_dir = Path(cfg.get("output_dir", "./output"))
-    model_id = cfg.get("model", DEFAULT_MODEL)
     prompt = cfg["prompt"]
-    negative_prompt = cfg.get("negative_prompt",
-                              "worst quality, inconsistent motion, blurry, jittery, distorted")
-    num_frames = cfg.get("num_frames", 81)
-    width = cfg.get("width", 768)
-    height = cfg.get("height", 512)
-    guidance_scale = float(cfg.get("guidance_scale", 3.0))
-    num_inference_steps = cfg.get("num_inference_steps", 40)
+    duration = cfg.get("duration", 6)
+    resolution = cfg.get("resolution", "1080p")
+    aspect_ratio = cfg.get("aspect_ratio", "auto")
+    fps = cfg.get("fps", 25)
+    generate_audio = cfg.get("generate_audio", True)
+    end_image_url = cfg.get("end_image_url")
 
     if not input_dir.exists():
         print(f"Error: input_dir does not exist: {input_dir}", file=sys.stderr)
@@ -179,35 +211,83 @@ def process(config_path: Path) -> None:
         p for p in input_dir.iterdir()
         if p.is_file() and p.suffix.lower() in INPUT_EXTENSIONS
     )
+
     if not images:
         print(f"No images found in {input_dir}")
         return
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    pipe = load_pipeline(model_id)
 
-    print(f"Animating {len(images)} image(s): {width}×{height}, {num_frames} frames")
-    print(f"  Prompt: {prompt[:80]}")
+    # Calculate estimated cost
+    estimated_cost = calculate_cost(duration, resolution, len(images))
+    print(f"Processing {len(images)} image(s):")
+    print(f"  Settings: {duration}s @ {resolution}, {fps}fps")
+    print(f"  Estimated cost: ${estimated_cost:.2f}")
+    print(f"  Prompt: {prompt[:80]}{'...' if len(prompt) > 80 else ''}")
     print()
 
     succeeded, failed = 0, []
+
     for img_path in images:
         print(f"[{img_path.name}]")
         try:
-            image = Image.open(img_path).convert("RGB").resize((width, height), Image.LANCZOS)
-            frames = generate(
-                pipe, image, prompt, negative_prompt,
-                num_frames, width, height, guidance_scale, num_inference_steps,
+            # Upload image
+            image_url = upload_image(img_path)
+
+            # Upload end image if provided as a path
+            end_url = None
+            if end_image_url:
+                end_path = Path(end_image_url)
+                if end_path.exists():
+                    end_url = upload_image(end_path)
+                else:
+                    # Assume it's already a URL
+                    end_url = end_image_url
+
+            # Generate video
+            result = generate_video(
+                image_url=image_url,
+                prompt=prompt,
+                duration=duration,
+                resolution=resolution,
+                aspect_ratio=aspect_ratio,
+                fps=fps,
+                generate_audio=generate_audio,
+                end_image_url=end_url,
             )
+
+            # Download video
+            video_info = result.get("video", {})
+            video_url = video_info.get("url")
+
+            if not video_url:
+                print(f"  ERROR: No video URL in response", file=sys.stderr)
+                failed.append(img_path.name)
+                continue
+
             out_path = output_dir / (img_path.stem + ".mp4")
-            save_video(frames, out_path)
-            print(f"  → {out_path}  ({len(frames)} frames)")
+            download_video(video_url, out_path)
+
+            # Print results
+            file_size_mb = out_path.stat().st_size / (1024 * 1024)
+            width = video_info.get("width", "?")
+            height = video_info.get("height", "?")
+            actual_fps = video_info.get("fps", fps)
+            actual_duration = video_info.get("duration", duration)
+
+            print(f"  ✓ Saved to: {out_path}")
+            print(f"    Size: {file_size_mb:.1f} MB, Resolution: {width}x{height}")
+            print(f"    Duration: {actual_duration}s, FPS: {actual_fps}")
+            print(f"    fal.media URL: {video_url}")
+            print()
+
             succeeded += 1
+
         except Exception as exc:
             print(f"  ERROR: {exc}", file=sys.stderr)
             failed.append(img_path.name)
 
-    print()
+    # Summary
     print(f"Done: {succeeded}/{len(images)} succeeded", end="")
     if failed:
         print(f", {len(failed)} failed: {', '.join(failed)}")
@@ -215,40 +295,45 @@ def process(config_path: Path) -> None:
     else:
         print()
 
+    # Final cost
+    actual_cost = calculate_cost(duration, resolution, succeeded)
+    print(f"Total cost: ${actual_cost:.2f}")
+
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="clawanimate — image to video")
+    parser = argparse.ArgumentParser(description="fal-image2video — cloud image to video")
     parser.add_argument("--config", default="config.json")
     parser.add_argument("--input", help="Override input_dir")
     parser.add_argument("--output", help="Override output_dir")
     parser.add_argument("--prompt", help="Override prompt")
-    parser.add_argument("--negative-prompt", help="Override negative_prompt")
-    parser.add_argument("--num-frames", type=int, help="Override num_frames")
-    parser.add_argument("--width", type=int, help="Override width")
-    parser.add_argument("--height", type=int, help="Override height")
-    parser.add_argument("--steps", type=int, help="Override num_inference_steps")
-    parser.add_argument("--model", help="Override model HuggingFace ID")
+    parser.add_argument("--duration", type=int, help="Override duration (6-20)")
+    parser.add_argument("--resolution", help="Override resolution (1080p, 1440p, 2160p)")
+    parser.add_argument("--aspect-ratio", help="Override aspect ratio (auto, 16:9, 9:16)")
+    parser.add_argument("--fps", type=int, help="Override fps (24, 25, 48, 50)")
+    parser.add_argument("--end-image", help="End image for transition (path or URL)")
+    parser.add_argument("--no-audio", action="store_true", help="Disable audio generation")
     args = parser.parse_args()
 
     cfg = validate_config(load_config(Path(args.config)))
+
     if args.input:
         cfg["input_dir"] = args.input
     if args.output:
         cfg["output_dir"] = args.output
     if args.prompt:
         cfg["prompt"] = args.prompt
-    if args.negative_prompt:
-        cfg["negative_prompt"] = args.negative_prompt
-    if args.num_frames is not None:
-        cfg["num_frames"] = args.num_frames
-    if args.width is not None:
-        cfg["width"] = args.width
-    if args.height is not None:
-        cfg["height"] = args.height
-    if args.steps is not None:
-        cfg["num_inference_steps"] = args.steps
-    if args.model:
-        cfg["model"] = args.model
+    if args.duration is not None:
+        cfg["duration"] = args.duration
+    if args.resolution:
+        cfg["resolution"] = args.resolution
+    if args.aspect_ratio:
+        cfg["aspect_ratio"] = args.aspect_ratio
+    if args.fps is not None:
+        cfg["fps"] = args.fps
+    if args.end_image:
+        cfg["end_image_url"] = args.end_image
+    if args.no_audio:
+        cfg["generate_audio"] = False
 
     import tempfile as _tf, json as _json
     with _tf.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:

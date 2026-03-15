@@ -1,14 +1,24 @@
 [project]
-name = "clawanimate"
+name = "fal-image2video"
 version = "0.1.0"
-description = "Animate a still image into a short video clip using LTX-Video"
+description = "Cloud image-to-video generation using fal.ai LTX-2.3 Fast"
+readme = "SKILL.md"
 requires-python = ">=3.10"
 dependencies = [
-    "torch>=2.0",
-    "diffusers>=0.32",
-    "transformers>=4.40",
-    "accelerate>=0.30",
-    "pillow",
-    "numpy",
-    "sentencepiece",
+    "fal-client>=0.5.0",
+    "Pillow>=10.0.0",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.3.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "D", "UP", "B", "C4", "SIM"]
+ignore = ["D100", "D104", "D203", "D213"]

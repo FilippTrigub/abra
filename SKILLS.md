@@ -28,7 +28,7 @@ Every tool accepts `--device cpu` to fall back to CPU/RAM:
 | keyer | ~3 GB | ❌ no practical path | too slow |
 | demix | ~2 GB | ✅ yes | slow but usable (~3–5× realtime) |
 | score | ~3 GB | ✅ yes | very slow (~10× realtime) |
-| liven | ~8 GB | ❌ no | hours per clip |
+| liven | None (cloud) | ✅ N/A | cloud speed |
 | cutlab | ~8 GB | ❌ no | hours per clip |
 
 **Recommendation:** When VRAM is limited, prefer tools marked ✅. Generative tools (`liven`, `cutlab`) are best run when LLM is idle.
@@ -105,22 +105,27 @@ uv run python scripts/generate.py --prompt "professional headshot" --output ./ou
 
 ---
 
-### liven — Image to Video
+### liven — Image to Video (Cloud)
 
-**What it does:** Animates a still image into a short video clip (5–10s) using LTX-Video (image-to-video diffusion). Guided by a text prompt describing desired motion.
+**What it does:** Animates a still image into a short video clip using fal.ai's LTX-2.3 Fast model in the cloud. No local GPU required — everything runs on fal.ai serverless infrastructure.
 
 **Models:**
-- Wan2.1-I2V-1.3B — 8GB VRAM, 480p, fast
-- LTX-Video 13B — higher quality, faster-than-realtime on 4090
+- LTX-2.3 Fast — up to 4K resolution, 24-50 FPS, AI-generated audio
 
-**Requires:** `uv`, GPU required (8GB+ VRAM)
+**Pricing:** $0.04/s (1080p), $0.08/s (1440p), $0.16/s (4K)
+
+**Requires:** `uv`, `FAL_KEY` environment variable, no GPU
 
 **Usage:**
 ```bash
 cd skills/liven && uv sync
+export FAL_KEY="your-api-key"
 uv run python scripts/img2vid.py --input ./input --output ./output \
-  --prompt "slow camera push-in, soft bokeh"
+  --prompt "slow cinematic push-in, golden hour light" \
+  --duration 6 --resolution 1080p
 ```
+
+**Note:** The previous local GPU-based version has been backed up to `~/Documents/hackaskill-backups/liven-local/`.
 
 ---
 
