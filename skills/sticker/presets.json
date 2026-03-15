@@ -1,0 +1,66 @@
+{
+  "viral": {
+    "gif": {
+      "source": "bundled:sparkles",
+      "mode": "positioned",
+      "position": "top-right",
+      "width": 180
+    },
+    "sfx": { "source": "bundled:whoosh", "volume": 0.9 },
+    "pause_video": false,
+    "duration": 3.0
+  },
+  "party": {
+    "gif": {
+      "source": "bundled:confetti",
+      "mode": "fullscreen"
+    },
+    "sfx": { "source": "bundled:applause", "volume": 1.0 },
+    "pause_video": false,
+    "duration": 4.0
+  },
+  "love": {
+    "gif": {
+      "source": "bundled:heart",
+      "mode": "positioned",
+      "position": "center",
+      "width": 250
+    },
+    "sfx": { "source": "bundled:chime", "volume": 0.7 },
+    "pause_video": false,
+    "duration": 3.0
+  },
+  "dramatic": {
+    "gif": {
+      "source": "bundled:fire",
+      "mode": "positioned",
+      "position": "bottom-right",
+      "width": 200
+    },
+    "sfx": { "source": "bundled:bass_drop", "volume": 1.0 },
+    "pause_video": true,
+    "duration": 2.0
+  },
+  "reaction": {
+    "gif": {
+      "source": "bundled:thumbsup",
+      "mode": "positioned",
+      "position": "top-left",
+      "width": 150
+    },
+    "sfx": { "source": "bundled:clap", "volume": 0.8 },
+    "pause_video": false,
+    "duration": 2.5
+  },
+  "crown": {
+    "gif": {
+      "source": "bundled:crown",
+      "mode": "positioned",
+      "position": "top-right",
+      "width": 160
+    },
+    "sfx": { "source": "bundled:ding", "volume": 0.9 },
+    "pause_video": false,
+    "duration": 2.0
+  }
+}

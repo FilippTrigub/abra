@@ -210,7 +210,7 @@ BUFFER_API_KEY=your-buffer-token   # Required for scheduling
 
 ## 🎨 Skills & Tools
 
-Abra includes 18 specialized skills for personal brand management:
+Abra includes 19 specialized skills for personal brand management:
 
 | Skill | Input | What it does | Min VRAM |
 |-------|-------|--------------|----------|
@@ -224,6 +224,7 @@ Abra includes 18 specialized skills for personal brand management:
 | **score** | prompt / video | Generate brand background music | ~3 GB |
 | **liven** | images | Image → animated video clip | ~8 GB |
 | **cutlab** | video | Edit / inpaint video regions via prompt | ~8 GB |
+| **sticker** | videos | Overlay animated GIF stickers + social sound effects | 0 GB |
 
 **Core Skills:** persona, verbatim, snip, render, mux, filter, buffer, canva
 
