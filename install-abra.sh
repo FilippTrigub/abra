@@ -40,11 +40,12 @@ Personal Brand Content Agent for managing and growing personal brands.
 - Persona analysis and brand strategy
 - Content generation for multiple platforms
 - Image/video processing with brand-consistent visuals
+- GIF stickers and social sound effects on videos (Instagram Reels-style)
 - Scheduling via Buffer
 - Design integration with Canva
 
 ## Skills Available
-persona, verbatim, snip, cutlab, render, liven, keyer, tween, score, demix, alt, knockout, portrait, grade, filter, mux, buffer, canva
+persona, verbatim, snip, cutlab, render, liven, keyer, tween, score, demix, alt, knockout, portrait, grade, filter, mux, sticker, buffer, canva
 
 ## Interaction Rules
 - ONLY respond to brand-related queries

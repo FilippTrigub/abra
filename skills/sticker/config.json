@@ -1,0 +1,27 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "duck_background": true,
+  "duck_db": -10,
+  "effects": [
+    {
+      "trigger": {
+        "type": "timestamp",
+        "value": 2.0
+      },
+      "gif": {
+        "source": "bundled:heart",
+        "mode": "positioned",
+        "position": "top-right",
+        "width": 180
+      },
+      "sfx": {
+        "source": "bundled:pop",
+        "at": 0.0,
+        "volume": 0.8
+      },
+      "pause_video": false,
+      "duration": 3.0
+    }
+  ]
+}
