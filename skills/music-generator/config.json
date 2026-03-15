@@ -1,4 +1,5 @@
 {
+  "input_dir": "./input",
   "output_dir": "./output",
   "device": "auto",
   "model": "small",

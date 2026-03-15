@@ -37,6 +37,7 @@ VALID_DEVICES = {"auto", "cpu", "cuda"}
 # Config
 # ---------------------------------------------------------------------------
 
+
 def load_config(path: Path) -> dict:
     if not path.exists():
         print(f"Error: config file not found: {path}", file=sys.stderr)
@@ -77,6 +78,7 @@ def resolve_device(cfg: dict) -> str:
         return device
     try:
         import torch
+
         return "cuda" if torch.cuda.is_available() else "cpu"
     except ImportError:
         return "cpu"
@@ -85,6 +87,7 @@ def resolve_device(cfg: dict) -> str:
 # ---------------------------------------------------------------------------
 # Generation
 # ---------------------------------------------------------------------------
+
 
 def generate_music(
     prompt: str,
@@ -100,7 +103,9 @@ def generate_music(
     hf_model_id = f"facebook/musicgen-{model_name}"
     print(f"Loading MusicGen '{model_name}' on {device}…")
     if device == "cpu":
-        print("  Note: CPU mode is very slow (~10× realtime). This may take several minutes.")
+        print(
+            "  Note: CPU mode is very slow (~10× realtime). This may take several minutes."
+        )
 
     processor = AutoProcessor.from_pretrained(hf_model_id)
     model = MusicgenForConditionalGeneration.from_pretrained(hf_model_id)
@@ -109,8 +114,9 @@ def generate_music(
     # Compute token budget from desired duration and model frame rate.
     # frame_rate moved from MusicgenConfig to audio_encoder in newer transformers.
     sampling_rate = model.config.audio_encoder.sampling_rate  # 32000 Hz
-    frame_rate = getattr(model.config, "frame_rate", None) \
-        or getattr(model.config.audio_encoder, "frame_rate", 50)
+    frame_rate = getattr(model.config, "frame_rate", None) or getattr(
+        model.config.audio_encoder, "frame_rate", 50
+    )
     max_new_tokens = int(duration * frame_rate)
 
     inputs = processor(text=[prompt], padding=True, return_tensors="pt").to(device)
@@ -125,6 +131,7 @@ def generate_music(
 def save_wav(audio: "torch.Tensor", path: Path, sample_rate: int = 32000) -> None:
     import scipy.io.wavfile as wav_io
     import numpy as np
+
     data = audio.numpy()
     if data.ndim == 2:
         data = data.T  # (samples, channels)
@@ -146,12 +153,17 @@ def mix_music_under_video(
     # Get video duration to know if music needs to loop
     probe = subprocess.run(
         [
-            "ffprobe", "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
             str(video_path),
         ],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     try:
         vid_duration = float(probe.stdout.strip())
@@ -165,14 +177,24 @@ def mix_music_under_video(
     )
 
     cmd = [
-        "ffmpeg", "-y",
-        "-i", str(video_path),
-        "-stream_loop", "-1", "-i", str(music_path),  # loop music if shorter
-        "-filter_complex", filter_complex,
-        "-map", "0:v:0",
-        "-map", "[aout]",
-        "-c:v", "copy",
-        "-c:a", "aac",
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(video_path),
+        "-stream_loop",
+        "-1",
+        "-i",
+        str(music_path),  # loop music if shorter
+        "-filter_complex",
+        filter_complex,
+        "-map",
+        "0:v:0",
+        "-map",
+        "[aout]",
+        "-c:v",
+        "copy",
+        "-c:a",
+        "aac",
         "-shortest",
         str(output_path),
     ]
@@ -185,9 +207,13 @@ def mix_music_under_video(
 # Main pipeline
 # ---------------------------------------------------------------------------
 
+VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".m4v", ".webm"}
+
+
 def process(config_path: Path) -> None:
     cfg = validate_config(load_config(config_path))
 
+    input_dir = Path(cfg.get("input_dir", "./input"))
     output_dir = Path(cfg.get("output_dir", "./output"))
     prompt = cfg["prompt"]
     duration = float(cfg.get("duration", 30))
@@ -213,13 +239,53 @@ def process(config_path: Path) -> None:
             print(f"Mixing music under video at {music_volume_lufs} LUFS…")
             mix_music_under_video(video_path, tmp_music, out_path, music_volume_lufs)
         print(f"→ {out_path}")
+        print()
+        print("Done.")
+    elif input_dir.exists():
+        videos = sorted(
+            p
+            for p in input_dir.iterdir()
+            if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS
+        )
+        if videos:
+            print(f"Batch mode: mixing under {len(videos)} video(s) from {input_dir}…")
+            print()
+            succeeded, failed = 0, []
+            with tempfile.TemporaryDirectory(prefix="clawbeat_") as tmp_str:
+                tmp_music = Path(tmp_str) / "music.wav"
+                save_wav(audio, tmp_music, sample_rate)
+                for video_path in videos:
+                    print(f"[{video_path.name}]")
+                    try:
+                        out_path = output_dir / video_path.name
+                        print(f"  Mixing at {music_volume_lufs} LUFS…")
+                        mix_music_under_video(
+                            video_path, tmp_music, out_path, music_volume_lufs
+                        )
+                        print(f"  → {out_path}")
+                        succeeded += 1
+                    except Exception as exc:
+                        print(f"  ERROR: {exc}", file=sys.stderr)
+                        failed.append(video_path.name)
+            print()
+            print(f"Done: {succeeded}/{len(videos)} succeeded", end="")
+            if failed:
+                print(f", {len(failed)} failed: {', '.join(failed)}")
+                sys.exit(1)
+            else:
+                print()
+        else:
+            out_path = output_dir / "music.wav"
+            save_wav(audio, out_path, sample_rate)
+            print(f"→ {out_path}")
+            print()
+            print("Done.")
     else:
         out_path = output_dir / "music.wav"
         save_wav(audio, out_path, sample_rate)
         print(f"→ {out_path}")
-
-    print()
-    print("Done.")
+        print()
+        print("Done.")
 
 
 def main() -> None:
@@ -231,7 +297,12 @@ def main() -> None:
     parser.add_argument("--device", choices=list(VALID_DEVICES), help="Override device")
     parser.add_argument("--video", help="Override video (mix music under this file)")
     parser.add_argument(
-        "--music-volume-lufs", type=float, help="Override music_volume_lufs (negative number)"
+        "--music-volume-lufs",
+        type=float,
+        help="Override music_volume_lufs (negative number)",
+    )
+    parser.add_argument(
+        "--input", help="Override input_dir (directory of videos to mix under)"
     )
     parser.add_argument("--output", help="Override output_dir")
     args = parser.parse_args()
@@ -250,10 +321,13 @@ def main() -> None:
         cfg["video"] = args.video
     if args.music_volume_lufs is not None:
         cfg["music_volume_lufs"] = args.music_volume_lufs
+    if args.input:
+        cfg["input_dir"] = args.input
     if args.output:
         cfg["output_dir"] = args.output
 
     import tempfile as _tf, json as _json
+
     with _tf.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
         _json.dump(cfg, tmp)
         tmp_path = Path(tmp.name)
