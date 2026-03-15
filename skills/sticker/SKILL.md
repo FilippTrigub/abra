@@ -9,7 +9,8 @@ metadata:
     "openclaw":
       {
         "emoji": "🎪",
-        "requires": { "bins": ["ffmpeg", "uv"], "env": ["GIPHY_API_KEY", "FREESOUND_API_KEY", "PIXABAY_API_KEY"] },
+        "requires": { "bins": ["ffmpeg", "uv"], "env": [] },
+        "optionalEnv": ["GIPHY_API_KEY", "FREESOUND_API_KEY", "PIXABAY_API_KEY"],
         "primaryEnv": "GIPHY_API_KEY",
       },
   }
@@ -39,30 +40,39 @@ Use this skill when the user wants to:
 
 ## Setup
 
-1. Go to https://developers.giphy.com/dashboard/ and create a free app
-2. Copy your API key
-3. Set the environment variable:
-   ```bash
-   export GIPHY_API_KEY="your_api_key_here"
-   ```
-4. Also set your Pixabay API key for searching images and short videos (register free at https://pixabay.com/api/docs/):
-   ```bash
-   export PIXABAY_API_KEY="your_pixabay_key"
-   ```
-5. Also set your Freesound API key for real sound effects (register free at https://freesound.org/apiv2/apply/):
-   ```bash
-   export FREESOUND_API_KEY="your_freesound_key"
-   ```
-6. Install dependencies and download real assets:
-   ```bash
-   cd "$SKILL_DIR" && uv sync
-   cd "$SKILL_DIR" && uv run python scripts/download_giphy_presets.py
-   cd "$SKILL_DIR" && uv run python scripts/download_freesound_presets.py
-   ```
+### Required Tools
 
-The preset downloads are idempotent — existing files are skipped. Add `--force` to refresh.
+- **ffmpeg** — installed on system (video processing)
+- **uv** — Python package manager (included with skill)
 
-> **Without keys:** GIFs fall back to generated geometric placeholders. SFX are absent until downloaded — the skill will warn and skip missing sounds rather than crash.
+### API Keys (All Optional)
+
+The skill works fully with bundled assets. API keys are only needed for on-demand search.
+
+| API Key | Purpose | Free Tier | Register |
+|---------|---------|-----------|----------|
+| `GIPHY_API_KEY` | Search & download animated GIF stickers | 1,000 req/day | https://developers.giphy.com/dashboard/ |
+| `FREESOUND_API_KEY` | Search & download sound effects | 200 req/day | https://freesound.org/apiv2/apply/ |
+| `PIXABAY_API_KEY` | Search & download images & short videos | 500 req/day | https://pixabay.com/api/docs/ |
+
+**Setup:**
+```bash
+# GIPHY (for GIF search)
+export GIPHY_API_KEY="your_api_key_here"
+
+# Freesound (for sound effects search)
+export FREESOUND_API_KEY="your_freesound_key"
+
+# Pixabay (for images & videos search)
+export PIXABAY_API_KEY="your_pixabay_key"
+```
+
+Then install dependencies:
+```bash
+cd "$SKILL_DIR" && uv sync
+```
+
+> **Without keys:** The skill uses bundled assets (8 GIFs + 8 SFX included). On-demand search will fail gracefully with a warning message.
 
 ---
 
@@ -153,7 +163,8 @@ Tell the user:
 | `duck_db` | integer | `-10` | Ducking level in decibels (negative value) |
 | `effects` | array | `[]` | List of effect configurations |
 | `effects[].trigger.type` | `"timestamp"` or `"text_cue"` | - | Effect trigger type |
-| `effects[].trigger.value` | float or string | - | Seconds for timestamp; phrase or transcript path for text cue |
+| `effects[].trigger.value` | float or string | - | Seconds for timestamp; **phrase to match** for text_cue |
+| `effects[].trigger.transcript` | path | - | Path to transcript file (SRT/VTT) — **required for text_cue** |
 | `effects[].gif.source` | `bundled:<name>` \| `favourite:<name>` \| `giphy:<term>` \| path | `"bundled:heart"` | GIF source (see below) |
 | `effects[].gif.mode` | `"fullscreen"` or `"positioned"` | `"positioned"` | Overlay mode |
 | `effects[].gif.position` | `"top-left"` \| `"top-right"` \| `"bottom-left"` \| `"bottom-right"` \| `"center"` \| `"custom"` (requires x,y below) | `"top-right"` | Position for positioned mode |

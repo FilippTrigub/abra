@@ -10,6 +10,7 @@ metadata:
       {
         "emoji": "🎬",
         "requires": { "bins": ["uv"] },
+        "optionalEnv": ["FAL_API_KEY"],
       },
   }
 ---
@@ -43,10 +44,10 @@ Use this skill when the user wants to:
 cd "$SKILL_DIR" && uv sync
 ```
 
-The fal.ai API key is already embedded in the script. If you want to use a different key, set the `FAL_KEY` environment variable:
+The fal.ai API key is already embedded in the script. If you want to use a different key, set the `FAL_API_KEY` environment variable:
 
 ```bash
-export FAL_KEY="your-api-key-here"
+export FAL_API_KEY="your-api-key-here"
 ```
 
 ---
@@ -158,7 +159,7 @@ Video metadata (resolution, fps, duration) is printed after generation.
 
 ## Error Handling
 
-- Missing FAL_KEY → clear error with setup instructions
+- Missing FAL_API_KEY → clear error with setup instructions
 - Invalid image format → error with supported formats (PNG, JPEG, WebP, AVIF, HEIF)
 - API errors → fal.ai error message propagated
 - Network issues → retry logic with clear error messages

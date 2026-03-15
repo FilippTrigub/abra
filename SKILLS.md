@@ -114,12 +114,12 @@ uv run python scripts/generate.py --prompt "professional headshot" --output ./ou
 
 **Pricing:** $0.04/s (1080p), $0.08/s (1440p), $0.16/s (4K)
 
-**Requires:** `uv`, `FAL_KEY` environment variable, no GPU
+**Requires:** `uv`, `FAL_API_KEY` environment variable, no GPU
 
 **Usage:**
 ```bash
 cd skills/liven && uv sync
-export FAL_KEY="your-api-key"
+export FAL_API_KEY="your-api-key"
 uv run python scripts/img2vid.py --input ./input --output ./output \
   --prompt "slow cinematic push-in, golden hour light" \
   --duration 6 --resolution 1080p
