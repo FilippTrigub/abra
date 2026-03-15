@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """
-generate_bundled_assets.py — Generate bundled GIF and WAV assets for the sticker skill.
+generate_bundled_assets.py — Generate placeholder GIF animations for the sticker skill.
 
-Uses only stdlib (wave, struct, math) and Pillow. No external audio processing needed.
+Produces simple geometric GIFs as fallbacks when GIPHY stickers have not been
+downloaded. For real stickers, run download_giphy_presets.py instead.
 
 Run once after cloning:
     cd skills/sticker && uv run python scripts/generate_bundled_assets.py
+
+For real sounds, run:
+    cd skills/sticker && uv run python scripts/download_freesound_presets.py
 """
 
 from __future__ import annotations
 
 import math
-import struct
-import wave
 from pathlib import Path
 
 try:
@@ -268,76 +270,6 @@ def make_explosion() -> "list[Image.Image]":
 
 
 # ---------------------------------------------------------------------------
-# WAV generation
-# ---------------------------------------------------------------------------
-
-RATE = 44100
-
-
-def _pack(samples: list[int]) -> bytes:
-    return struct.pack(f"<{len(samples)}h", *samples)
-
-
-def _c(v: float) -> int:
-    return max(-32767, min(32767, int(v)))
-
-
-def sine(freq: float, dur: float, amp: float = 0.55, fade: float = 0.12) -> list[int]:
-    n = int(RATE * dur)
-    fade_n = int(RATE * fade)
-    s = []
-    for i in range(n):
-        t = i / RATE
-        v = amp * math.sin(2 * math.pi * freq * t)
-        if i >= n - fade_n:
-            v *= (n - i) / max(fade_n, 1)
-        s.append(_c(v * 32767))
-    return s
-
-
-def noise(dur: float, amp: float = 0.30) -> list[int]:
-    import random
-
-    rng = random.Random(1)
-    n = int(RATE * dur)
-    fade = n // 5
-    s = []
-    for i in range(n):
-        v = rng.uniform(-1, 1) * amp
-        if i < fade:
-            v *= i / max(fade, 1)
-        elif i > n - fade:
-            v *= (n - i) / max(fade, 1)
-        s.append(_c(v * 32767))
-    return s
-
-
-def sweep(f0: float, f1: float, dur: float, amp: float = 0.45) -> list[int]:
-    n = int(RATE * dur)
-    fade = max(1, n // 8)
-    s = []
-    for i in range(n):
-        t = i / RATE
-        f = f0 + (f1 - f0) * (i / n)
-        v = amp * math.sin(2 * math.pi * f * t)
-        if i < fade:
-            v *= i / fade
-        elif i > n - fade:
-            v *= (n - i) / fade
-        s.append(_c(v * 32767))
-    return s
-
-
-def save_wav(samples: list[int], path: Path) -> None:
-    with wave.open(str(path), "w") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(RATE)
-        wf.writeframes(_pack(samples))
-    print(f"  ✓ {path.name}")
-
-
-# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -368,34 +300,10 @@ def generate_gifs() -> None:
             print(f"  ✗ {fname}: {exc}")
 
 
-def generate_sfx() -> None:
-    SFX_DIR.mkdir(parents=True, exist_ok=True)
-    items: list[tuple[str, list[int]]] = [
-        ("pop.wav", sine(880, 0.12, amp=0.7)),
-        ("whoosh.wav", noise(0.28, amp=0.32) + sweep(700, 150, 0.14, amp=0.22)),
-        ("chime.wav", sine(1047, 0.42, amp=0.62, fade=0.28)),
-        ("applause.wav", noise(0.52, amp=0.28)),
-        ("bass_drop.wav", sweep(220, 45, 0.38, amp=0.80)),
-        ("ding.wav", sine(1319, 0.20, amp=0.65, fade=0.13)),
-        ("swoosh.wav", noise(0.28, amp=0.25) + sweep(550, 80, 0.13, amp=0.18)),
-        ("clap.wav", noise(0.16, amp=0.55)),
-    ]
-    for fname, samples in items:
-        p = SFX_DIR / fname
-        if p.exists():
-            print(f"  (exists) {fname}")
-            continue
-        try:
-            save_wav(samples, p)
-        except Exception as exc:
-            print(f"  ✗ {fname}: {exc}")
-
-
 if __name__ == "__main__":
-    print("Generating GIFs...")
+    print("Generating placeholder GIFs...")
     generate_gifs()
-    print("\nGenerating SFX...")
-    generate_sfx()
     n_gifs = len(list(GIF_DIR.glob("*.gif")))
-    n_sfx = len(list(SFX_DIR.glob("*.wav")))
-    print(f"\nDone: {n_gifs} GIFs, {n_sfx} WAVs in {ASSETS_DIR}")
+    print(f"\nDone: {n_gifs} placeholder GIFs in {GIF_DIR}")
+    print("For real stickers: uv run python scripts/download_giphy_presets.py")
+    print("For real sounds:   uv run python scripts/download_freesound_presets.py")

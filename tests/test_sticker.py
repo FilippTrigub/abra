@@ -488,6 +488,55 @@ class TestLocalLibrary:
         assert result.exists()
         assert result.stem == "localtest"
 
+    def test_library_sfx_add_and_resolve(self, tmp_path: Path) -> None:
+        from assets import library_add, library_resolve
+
+        sfx = tmp_path / "test_sound.mp3"
+        sfx.write_bytes(b"\xff\xfb" + b"\x00" * 64)
+        library_add("mysfx", sfx, tmp_path, kind="sfx")
+        result = library_resolve("mysfx", tmp_path, kind="sfx")
+        assert result.exists()
+        assert result.stem == "mysfx"
+
+    def test_library_sfx_list(self, tmp_path: Path) -> None:
+        from assets import library_add, library_list
+
+        for n in ("boom", "click"):
+            f = tmp_path / f"{n}.mp3"
+            f.write_bytes(b"\xff\xfb" + b"\x00" * 64)
+            library_add(n, f, tmp_path, kind="sfx")
+        entries = library_list(tmp_path, kind="sfx")
+        assert {name for name, _ in entries} == {"boom", "click"}
+
+    def test_resolve_sfx_local_prefix(self, tmp_path: Path) -> None:
+        from assets import library_add, resolve_sfx
+
+        sfx = tmp_path / "ding.mp3"
+        sfx.write_bytes(b"\xff\xfb" + b"\x00" * 64)
+        library_add("ding", sfx, tmp_path, kind="sfx")
+        fav_path = tmp_path / "favourites.json"
+        result = resolve_sfx("local:ding", tmp_path, fav_path)
+        assert result.exists()
+        assert result.stem == "ding"
+
+    def test_bundled_sfx_raises_when_missing(self, tmp_path: Path) -> None:
+        from assets import resolve_sfx
+
+        fav_path = tmp_path / "favourites.json"
+        with pytest.raises(FileNotFoundError, match="download_freesound_presets"):
+            resolve_sfx("bundled:pop", tmp_path, fav_path)
+
+    def test_bundled_sfx_finds_mp3(self, tmp_path: Path) -> None:
+        from assets import resolve_sfx, BUNDLED_SFX
+
+        fav_path = tmp_path / "favourites.json"
+        stem = tmp_path / BUNDLED_SFX["pop"]
+        stem.parent.mkdir(parents=True, exist_ok=True)
+        mp3 = stem.parent / f"{stem.name}.mp3"
+        mp3.write_bytes(b"\xff\xfb" + b"\x00" * 64)
+        result = resolve_sfx("bundled:pop", tmp_path, fav_path)
+        assert result == mp3
+
 
 # ---------------------------------------------------------------------------
 # TestAssetResolution

@@ -51,15 +51,33 @@ GIPHY_PRESET_QUERIES: dict[str, str] = {
 LIBRARY_DIR = "assets/gifs/library"
 LIBRARY_EXTENSIONS = (".gif", ".webp", ".png", ".apng")
 
+LIBRARY_SFX_DIR = "assets/sfx/library"
+LIBRARY_AUDIO_EXTENSIONS = (".mp3", ".wav", ".ogg", ".flac", ".aac")
+
+# SFX stem paths without extension — resolved by trying each audio extension in order.
+# Files are populated by download_freesound_presets.py (real recordings).
 BUNDLED_SFX: dict[str, str] = {
-    "pop": "assets/sfx/pop.wav",
-    "whoosh": "assets/sfx/whoosh.wav",
-    "chime": "assets/sfx/chime.wav",
-    "applause": "assets/sfx/applause.wav",
-    "bass_drop": "assets/sfx/bass_drop.wav",
-    "ding": "assets/sfx/ding.wav",
-    "swoosh": "assets/sfx/swoosh.wav",
-    "clap": "assets/sfx/clap.wav",
+    "pop": "assets/sfx/pop",
+    "whoosh": "assets/sfx/whoosh",
+    "chime": "assets/sfx/chime",
+    "applause": "assets/sfx/applause",
+    "bass_drop": "assets/sfx/bass_drop",
+    "ding": "assets/sfx/ding",
+    "swoosh": "assets/sfx/swoosh",
+    "clap": "assets/sfx/clap",
+}
+
+# Freesound search queries for each bundled SFX name.
+# Used by download_freesound_presets.py to populate assets/sfx/ with real recordings.
+FREESOUND_PRESET_QUERIES: dict[str, str] = {
+    "pop": "pop snap interface",
+    "whoosh": "whoosh swoosh transition",
+    "chime": "bell ring short",
+    "applause": "applause clapping crowd",
+    "bass_drop": "bass drop impact boom",
+    "ding": "ding bell notification",
+    "swoosh": "swoosh fast movement",
+    "clap": "single clap hands",
 }
 
 # ---------------------------------------------------------------------------
@@ -247,56 +265,63 @@ def _search_freesound(query: str) -> Optional[str]:
 # ---------------------------------------------------------------------------
 
 
-def library_dir(skill_dir: Path) -> Path:
-    return skill_dir / LIBRARY_DIR
+def library_dir(skill_dir: Path, kind: str = "gif") -> Path:
+    return skill_dir / (LIBRARY_DIR if kind == "gif" else LIBRARY_SFX_DIR)
 
 
-def library_list(skill_dir: Path) -> list[tuple[str, Path]]:
-    d = library_dir(skill_dir)
+def _library_extensions(kind: str) -> tuple[str, ...]:
+    return LIBRARY_EXTENSIONS if kind == "gif" else LIBRARY_AUDIO_EXTENSIONS
+
+
+def library_list(skill_dir: Path, kind: str = "gif") -> list[tuple[str, Path]]:
+    d = library_dir(skill_dir, kind)
     if not d.exists():
         return []
     return sorted(
         (p.stem, p)
         for p in d.iterdir()
-        if p.is_file() and p.suffix.lower() in LIBRARY_EXTENSIONS
+        if p.is_file() and p.suffix.lower() in _library_extensions(kind)
     )
 
 
-def library_resolve(name: str, skill_dir: Path) -> Path:
-    d = library_dir(skill_dir)
-    for ext in LIBRARY_EXTENSIONS:
+def library_resolve(name: str, skill_dir: Path, kind: str = "gif") -> Path:
+    d = library_dir(skill_dir, kind)
+    for ext in _library_extensions(kind):
         p = d / f"{name}{ext}"
         if p.exists():
             return p
-    available = ", ".join(n for n, _ in library_list(skill_dir)) or "(empty)"
+    available = ", ".join(n for n, _ in library_list(skill_dir, kind)) or "(empty)"
+    noun = "sticker" if kind == "gif" else "sound"
     raise FileNotFoundError(
-        f"Local sticker '{name}' not found in library. "
+        f"Local {noun} '{name}' not found in library. "
         f"Available: {available}. "
-        f"Add with: python scripts/assets.py library add --name {name} --file <path>"
+        f"Add with: python scripts/assets.py library add --kind {kind} --name {name} --file <path>"
     )
 
 
-def library_add(name: str, source_path: Path, skill_dir: Path) -> Path:
+def library_add(
+    name: str, source_path: Path, skill_dir: Path, kind: str = "gif"
+) -> Path:
+    import shutil
+
     src = Path(source_path)
     if not src.exists():
         raise FileNotFoundError(f"Source file not found: {src}")
-    if src.suffix.lower() not in LIBRARY_EXTENSIONS:
+    exts = _library_extensions(kind)
+    if src.suffix.lower() not in exts:
         raise ValueError(
-            f"Unsupported format '{src.suffix}'. "
-            f"Supported: {', '.join(LIBRARY_EXTENSIONS)}"
+            f"Unsupported format '{src.suffix}'. Supported: {', '.join(exts)}"
         )
-    dest_dir = library_dir(skill_dir)
+    dest_dir = library_dir(skill_dir, kind)
     dest_dir.mkdir(parents=True, exist_ok=True)
     dest = dest_dir / f"{name}{src.suffix.lower()}"
-    import shutil
-
     shutil.copy2(str(src), str(dest))
     return dest
 
 
-def library_remove(name: str, skill_dir: Path) -> bool:
-    d = library_dir(skill_dir)
-    for ext in LIBRARY_EXTENSIONS:
+def library_remove(name: str, skill_dir: Path, kind: str = "gif") -> bool:
+    d = library_dir(skill_dir, kind)
+    for ext in _library_extensions(kind):
         p = d / f"{name}{ext}"
         if p.exists():
             p.unlink()
@@ -304,14 +329,17 @@ def library_remove(name: str, skill_dir: Path) -> bool:
     return False
 
 
-def library_import_dir(source_dir: Path, skill_dir: Path) -> list[str]:
+def library_import_dir(
+    source_dir: Path, skill_dir: Path, kind: str = "gif"
+) -> list[str]:
     src = Path(source_dir)
     if not src.exists():
         raise FileNotFoundError(f"Source directory not found: {src}")
+    exts = _library_extensions(kind)
     imported: list[str] = []
     for p in sorted(src.iterdir()):
-        if p.is_file() and p.suffix.lower() in LIBRARY_EXTENSIONS:
-            library_add(p.stem, p, skill_dir)
+        if p.is_file() and p.suffix.lower() in exts:
+            library_add(p.stem, p, skill_dir, kind)
             imported.append(p.stem)
     return imported
 
@@ -386,13 +414,19 @@ def resolve_sfx(source: str, skill_dir: Path, favourites_path: Path) -> Path:
             raise ValueError(
                 f"Unknown bundled sfx '{name}'. Available: {', '.join(BUNDLED_SFX)}"
             )
-        path = skill_dir / BUNDLED_SFX[name]
-        if not path.exists():
-            raise FileNotFoundError(
-                f"Bundled sfx not found: {path}. "
-                "Run: cd skills/sticker && python scripts/generate_bundled_assets.py"
-            )
-        return path
+        stem = skill_dir / BUNDLED_SFX[name]
+        for ext in LIBRARY_AUDIO_EXTENSIONS:
+            p = stem.parent / f"{stem.name}{ext}"
+            if p.exists():
+                return p
+        raise FileNotFoundError(
+            f"Bundled sfx '{name}' not found. "
+            "Run: cd skills/sticker && uv run python scripts/download_freesound_presets.py"
+        )
+
+    if source.startswith("local:"):
+        name = source[len("local:") :]
+        return library_resolve(name, skill_dir, kind="sfx")
 
     if source.startswith("favourite:"):
         name = source[len("favourite:") :]
@@ -441,36 +475,41 @@ def _cli_list(favourites_path: Path) -> None:
 
 
 def _cli_library(args: "argparse.Namespace", skill_dir: Path) -> None:
+    kind = getattr(args, "kind", "gif")
+
     if args.library_cmd == "list":
-        entries = library_list(skill_dir)
-        if not entries:
-            print(f"Library is empty. Drop GIFs into {library_dir(skill_dir)}")
-            return
-        print(f"Local sticker library ({len(entries)} stickers):")
-        for name, path in entries:
-            size_kb = path.stat().st_size // 1024
-            print(f"  local:{name:<22s}  {path.name}  ({size_kb} KB)")
+        all_kinds = ["gif", "sfx"] if kind == "all" else [kind]
+        for k in all_kinds:
+            entries = library_list(skill_dir, k)
+            label = "Stickers (GIF)" if k == "gif" else "Sounds (SFX)"
+            print(f"{label} — {len(entries)} in library:")
+            if entries:
+                for name, path in entries:
+                    size_kb = path.stat().st_size // 1024
+                    print(f"  local:{name:<22s}  {path.name}  ({size_kb} KB)")
+            else:
+                print(f"  (empty — drop files into {library_dir(skill_dir, k)})")
 
     elif args.library_cmd == "add":
-        dest = library_add(args.name, Path(args.file), skill_dir)
-        print(f"Added: local:{args.name}  →  {dest}")
+        dest = library_add(args.name, Path(args.file), skill_dir, kind)
+        print(f"Added [{kind}]: local:{args.name}  →  {dest}")
 
     elif args.library_cmd == "remove":
-        if library_remove(args.name, skill_dir):
-            print(f"Removed: local:{args.name}")
+        if library_remove(args.name, skill_dir, kind):
+            print(f"Removed [{kind}]: local:{args.name}")
         else:
-            print(f"Not found: local:{args.name}")
+            print(f"Not found [{kind}]: local:{args.name}")
             sys.exit(1)
 
     elif args.library_cmd == "import-dir":
-        imported = library_import_dir(Path(args.dir), skill_dir)
+        imported = library_import_dir(Path(args.dir), skill_dir, kind)
         if imported:
-            print(f"Imported {len(imported)} stickers: {', '.join(imported)}")
+            print(f"Imported {len(imported)} [{kind}]: {', '.join(imported)}")
         else:
-            print("No supported GIF files found in directory.")
+            print(f"No supported files found in directory.")
 
     else:
-        print("Usage: assets.py library {list|add|remove|import-dir}")
+        print("Usage: assets.py library {list|add|remove|import-dir} [--kind gif|sfx]")
 
 
 def main() -> None:
@@ -482,24 +521,26 @@ def main() -> None:
 
     sub.add_parser("list", help="List all favourites")
 
-    p_lib = sub.add_parser("library", help="Manage local sticker library (local:name)")
+    p_lib = sub.add_parser(
+        "library", help="Manage local library (local:name) for GIFs and sounds"
+    )
     lib_sub = p_lib.add_subparsers(dest="library_cmd")
-    lib_sub.add_parser("list", help="List all stickers in the library")
-    p_lib_add = lib_sub.add_parser("add", help="Add a sticker to the library")
+    p_lib_list = lib_sub.add_parser("list", help="List library contents")
+    p_lib_list.add_argument("--kind", default="all", choices=["gif", "sfx", "all"])
+    p_lib_add = lib_sub.add_parser("add", help="Add a file to the library")
     p_lib_add.add_argument(
         "--name", required=True, help="Reference name (used as local:<name>)"
     )
-    p_lib_add.add_argument(
-        "--file", required=True, help="Source GIF/WebP/PNG file path"
-    )
-    p_lib_rm = lib_sub.add_parser("remove", help="Remove a sticker from the library")
+    p_lib_add.add_argument("--file", required=True, help="Source file path")
+    p_lib_add.add_argument("--kind", default="gif", choices=["gif", "sfx"])
+    p_lib_rm = lib_sub.add_parser("remove", help="Remove a file from the library")
     p_lib_rm.add_argument("--name", required=True)
+    p_lib_rm.add_argument("--kind", default="gif", choices=["gif", "sfx"])
     p_lib_imp = lib_sub.add_parser(
-        "import-dir", help="Bulk import all GIFs from a directory"
+        "import-dir", help="Bulk import all matching files from a directory"
     )
-    p_lib_imp.add_argument(
-        "--dir", required=True, help="Directory containing GIF files"
-    )
+    p_lib_imp.add_argument("--dir", required=True, help="Source directory")
+    p_lib_imp.add_argument("--kind", default="gif", choices=["gif", "sfx"])
 
     p_add_gif = sub.add_parser("add-gif", help="Add a gif favourite")
     p_add_gif.add_argument("--name", required=True)

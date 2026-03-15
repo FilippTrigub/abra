@@ -9,7 +9,7 @@ metadata:
     "openclaw":
       {
         "emoji": "🎪",
-        "requires": { "bins": ["ffmpeg", "uv"], "env": ["GIPHY_API_KEY"] },
+        "requires": { "bins": ["ffmpeg", "uv"], "env": ["GIPHY_API_KEY", "FREESOUND_API_KEY"] },
         "primaryEnv": "GIPHY_API_KEY",
       },
   }
@@ -45,15 +45,20 @@ Use this skill when the user wants to:
    ```bash
    export GIPHY_API_KEY="your_api_key_here"
    ```
-4. Install dependencies and download real stickers:
+4. Also set your Freesound API key for real sound effects (register free at https://freesound.org/apiv2/apply/):
+   ```bash
+   export FREESOUND_API_KEY="your_freesound_key"
+   ```
+5. Install dependencies and download real assets:
    ```bash
    cd "$SKILL_DIR" && uv sync
    cd "$SKILL_DIR" && uv run python scripts/download_giphy_presets.py
+   cd "$SKILL_DIR" && uv run python scripts/download_freesound_presets.py
    ```
 
-The preset download fetches one transparent-background sticker per bundled name (heart, sparkles, confetti, fire, stars, thumbsup, crown, explosion) into `assets/gifs/`. Safe to re-run — existing files are skipped. Add `--force` to refresh.
+The preset downloads are idempotent — existing files are skipped. Add `--force` to refresh.
 
-> **Without a key:** the skill still works using generated geometric placeholder stickers.
+> **Without keys:** GIFs fall back to generated geometric placeholders. SFX are absent until downloaded — the skill will warn and skip missing sounds rather than crash.
 
 ---
 
@@ -166,9 +171,11 @@ Tell the user:
 - `/path/to/file.gif` — absolute or relative file path
 
 ### SFX source values:
-- `"bundled:pop"` — one of 8 built-in sound effects
-- `"freesound:fairy_dust"` — search Freesound API (requires key)
-- `/path/to/file.wav` — local file path
+- `"local:<name>"` — file in `assets/sfx/library/<name>.(mp3|wav|ogg|…)`; **no API key needed**
+- `"bundled:<name>"` — one of 8 preset names; populated by `download_freesound_presets.py`
+- `"favourite:<name>"` — loaded from `favourites.json`
+- `"freesound:<query>"` — search Freesound API on demand; requires `FREESOUND_API_KEY`; cached in `assets/sfx/cache/`
+- `/path/to/file.wav` — absolute or relative file path
 
 ---
 
@@ -187,40 +194,43 @@ Using `"preset": "<name>` in your effect config automatically merges these setti
 
 ---
 
-## Local Sticker Library
+## Local Library (GIFs + Sounds)
 
-Store your own GIFs locally and reference them as `local:<name>` — no API key required.
+Store your own GIFs and audio files locally, reference them as `local:<name>` — no API key required. This is the recommended way to use sounds from Pixabay, Mixkit, or any other source.
 
-**Drop and use** — copy any GIF directly into the library folder and it's immediately available:
-```bash
-cp ~/Downloads/my_sticker.gif "$SKILL_DIR/assets/gifs/library/my_sticker.gif"
-# use as: "source": "local:my_sticker"
+**Drop and use** — copy files directly into the library folder:
+```
+assets/gifs/library/   ← GIFs (.gif, .webp, .png, .apng)
+assets/sfx/library/    ← sounds (.mp3, .wav, .ogg, .flac, .aac)
 ```
 
 **CLI management:**
 ```bash
 cd "$SKILL_DIR"
 
-# List everything in the library
+# List everything (GIFs and sounds)
 uv run python scripts/assets.py library list
 
-# Add a single sticker
-uv run python scripts/assets.py library add --name party_hat --file ~/Downloads/party_hat.gif
+# List only sounds
+uv run python scripts/assets.py library list --kind sfx
 
-# Bulk import a whole folder
-uv run python scripts/assets.py library import-dir --dir ~/Downloads/my-stickers/
+# Add a sound (downloaded from Pixabay, Mixkit, etc.)
+uv run python scripts/assets.py library add --kind sfx --name whoosh --file ~/Downloads/whoosh.mp3
 
-# Remove a sticker
-uv run python scripts/assets.py library remove --name party_hat
+# Add a GIF
+uv run python scripts/assets.py library add --kind gif --name party_hat --file ~/Downloads/party.gif
+
+# Bulk import a folder of sounds
+uv run python scripts/assets.py library import-dir --kind sfx --dir ~/Downloads/my-sfx/
+
+# Remove
+uv run python scripts/assets.py library remove --kind sfx --name whoosh
 ```
-
-**Supported formats:** `.gif`, `.webp`, `.png`, `.apng`
 
 **Use in config:**
 ```json
-{
-  "gif": { "source": "local:party_hat", "mode": "positioned", "position": "top-right" }
-}
+{ "gif": { "source": "local:party_hat" } }
+{ "sfx": { "source": "local:whoosh" } }
 ```
 
 ---
