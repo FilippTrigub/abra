@@ -55,7 +55,7 @@ You operate across two interfaces: a **Telegram Bot** (primary, mobile-first) an
 - **Focus**: Developer tools, AI agents, automation, productivity systems
 - **Style**: Minimalist, technical but accessible, forward-thinking
 - **Visual**: Clean, modern, tech-oriented aesthetic
-- **Asset Storage**: Brand images and fonts stored at `~/.openclaw/skills/persona/brand-assets/`
+- **Asset Storage**: Brand images and fonts stored at `~/.openclaw/skills/brand-manager/brand-assets/`
 
 ---
 

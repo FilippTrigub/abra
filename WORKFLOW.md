@@ -30,14 +30,14 @@ The bot auto-detects intent from what the user sends:
 
 | User sends | Auto-detected intent | Default skill plan triggered |
 |------------|---------------------|-----------------------------|
-| Video file(s) + text | Video processing request | verbatim → snip → demix → score → mux → persona → buffer |
-| Video file(s) only | Video processing request | verbatim → snip → mux → persona → buffer |
-| Photo(s) + text | Image post request | grade → knockout → portrait → filter → alt → persona → buffer |
-| Photo(s) only | Image post request | grade → filter → alt → persona → buffer |
-| Voice message | Transcription + post | verbatim → persona → buffer |
+| Video file(s) + text | Video processing request | audio-transcriber → video-cutter → audio-splitter → music-generator → video-enhancer → brand-manager → post-scheduler |
+| Video file(s) only | Video processing request | audio-transcriber → video-cutter → video-enhancer → brand-manager → post-scheduler |
+| Photo(s) + text | Image post request | photo-picker → background-remover → bokeh-effect → social-resizer → image-captioner → brand-manager → post-scheduler |
+| Photo(s) only | Image post request | photo-picker → social-resizer → image-captioner → brand-manager → post-scheduler |
+| Voice message | Transcription + post | audio-transcriber → brand-manager → post-scheduler |
 | Text only | Orchestrator request | Plan resolved by Orchestrator from text |
 | `/start` | Onboarding | Show available commands |
-| `/init` | Brand init phase | Trigger brand-awareness → generate BRAND.md |
+| `/init` | Brand init phase | Trigger brand-manager → generate BRAND.md |
 | `/status` | Job status check | Report current running job and step |
 | `/cancel` | Cancel current job | Stop execution, clean up tmp files |
 
@@ -139,24 +139,24 @@ The agent uses this table to resolve which skills to include and in what order.
 
 | Skill | Input types | Output types | Typical position |
 |-------|-------------|--------------|-----------------|
-| `verbatim` | video, audio | transcript JSON | early (transcription) |
-| `snip` | video + transcript | cut video segments | early (editing) |
-| `grade` | images (folder) | top-K images | early (selection) |
-| `knockout` | images | transparent PNG | mid (cleanup) |
-| `portrait` | images | bokeh image | mid (enhancement) |
-| `alt` | images | caption JSON | mid (metadata) |
-| `render` | text prompt | generated image | mid (creation) |
-| `keyer` | video | matte video | mid (compositing) |
-| `tween` | video | smooth video | mid (quality) |
-| `demix` | video, audio | vocals + music stems | mid (audio) |
-| `score` | text prompt, video | music file | mid (audio) |
-| `liven` | image + prompt | animated clip | mid (animation) |
-| `cutlab` | video + prompt | edited video | mid (editing) |
-| `mux` | video + captions | final video | late (polish) |
-| `filter` | images | processed images | late (polish) |
-| `persona` | draft + BRAND.md | brand-aligned content | late (brand) |
-| `canva` | assets + design brief | design export | late (design) |
-| `buffer` | post text + media | scheduled post | final (publish) |
+| `audio-transcriber` | video, audio | transcript JSON | early (transcription) |
+| `video-cutter` | video + transcript | cut video segments | early (editing) |
+| `photo-picker` | images (folder) | top-K images | early (selection) |
+| `background-remover` | images | transparent PNG | mid (cleanup) |
+| `bokeh-effect` | images | bokeh image | mid (enhancement) |
+| `image-captioner` | images | caption JSON | mid (metadata) |
+| `image-generator` | text prompt | generated image | mid (creation) |
+| `video-matte` | video | matte video | mid (compositing) |
+| `frame-interpolator` | video | smooth video | mid (quality) |
+| `audio-splitter` | video, audio | vocals + music stems | mid (audio) |
+| `music-generator` | text prompt, video | music file | mid (audio) |
+| `animate-image` | image + prompt | animated clip | mid (animation) |
+| `video-editor` | video + prompt | edited video | mid (editing) |
+| `video-enhancer` | video + captions | final video | late (polish) |
+| `social-resizer` | images | processed images | late (polish) |
+| `brand-manager` | draft + BRAND.md | brand-aligned content | late (brand) |
+| `canva-connector` | assets + design brief | design export | late (design) |
+| `post-scheduler` | post text + media | scheduled post | final (publish) |
 
 ---
 
@@ -167,17 +167,17 @@ The agent uses this table to resolve which skills to include and in what order.
 🎯 GOAL: Combine multiple raw video fragments into one polished, brand-aligned video.
 
 📋 EXECUTION PLAN:
-  Step 1 — verbatim   →  Transcribe all fragments for timestamp-aware cutting
-  Step 2 — snip       →  Cut and sequence fragments into a coherent edit
-  Step 3 — demix      →  Strip original audio / isolate voice track
-  Step 4 — score      →  Generate royalty-free background music
-  Step 5 — keyer      →  Remove video background if needed (optional)
-  Step 6 — tween      →  Smooth transitions to 60fps (optional)
-  Step 7 — mux        →  Merge captions, colour grade, normalise audio
-  Step 8 — persona    →  Adapt caption text to brand voice
-  Step 9 — buffer     →  Schedule final reel to Instagram/LinkedIn
+  Step 1 — audio-transcriber →  Transcribe all fragments for timestamp-aware cutting
+  Step 2 — video-cutter      →  Cut and sequence fragments into a coherent edit
+  Step 3 — audio-splitter    →  Strip original audio / isolate voice track
+  Step 4 — music-generator   →  Generate royalty-free background music
+  Step 5 — video-matte      →  Remove video background if needed (optional)
+  Step 6 — frame-interpolator →  Smooth transitions to 60fps (optional)
+  Step 7 — video-enhancer   →  Merge captions, colour grade, normalise audio
+  Step 8 — brand-manager    →  Adapt caption text to brand voice
+  Step 9 — post-scheduler   →  Schedule final reel to Instagram/LinkedIn
 
-⚙️  HARDWARE NOTE: Steps 3–7 require 2–8 GB VRAM. Use --device cpu for demix/score if needed.
+⚙️  HARDWARE NOTE: Steps 3–7 require 2–8 GB VRAM. Use --device cpu for audio-splitter/music-generator if needed.
 ```
 
 #### "Post a portrait photo to Instagram"
@@ -185,13 +185,13 @@ The agent uses this table to resolve which skills to include and in what order.
 🎯 GOAL: Pick the best portrait, enhance it, write a caption, and schedule it.
 
 📋 EXECUTION PLAN:
-  Step 1 — grade      →  Score and select best photo from input folder
-  Step 2 — knockout   →  Remove background, apply brand colour
-  Step 3 — portrait   →  Apply synthetic bokeh for professional look
-  Step 4 — filter     →  Resize/crop to Instagram square + apply filter
-  Step 5 — alt        →  Auto-generate caption and tags
-  Step 6 — persona    →  Refine caption to match brand voice
-  Step 7 — buffer     →  Schedule post with optimal timing
+  Step 1 — photo-picker      →  Score and select best photo from input folder
+  Step 2 — background-remover →  Remove background, apply brand colour
+  Step 3 — bokeh-effect     →  Apply synthetic bokeh for professional look
+  Step 4 — social-resizer    →  Resize/crop to Instagram square + apply filter
+  Step 5 — image-captioner  →  Auto-generate caption and tags
+  Step 6 — brand-manager    →  Refine caption to match brand voice
+  Step 7 — post-scheduler   →  Schedule post with optimal timing
 
 ⚙️  HARDWARE NOTE: All steps support --device cpu. GPU recommended for steps 2–3.
 ```
@@ -201,14 +201,14 @@ The agent uses this table to resolve which skills to include and in what order.
 🎯 GOAL: Turn a talk recording into a punchy teaser with captions and music.
 
 📋 EXECUTION PLAN:
-  Step 1 — verbatim   →  Transcribe the talk
-  Step 2 — snip       →  Extract the 3 most impactful 10-second segments
-  Step 3 — demix      →  Remove background noise, keep clean voice
-  Step 4 — score      →  Generate matching background music
-  Step 5 — liven      →  Animate title card image into intro clip
-  Step 6 — mux        →  Burn animated captions, colour grade, mix audio
-  Step 7 — persona    →  Write brand-aligned post copy
-  Step 8 — buffer     →  Schedule reel
+  Step 1 — audio-transcriber →  Transcribe the talk
+  Step 2 — video-cutter     →  Extract the 3 most impactful 10-second segments
+  Step 3 — audio-splitter   →  Remove background noise, keep clean voice
+  Step 4 — music-generator  →  Generate matching background music
+  Step 5 — animate-image   →  Animate title card image into intro clip
+  Step 6 — video-enhancer  →  Burn animated captions, colour grade, mix audio
+  Step 7 — brand-manager   →  Write brand-aligned post copy
+  Step 8 — post-scheduler  →  Schedule reel
 ```
 
 #### "Generate an image for my next LinkedIn post"
@@ -216,11 +216,11 @@ The agent uses this table to resolve which skills to include and in what order.
 🎯 GOAL: Create a brand-consistent image from a text description.
 
 📋 EXECUTION PLAN:
-  Step 1 — render     →  Generate image from text prompt (FLUX/SDXL)
-  Step 2 — filter     →  Resize to LinkedIn dimensions
-  Step 3 — alt        →  Auto-generate alt-text and caption suggestions
-  Step 4 — persona    →  Align caption with brand voice
-  Step 5 — buffer     →  Schedule LinkedIn post
+  Step 1 — image-generator  →  Generate image from text prompt (FLUX/SDXL)
+  Step 2 — social-resizer   →  Resize to LinkedIn dimensions
+  Step 3 — image-captioner  →  Auto-generate alt-text and caption suggestions
+  Step 4 — brand-manager    →  Align caption with brand voice
+  Step 5 — post-scheduler   →  Schedule LinkedIn post
 ```
 
 ---
@@ -229,11 +229,11 @@ The agent uses this table to resolve which skills to include and in what order.
 
 The agent applies these rules when building the execution plan:
 
-1. **Transcription first** — if input contains video/audio, `verbatim` always runs before editing skills.
-2. **Selection before enhancement** — `grade` runs before `portrait`, `knockout`, or `filter`.
-3. **Clean before composite** — `demix`/`keyer` run before `mux` or `score`.
-4. **Create before polish** — `render`/`liven` run before `filter`/`mux`.
-5. **Brand last before publish** — `persona` always runs after media is finalized, before `buffer`.
+1. **Transcription first** — if input contains video/audio, `audio-transcriber` always runs before editing skills.
+2. **Selection before enhancement** — `photo-picker` runs before `bokeh-effect`, `background-remover`, or `social-resizer`.
+3. **Clean before composite** — `audio-splitter`/`video-matte` run before `video-enhancer` or `music-generator`.
+4. **Create before polish** — `image-generator`/`animate-image` run before `social-resizer`/`video-enhancer`.
+5. **Brand last before publish** — `brand-manager` always runs after media is finalized, before `post-scheduler`.
 6. **Always confirm** — the agent presents the plan and waits for user approval before executing.
 7. **Optional steps flagged** — steps that depend on user preference are marked `(optional)`.
 8. **VRAM budget respected** — if running on limited hardware, the agent recommends `--device cpu` flags or suggests running GPU-heavy steps when the LLM is idle.
@@ -297,19 +297,19 @@ Output: Brand-aligned post ready for channel formatting
 
 ### 2.4 Process Media (Image/Video)
 
-**Images** — use the `filter` skill:
+**Images** — use the `social-resizer` skill:
 ```bash
-cd skills/filter/scripts && uv sync && npm install
-uv run --project skills/filter/scripts \
-  python skills/filter/scripts/process.py --config config.json
+cd skills/social-resizer/scripts && uv sync && npm install
+uv run --project skills/social-resizer/scripts \
+  python skills/social-resizer/scripts/process.py --config config.json
 ```
 
-**Videos** — use the `mux` skill:
+**Videos** — use the `video-enhancer` skill:
 ```bash
-cd ~/.openclaw/skills/mux && uv sync
+cd ~/.openclaw/skills/video-enhancer && uv sync
 uv run python scripts/caption_service.py \
   --output output --preset cinematic \
-  --css ~/.openclaw/skills/mux/scripts/futuristic.css
+  --css ~/.openclaw/skills/video-enhancer/scripts/futuristic.css
 ```
 
 ### 2.5 Organize Output
@@ -338,14 +338,14 @@ claw-parade/
 ├── BRAND.md                   # Brand identity (generated)
 ├── WORKFLOW.md                # This file
 ├── skills/
-│   ├── persona/               # Brand identity maintenance
-│   ├── mux/                   # Video enhancement and captioning
-│   ├── filter/                # Image resize, crop, and filtering
-│   ├── buffer/                # Schedule and publish posts
-│   └── ...                    # All other skills
-├── input/                     # Raw input files
+│   ├── brand-manager/        # Brand identity maintenance
+│   ├── video-enhancer/      # Video enhancement and captioning
+│   ├── social-resizer/      # Image resize, crop, and filtering
+│   ├── post-scheduler/      # Schedule and publish posts
+│   └── ...                  # All other skills
+├── input/                    # Raw input files
 │   └── [user-provided content]
-├── output/                    # Processed outputs
+├── output/                   # Processed outputs
 │   ├── instagram/
 │   │   └── [YYYY/MM/DD]/
 │   ├── linkedin/
@@ -353,7 +353,7 @@ claw-parade/
 └── workspace/
     └── input/
         └── telegram/          # Files received from Telegram bot
-            └── <job-id>/      # One folder per job
+            └── <job-id>/     # One folder per job
 ```
 
 ---
@@ -362,24 +362,24 @@ claw-parade/
 
 | Skill | Location | Purpose |
 |-------|----------|---------|
-| persona | `skills/persona/` | Brand identity maintenance |
-| mux | `skills/mux/` | Video enhancement and captioning |
-| filter | `skills/filter/` | Image resize, crop, and filtering |
-| buffer | `skills/buffer/` | Schedule and publish posts |
-| verbatim | `skills/verbatim/` | Audio/video transcription |
-| snip | `skills/snip/` | Video cutting and sequencing |
-| grade | `skills/grade/` | Aesthetic photo selection |
-| knockout | `skills/knockout/` | Image background removal |
-| portrait | `skills/portrait/` | Depth bokeh enhancement |
-| alt | `skills/alt/` | Auto-captioning and tagging |
-| render | `skills/render/` | Text-to-image generation |
-| keyer | `skills/keyer/` | Video background removal |
-| tween | `skills/tween/` | Frame interpolation |
-| demix | `skills/demix/` | Audio stem separation |
-| score | `skills/score/` | Background music generation |
-| liven | `skills/liven/` | Image-to-video animation |
-| cutlab | `skills/cutlab/` | AI video editing/inpainting |
-| canva | `skills/canva/` | Canva design integration |
+| brand-manager | `skills/brand-manager/` | Brand identity maintenance |
+| video-enhancer | `skills/video-enhancer/` | Video enhancement and captioning |
+| social-resizer | `skills/social-resizer/` | Image resize, crop, and filtering |
+| post-scheduler | `skills/post-scheduler/` | Schedule and publish posts |
+| audio-transcriber | `skills/audio-transcriber/` | Audio/video transcription |
+| video-cutter | `skills/video-cutter/` | Video cutting and sequencing |
+| photo-picker | `skills/photo-picker/` | Aesthetic photo selection |
+| background-remover | `skills/background-remover/` | Image background removal |
+| bokeh-effect | `skills/bokeh-effect/` | Depth bokeh enhancement |
+| image-captioner | `skills/image-captioner/` | Auto-captioning and tagging |
+| image-generator | `skills/image-generator/` | Text-to-image generation |
+| video-matte | `skills/video-matte/` | Video background removal |
+| frame-interpolator | `skills/frame-interpolator/` | Frame interpolation |
+| audio-splitter | `skills/audio-splitter/` | Audio stem separation |
+| music-generator | `skills/music-generator/` | Background music generation |
+| animate-image | `skills/animate-image/` | Image-to-video animation |
+| video-editor | `skills/video-editor/` | AI video editing/inpainting |
+| canva-connector | `skills/canva-connector/` | Canva design integration |
 
 ---
 
@@ -427,4 +427,4 @@ OPENCLAW_GATEWAY_PORT=18789
 4. **Review before schedule** — always confirm the execution plan before it runs
 5. **Maintain buffer** — keep 3–7 days of scheduled content
 6. **Iterate on brand** — update BRAND.md as persona evolves
-7. **GPU-heavy last** — run `liven`, `cutlab`, `keyer` when the LLM is idle to avoid VRAM contention
+7. **GPU-heavy last** — run `animate-image`, `video-editor`, `video-matte` when the LLM is idle to avoid VRAM contention

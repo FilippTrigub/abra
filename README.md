@@ -97,7 +97,7 @@ Store and manage brand images and fonts for use across all content processing sk
 
 ### Asset Storage
 
-Brand assets are stored in `skills/persona/brand-assets/`:
+Brand assets are stored in `skills/brand-manager/brand-assets/`:
 
 ```
 brand-assets/
@@ -110,21 +110,21 @@ brand-assets/
 
 ```bash
 # Store a brand image
-python skills/persona/scripts/brand_assets.py store-image \
+python skills/brand-manager/scripts/brand_assets.py store-image \
   --input ./logo.png --name main-logo --tags logo,primary
 
 # Store a brand font
-python skills/persona/scripts/brand_assets.py store-font \
+python skills/brand-manager/scripts/brand_assets.py store-font \
   --input ./Inter-Bold.ttf --name inter-bold --tags heading
 
 # List all assets
-python skills/brand-awareness/scripts/brand_assets.py list
+python skills/brand-manager/scripts/brand_assets.py list
 
 # Get asset path by name or tag
-python skills/brand-awareness/scripts/brand_assets.py get-path --tag logo
+python skills/brand-manager/scripts/brand_assets.py get-path --tag logo
 
 # Remove an asset
-python skills/brand-awareness/scripts/brand_assets.py remove --name main-logo
+python skills/brand-manager/scripts/brand_assets.py remove --name main-logo
 ```
 
 ### For Other Skills
@@ -136,7 +136,7 @@ import json
 import os
 from pathlib import Path
 
-MANIFEST = Path(__file__).parent.parent / "persona" / "brand-assets" / "asset-manifest.json"
+MANIFEST = Path(__file__).parent.parent / "brand-manager" / "brand-assets" / "asset-manifest.json"
 
 def get_brand_asset(tag: str) -> Path | None:
     with open(MANIFEST) as f:
@@ -160,13 +160,13 @@ claw-parade/
 ├── Dockerfile            # Container build configuration
 ├── docker-compose.yml    # Container orchestration
 ├── skills/               # Modular skill definitions
-│   ├── persona/         # Brand identity + asset management
+│   ├── brand-manager/    # Brand identity + asset management
 │   │   ├── SKILL.md      # Skill definition
 │   │   ├── scripts/      # Asset management CLI
 │   │   └── brand-assets/ # Stored brand images & fonts
-│   ├── mux/              # Video enhancement and captioning
-│   ├── filter/           # Image resize and filtering
-│   ├── buffer/           # Schedule and publish posts
+│   ├── video-enhancer/   # Video enhancement and captioning
+│   ├── social-resizer/   # Image resize and filtering
+│   ├── post-scheduler/   # Schedule and publish posts
 │   └── + 14 standalone skills # AI enhancement tools
 ├── input/               # Raw input files (articles, notes, ideas)
 └── output/              # Processed content organized by channel
@@ -214,19 +214,19 @@ Abra includes 19 specialized skills for personal brand management:
 
 | Skill | Input | What it does | Min VRAM |
 |-------|-------|--------------|----------|
-| **grade** | images | Score and pick the best photos | ~1 GB |
-| **portrait** | images | Synthetic bokeh / portrait mode | ~1.5 GB |
-| **knockout** | images | Remove background, replace with colour/image | ~0.5 GB |
-| **alt** | images | Auto-describe and suggest captions | ~4 GB |
-| **tween** | videos | Frame interpolation (60fps / slow motion) | ~2 GB |
-| **keyer** | videos | Remove video background, composite backdrop | ~3 GB |
-| **demix** | video/audio | Separate vocals from music | ~2 GB |
-| **score** | prompt / video | Generate brand background music | ~3 GB |
-| **liven** | images | Image → animated video clip | ~8 GB |
-| **cutlab** | video | Edit / inpaint video regions via prompt | ~8 GB |
+| **photo-picker** | images | Score and pick the best photos | ~1 GB |
+| **bokeh-effect** | images | Synthetic bokeh / portrait mode | ~1.5 GB |
+| **background-remover** | images | Remove background, replace with colour/image | ~0.5 GB |
+| **image-captioner** | images | Auto-describe and suggest captions | ~4 GB |
+| **frame-interpolator** | videos | Frame interpolation (60fps / slow motion) | ~2 GB |
+| **video-matte** | videos | Remove video background, composite backdrop | ~3 GB |
+| **audio-splitter** | video/audio | Separate vocals from music | ~2 GB |
+| **music-generator** | prompt / video | Generate brand background music | ~3 GB |
+| **animate-image** | images | Image → animated video clip | ~8 GB |
+| **video-editor** | video | Edit / inpaint video regions via prompt | ~8 GB |
 | **sticker** | videos | Overlay animated GIF stickers + social sound effects | 0 GB |
 
-**Core Skills:** persona, verbatim, snip, render, mux, filter, buffer, canva
+**Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, social-resizer, post-scheduler, canva-connector
 
 **Usage:** Each skill follows the same conventions (`uv sync`, `--input`, `--output`, `--device cpu` fallback).
 
