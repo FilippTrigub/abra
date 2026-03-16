@@ -1,0 +1,54 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "duck_background": true,
+  "duck_db": -8,
+  "effects": [
+    {
+      "trigger": { "type": "timestamp", "value": 4.0 },
+      "sfx": { "source": "bundled:whoosh", "volume": 0.85 },
+      "gif": {
+        "source": "bundled:sparkles",
+        "mode": "positioned",
+        "position": "top-right",
+        "width": 220
+      },
+      "pause_video": false,
+      "duration": 3.0
+    },
+    {
+      "trigger": { "type": "timestamp", "value": 14.0 },
+      "sfx": { "source": "bundled:applause", "volume": 0.9 },
+      "gif": {
+        "source": "bundled:confetti",
+        "mode": "fullscreen"
+      },
+      "pause_video": false,
+      "duration": 4.0
+    },
+    {
+      "trigger": { "type": "timestamp", "value": 25.0 },
+      "sfx": { "source": "bundled:bass_drop", "volume": 1.0 },
+      "gif": {
+        "source": "bundled:fire",
+        "mode": "positioned",
+        "position": "bottom-right",
+        "width": 180
+      },
+      "pause_video": true,
+      "duration": 2.0
+    },
+    {
+      "trigger": { "type": "timestamp", "value": 33.0 },
+      "sfx": { "source": "bundled:ding", "volume": 0.9 },
+      "gif": {
+        "source": "bundled:crown",
+        "mode": "positioned",
+        "position": "top-left",
+        "width": 160
+      },
+      "pause_video": false,
+      "duration": 2.5
+    }
+  ]
+}

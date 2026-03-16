@@ -1,0 +1,44 @@
+{
+  "viral": {
+    "overlay": {
+      "source": "pixabay:sparkle glitter transparent",
+      "mode": "positioned",
+      "position": "top-right",
+      "width": 180
+    },
+    "sfx": { "source": "bundled:whoosh", "volume": 0.9 },
+    "pause_video": false,
+    "duration": 3.0
+  },
+  "party": {
+    "overlay": {
+      "source": "pixabay-video:confetti party",
+      "mode": "fullscreen"
+    },
+    "sfx": { "source": "bundled:applause", "volume": 1.0 },
+    "pause_video": false,
+    "duration": 4.0
+  },
+  "love": {
+    "overlay": {
+      "source": "pixabay:heart love transparent",
+      "mode": "positioned",
+      "position": "center",
+      "width": 250
+    },
+    "sfx": { "source": "bundled:chime", "volume": 0.7 },
+    "pause_video": false,
+    "duration": 3.0
+  },
+  "dramatic": {
+    "overlay": {
+      "source": "pixabay:fire flames transparent",
+      "mode": "positioned",
+      "position": "bottom-right",
+      "width": 200
+    },
+    "sfx": { "source": "bundled:bass_drop", "volume": 1.0 },
+    "pause_video": true,
+    "duration": 2.0
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "duck_background": true,
+  "duck_db": -8,
+  "effects": [
+    {
+      "trigger": { "type": "timestamp", "value": 4.0 },
+      "overlay": {
+        "source": "pixabay:sparkle glitter transparent",
+        "mode": "positioned",
+        "position": "top-right",
+        "width": 220
+      },
+      "sfx": { "source": "bundled:whoosh", "volume": 0.85 },
+      "pause_video": false,
+      "duration": 3.0
+    },
+    {
+      "trigger": { "type": "timestamp", "value": 14.0 },
+      "overlay": {
+        "source": "pixabay-video:confetti celebration",
+        "mode": "fullscreen"
+      },
+      "sfx": { "source": "bundled:applause", "volume": 0.9 },
+      "pause_video": false,
+      "duration": 4.0
+    },
+    {
+      "trigger": { "type": "timestamp", "value": 25.0 },
+      "overlay": {
+        "source": "pixabay:fire flames transparent",
+        "mode": "positioned",
+        "position": "bottom-right",
+        "width": 180
+      },
+      "sfx": { "source": "bundled:bass_drop", "volume": 1.0 },
+      "pause_video": true,
+      "duration": 2.0
+    }
+  ]
+}
