@@ -32,6 +32,9 @@ Every tool accepts `--device cpu` to fall back to CPU/RAM:
 | video-editor | ~8 GB | ❌ no | hours per clip |
 | video-enhancer | 0 GB (CPU) | ✅ yes | fast (~15s/clip) |
 | video-captioner | 0 GB (CPU) | ✅ yes | ~30s/clip (Whisper tiny) |
+| giphy | 0 GB (CPU) | ✅ yes | instant |
+| freesound | 0 GB (CPU) | ✅ yes | instant |
+| pixabay | 0 GB (CPU) | ✅ yes | instant |
 
 **Recommendation:** When VRAM is limited, prefer tools marked ✅. Generative tools (`animate-image`, `video-editor`) are best run when LLM is idle.
 
@@ -309,6 +312,126 @@ uv run python scripts/caption_service.py --css scripts/futuristic.css
 
 ---
 
+### giphy — Animated GIF Sticker Overlays
+
+**What it does:** Overlays animated GIF stickers from the GIPHY API onto videos with optional bundled sound effects. Perfect for Instagram-style reactions, viral moments, and celebrations. CPU-only — no GPU required.
+
+**Requires:** `uv`, `ffmpeg`, `GIPHY_API_KEY`
+
+**API Key:** [developers.giphy.com/dashboard](https://developers.giphy.com/dashboard/)
+
+**Usage:**
+```bash
+cd skills/giphy && uv sync
+export GIPHY_API_KEY=your_key
+
+# Download real GIPHY stickers for all bundled presets (one-time setup)
+uv run python scripts/download_giphy_presets.py
+
+# Process all videos in input/
+uv run python scripts/giphy.py
+```
+
+**Config example:**
+```json
+{
+  "effects": [{
+    "trigger": { "type": "timestamp", "value": 4.0 },
+    "gif": { "source": "giphy:confetti party", "mode": "fullscreen" },
+    "sfx": { "source": "bundled:applause", "volume": 0.9 },
+    "duration": 3.0
+  }]
+}
+```
+
+**GIF sources:** `giphy:<query>` · `bundled:<name>` · `local:<name>` · `favourite:<name>` · file path
+
+**SFX sources:** `bundled:<name>` · `local:<name>` · file path *(Freesound search → use skills/freesound)*
+
+---
+
+### freesound — Social Sound Effects
+
+**What it does:** Mixes professional sound effects from the Freesound API into videos with optional animated GIF overlays. SFX-first skill — use when audio reactions timed to specific moments are the primary goal. CPU-only — no GPU required.
+
+**Requires:** `uv`, `ffmpeg`, `FREESOUND_API_KEY`
+
+**API Key:** [freesound.org/apiv2/apply](https://freesound.org/apiv2/apply/)
+
+**Usage:**
+```bash
+cd skills/freesound && uv sync
+export FREESOUND_API_KEY=your_key
+
+# Download real Freesound recordings for all bundled presets (one-time setup)
+uv run python scripts/download_freesound_presets.py
+
+# Process all videos in input/
+uv run python scripts/freesound.py
+```
+
+**Config example:**
+```json
+{
+  "effects": [{
+    "trigger": { "type": "text_cue", "phrase": "check this out", "transcript": "./input/sub.srt" },
+    "sfx": { "source": "freesound:crowd cheer", "volume": 0.85 },
+    "gif": { "source": "bundled:confetti", "mode": "fullscreen" },
+    "duration": 3.0
+  }]
+}
+```
+
+**SFX sources:** `freesound:<query>` · `bundled:<name>` · `local:<name>` · `favourite:<name>` · file path
+
+**GIF sources:** `bundled:<name>` · `local:<name>` · file path *(GIPHY search → use skills/giphy)*
+
+---
+
+### pixabay — Royalty-Free Image & Video Overlays
+
+**What it does:** Overlays royalty-free images and short video clips from the Pixabay API onto videos with optional bundled sound effects. No attribution required. Handles static images (PNG/JPG with `-loop 1`) and animated clips (MP4). CPU-only — no GPU required.
+
+**Requires:** `uv`, `ffmpeg`, `PIXABAY_API_KEY`
+
+**API Key:** [pixabay.com/api/docs](https://pixabay.com/api/docs/)
+
+**Usage:**
+```bash
+cd skills/pixabay && uv sync
+export PIXABAY_API_KEY=your_key
+
+# Browse available assets before adding to config
+uv run python scripts/pixabay_api.py images --query "sparkle transparent" --list
+uv run python scripts/pixabay_api.py videos --query "confetti" --max-duration 5 --list
+
+# Process all videos in input/
+uv run python scripts/pixabay.py
+```
+
+**Config example:**
+```json
+{
+  "effects": [{
+    "trigger": { "type": "timestamp", "value": 4.0 },
+    "overlay": {
+      "source": "pixabay:sparkle glitter transparent",
+      "mode": "positioned",
+      "position": "top-right",
+      "width": 220
+    },
+    "sfx": { "source": "bundled:whoosh", "volume": 0.85 },
+    "duration": 3.0
+  }]
+}
+```
+
+**Overlay sources:** `pixabay:<query>` · `pixabay-video:<query>` · `local:<name>` · `favourite:<name>` · file path
+
+**SFX sources:** `bundled:<name>` · `local:<name>` · file path *(Freesound search → use skills/freesound)*
+
+---
+
 ### social-resizer — Image Processing
 
 **What it does:** Processes a directory of images for Instagram using sharp (resize/crop/pad) and pilgram (Instagram filters). Reads a `config.json` and writes processed images to an output directory.
@@ -364,7 +487,9 @@ uv run python scripts/posts.py create \
 | music-generator | prompt/video | Generate music | ~3 GB | ✅ very slow |
 | animate-image | images | Image → video clip | ~8 GB | ❌ no |
 | video-editor | video | Edit/inpaint video | ~8 GB | ❌ no |
-| sticker | videos | GIF stickers + social sound effects | 0 GB | ✅ instant |
+| giphy | videos | Animated GIF stickers from GIPHY + optional SFX | 0 GB | ✅ instant |
+| freesound | videos | Freesound SFX into video + optional GIF overlays | 0 GB | ✅ instant |
+| pixabay | videos | Royalty-free image/video overlays + optional SFX | 0 GB | ✅ instant |
 | video-enhancer | videos | Sharpen, colour grade, normalise audio | 0 GB | ✅ fast |
 | video-captioner | videos | Whisper transcription + animated captions | 0 GB | ✅ ~30s/clip |
 

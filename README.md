@@ -28,66 +28,67 @@ Transform articles, notes, ideas, and meeting recordings into ready-to-publish c
 - Docker (for containerized deployment)
 - Python with `uv` (for AI enhancement tools)
 
-### Initialize Project
+### Run a Workflow
 
 ```bash
-# Clone the repository
-git clone <repo-url>
-cd claw-parade
+cd workflows
 
-# Initialize skills as submodules
-git submodule update --init --recursive
+# Video → branded reel
+uv run python run.py --workflow video-to-reel --input ../video.mp4
 
-# Build Docker images
-make build-base
-docker build -t clawparade .
+# Photo(s) → branded post  
+uv run python run.py --workflow image-to-post --input ../photos/
+
+# Voice → text post
+uv run python run.py --workflow audio-to-post --input ../voice.m4a
+
+# Add content to brand knowledge
+uv run python run.py --workflow brand-enrichment --input ../article.md
 ```
 
-### Run the Agent
+### Options
 
-```bash
-# Initialize brand from your content
-docker run -v $(pwd)/input:/input clawparade claw init --input /input/
-
-# Process content for a channel
-docker run -v $(pwd)/input:/input -v $(pwd)/output:/output clawparade \
-  claw process --input /input/article.md --channel instagram
-
-# Schedule content with a 5-day buffer
-docker run -v $(pwd)/output:/output clawparade \
-  claw schedule --buffer-days 5
-```
+| Flag | Description |
+|------|-------------|
+| `--input` | Input file or directory |
+| `--output` | Output directory (default: `output/`) |
+| `--skip-optional` | Skip enhancement steps like music generation |
+| `--device` | Device: auto, cpu, cuda |
+| `--no-archive` | Don't archive input after scheduling |
 
 ---
 
-## 📋 Workflow
+## 📋 Workflows
 
-### Phase 1: Brand Initialization (One-Time)
+### Creative Workflows
 
-Establish your brand identity by analyzing your content, resume, and past posts. This generates `BRAND.md` with:
-- Voice and tone guidelines
-- Visual identity specifications
-- Core values and messaging
+| Workflow | Input | Output |
+|----------|-------|--------|
+| **video-to-reel** | Video file(s) | Branded reel for Instagram/LinkedIn |
+| **image-to-post** | Photo(s) | Branded post with caption |
+| **audio-to-post** | Voice/audio | Text post with transcript |
 
-```bash
-claw init --input ./raw-inputs/
+### Brand Workflows
+
+| Workflow | Input | Purpose |
+|----------|-------|---------|
+| **brand-enrichment** | Any content | Add to brand knowledge |
+
+### How It Works
+
+1. **Brand first** — `brand-manager` runs first to refresh brand knowledge
+2. **Process** — Skills run sequentially, each taking the previous step's output as input
+3. **Brand last** — `brand-manager` adapts content to brand voice
+4. **Schedule** — `post-scheduler` queues to Buffer
+
+### Input/Output Convention
+
+Each skill reads from `--input DIR` and writes to `--output DIR`. The workflow runner chains them:
+```
+step1_output/ → step2 --input → step2_output/ → ...
 ```
 
-### Phase 2: Content Processing (Regular Use)
-
-```bash
-# Process a single file
-claw process --input ./input/article.md --channel instagram
-
-# Process video content
-claw process --input ./input/meeting.mp4 --channel linkedin --video
-
-# Bulk process from folder
-claw process --folder ./input/ --channel twitter
-
-# Schedule with buffer
-claw schedule --buffer-days 5
-```
+After scheduling, input files are archived to `archive/<workflow>/<timestamp>/`.
 
 ---
 
@@ -159,21 +160,23 @@ claw-parade/
 ├── WORKFLOW.md           # Detailed workflow documentation
 ├── Dockerfile            # Container build configuration
 ├── docker-compose.yml    # Container orchestration
-├── skills/               # Modular skill definitions
+├── workflows/            # Workflow configs and runner
+│   ├── creative/         # Content creation workflows
+│   ├── brand/           # Brand management workflows
+│   └── run.py           # Workflow runner
+├── skills/              # Modular skill definitions
 │   ├── brand-manager/    # Brand identity + asset management
-│   │   ├── SKILL.md      # Skill definition
-│   │   ├── scripts/      # Asset management CLI
-│   │   └── brand-assets/ # Stored brand images & fonts
 │   ├── video-enhancer/   # Video sharpening, colour grading, audio normalisation
 │   ├── video-captioner/  # Whisper transcription + animated caption burn-in
 │   ├── social-resizer/   # Image resize and filtering
 │   ├── post-scheduler/   # Schedule and publish posts
-│   └── + 14 standalone skills # AI enhancement tools
-├── input/               # Raw input files (articles, notes, ideas)
-└── output/              # Processed content organized by channel
-    ├── instagram/
-    ├── linkedin/
-    └── twitter/
+│   └── + 17 more skills        # AI enhancement + social media tools
+├── input/               # Raw input files (staging for processing)
+│   └── staging/         # Temporary staging area
+├── output/              # Processed content organized by workflow/date
+├── archive/             # Processed inputs after scheduling
+│   └── <workflow>/
+│       └── <timestamp>/
 ```
 
 ---
@@ -211,7 +214,7 @@ BUFFER_API_KEY=your-buffer-token   # Required for scheduling
 
 ## 🎨 Skills & Tools
 
-Abra includes 19 specialized skills for personal brand management:
+Abra includes 22 specialized skills for personal brand management:
 
 | Skill | Input | What it does | Min VRAM |
 |-------|-------|--------------|----------|
@@ -225,11 +228,15 @@ Abra includes 19 specialized skills for personal brand management:
 | **music-generator** | prompt / video | Generate brand background music | ~3 GB |
 | **animate-image** | images | Image → animated video clip | ~8 GB |
 | **video-editor** | video | Edit / inpaint video regions via prompt | ~8 GB |
-| **sticker** | videos | Overlay animated GIF stickers + social sound effects | 0 GB |
+| **giphy** | videos | Overlay animated GIF stickers from GIPHY with optional SFX | 0 GB |
+| **freesound** | videos | Mix Freesound sound effects into videos with optional GIF overlays | 0 GB |
+| **pixabay** | videos | Overlay royalty-free Pixabay images and video clips | 0 GB |
 | **video-enhancer** | videos | Sharpen, colour grade, normalise audio | 0 GB |
 | **video-captioner** | videos | Whisper transcription + animated caption burn-in | 0 GB |
 
 **Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, social-resizer, post-scheduler, canva-connector
+
+**Social Media Skills** *(each requires one API key)*: giphy (`GIPHY_API_KEY`), freesound (`FREESOUND_API_KEY`), pixabay (`PIXABAY_API_KEY`)
 
 **Usage:** Each skill follows the same conventions (`uv sync`, `--input`, `--output`, `--device cpu` fallback).
 
