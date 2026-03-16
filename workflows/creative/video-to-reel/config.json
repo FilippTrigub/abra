@@ -1,0 +1,59 @@
+{
+  "name": "video-to-reel",
+  "description": "Transform raw video into a branded reel for Instagram/LinkedIn",
+  "input_type": "video",
+  "steps": [
+    {
+      "name": "brand-refresh",
+      "skill": "brand-manager",
+      "action": "refresh",
+      "description": "Refresh brand knowledge and load available assets"
+    },
+    {
+      "name": "transcribe",
+      "skill": "audio-transcriber",
+      "description": "Transcribe speech for timestamp-aware editing"
+    },
+    {
+      "name": "cut",
+      "skill": "video-cutter",
+      "description": "Cut into segments, sequence into coherent edit"
+    },
+    {
+      "name": "split-audio",
+      "skill": "audio-splitter",
+      "description": "Isolate vocals / strip original audio",
+      "optional": true
+    },
+    {
+      "name": "generate-music",
+      "skill": "music-generator",
+      "description": "Generate background music",
+      "optional": true
+    },
+    {
+      "name": "enhance",
+      "skill": "video-enhancer",
+      "description": "Color grade + audio normalization",
+      "params": {
+        "preset": "cinematic"
+      }
+    },
+    {
+      "name": "caption",
+      "skill": "video-captioner",
+      "description": "Burn animated captions"
+    },
+    {
+      "name": "brand-adapt",
+      "skill": "brand-manager",
+      "action": "adapt",
+      "description": "Adapt caption to brand voice"
+    },
+    {
+      "name": "schedule",
+      "skill": "post-scheduler",
+      "description": "Schedule to Instagram/LinkedIn"
+    }
+  ]
+}

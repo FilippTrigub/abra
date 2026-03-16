@@ -1,0 +1,26 @@
+{
+  "name": "brand-enrichment",
+  "description": "Add new content to keep the brand knowledge fresh and accurate",
+  "category": "brand",
+  "input_type": "any",
+  "steps": [
+    {
+      "name": "analyze",
+      "skill": "brand-manager",
+      "action": "analyze",
+      "description": "Analyze new content, extract brand insights"
+    },
+    {
+      "name": "update-brand",
+      "skill": "brand-manager",
+      "action": "update",
+      "description": "Update BRAND.md with new voice/tone examples"
+    },
+    {
+      "name": "store-assets",
+      "skill": "brand-manager",
+      "action": "store-assets",
+      "description": "Store new assets (logos, images, fonts)"
+    }
+  ]
+}

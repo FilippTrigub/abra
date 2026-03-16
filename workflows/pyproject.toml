@@ -1,0 +1,9 @@
+[project]
+name = "claw-workflows"
+version = "0.1.0"
+description = "OpenClaw workflow runner"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv]
+dev-dependencies = []

@@ -1,0 +1,29 @@
+{
+  "name": "audio-to-post",
+  "description": "Transform voice message or audio into a text post",
+  "input_type": "audio",
+  "steps": [
+    {
+      "name": "brand-refresh",
+      "skill": "brand-manager",
+      "action": "refresh",
+      "description": "Refresh brand knowledge and load available assets"
+    },
+    {
+      "name": "transcribe",
+      "skill": "audio-transcriber",
+      "description": "Transcribe speech to text"
+    },
+    {
+      "name": "brand-adapt",
+      "skill": "brand-manager",
+      "action": "adapt",
+      "description": "Adapt to brand voice"
+    },
+    {
+      "name": "schedule",
+      "skill": "post-scheduler",
+      "description": "Schedule as text post with transcript"
+    }
+  ]
+}
