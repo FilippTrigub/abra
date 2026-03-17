@@ -26,6 +26,12 @@
       "optional": true
     },
     {
+      "name": "brand-adapt",
+      "skill": "brand-manager",
+      "action": "adapt",
+      "description": "Adapt configurations of subsequent steps to content and to brand voice"
+    },
+    {
       "name": "generate-music",
       "skill": "music-generator",
       "description": "Generate background music",
@@ -43,12 +49,6 @@
       "name": "caption",
       "skill": "video-captioner",
       "description": "Burn animated captions"
-    },
-    {
-      "name": "brand-adapt",
-      "skill": "brand-manager",
-      "action": "adapt",
-      "description": "Adapt caption to brand voice"
     },
     {
       "name": "schedule",

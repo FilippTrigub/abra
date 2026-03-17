@@ -10,20 +10,6 @@
       "description": "Refresh brand knowledge and load available assets"
     },
     {
-      "name": "pick",
-      "skill": "photo-picker",
-      "description": "Select best K images from batch",
-      "params": {
-        "top": 1
-      }
-    },
-    {
-      "name": "remove-bg",
-      "skill": "background-remover",
-      "description": "Remove background, apply brand color",
-      "optional": true
-    },
-    {
       "name": "bokeh",
       "skill": "bokeh-effect",
       "description": "Apply synthetic depth blur",
@@ -32,18 +18,19 @@
     {
       "name": "resize",
       "skill": "social-resizer",
-      "description": "Resize/crop to platform format"
-    },
-    {
-      "name": "caption",
-      "skill": "image-captioner",
-      "description": "Auto-generate caption + tags"
+      "description": "Resize/crop to platform format",
+      "optional": true
     },
     {
       "name": "brand-adapt",
       "skill": "brand-manager",
       "action": "adapt",
       "description": "Refine to brand voice"
+    },
+    {
+      "name": "caption",
+      "skill": "image-captioner",
+      "description": "Auto-generate caption + tags"
     },
     {
       "name": "schedule",

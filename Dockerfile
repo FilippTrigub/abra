@@ -34,8 +34,12 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
         | tee /etc/apt/sources.list.d/github-cli.list && \
+    curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
+        | dd of=/usr/share/keyrings/cloudflare-main.gpg && \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared bookworm main" \
+        | tee /etc/apt/sources.list.d/cloudflared.list && \
     apt-get update && \
-    apt-get install -y --no-install-recommends jq tmux ffmpeg gh ripgrep && \
+    apt-get install -y --no-install-recommends jq tmux ffmpeg gh ripgrep python3-pip cloudflared && \
     rm -rf /var/lib/apt/lists/*
 
 # Go-built binaries
@@ -54,10 +58,13 @@ USER node
 # Install ClawHub skills
 RUN npx clawhub@latest install remotion-video-toolkit
 
-# git identity + credential helper — uses GH_TOKEN at runtime via gh
-RUN git config --global user.name "FilippTrigub" && \
-    git config --global user.email "filipp.trigub@gmail.com" && \
-    git config --global credential.https://github.com.helper '!gh auth git-credential' && \
+ARG GIT_USER
+ARG GIT_EMAIL
+ENV GIT_USER=${GIT_USER}
+ENV GIT_TOKEN=${GH_TOKEN}
+RUN git config --global user.name "${GIT_USER}" && \
+    git config --global user.email "${GIT_EMAIL}" && \
+    git config --global url."https://${GIT_USER}:${GIT_TOKEN}@github.com/".insteadOf "https://github.com/" && \
     git config --global init.defaultBranch main
 
 # uv (Python package manager)
