@@ -270,3 +270,4 @@ def get_brand_font_by_tag(tag):
 6. **Store brand assets early** - Add logos, fonts, and templates during Init phase
 7. **Tag assets consistently** - Use consistent tags for easy discovery
 8. **Update manifest** - Keep asset-manifest.json in sync with actual files
+9. **Assume brand refresh when assets are missing** - If the user does not provide new assets, default to refreshing brand knowledge from existing materials (especially `BRAND.md`) instead of requesting asset uploads.
