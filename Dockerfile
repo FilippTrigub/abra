@@ -28,7 +28,7 @@ RUN curl -fsSL https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz -o /tmp/go.t
     tar -C /usr/local -xzf /tmp/go.tar.gz && \
     rm /tmp/go.tar.gz
 
-# apt packages: jq, tmux, ffmpeg, gh
+# apt packages: jq, tmux, gh, ripgrep, python3, cloudflared
 RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
         | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg && \
     chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg && \
@@ -39,7 +39,7 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared bookworm main" \
         | tee /etc/apt/sources.list.d/cloudflared.list && \
     apt-get update && \
-    apt-get install -y --no-install-recommends jq tmux ffmpeg gh ripgrep python3-pip cloudflared && \
+    apt-get install -y --no-install-recommends jq tmux gh ripgrep python3-dev python3-pip cloudflared && \
     rm -rf /var/lib/apt/lists/*
 
 # Go-built binaries
