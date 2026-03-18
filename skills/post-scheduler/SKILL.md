@@ -138,25 +138,28 @@ uv run posts.py create --channel-id CHANNEL_ID --text "Photo carousel" --mode sh
 
 ### Create Video Post
 
-Use `--video-url` for video files. Local file paths are fully supported:
+Use `--video-url` for video files.
+
+> **Local video files do not work for scheduled posts.** Buffer stores the URL
+> reference and fetches the video later — by which time the cloudflared tunnel
+> is long gone. Local files via tunnel only work with `--mode shareNow` (Buffer
+> publishes immediately while the tunnel is still alive).
+>
+> For any other mode (`customScheduled`, `addToQueue`, etc.) use a **persistent
+> URL**: a Google Drive share link or a direct public HTTPS URL.
+
+**Schedule with a persistent URL:**
 
 ```bash
-# Local video file (served automatically via cloudflared tunnel)
+# Google Drive share URL (auto-converted to direct download)
 uv run posts.py create --channel-id CHANNEL_ID --text "Video caption" \
   --mode customScheduled --due-at "2026-04-01T12:00:00Z" \
-  --video-url path/to/video.mp4
+  --video-url "https://drive.google.com/file/d/FILE_ID/view"
 
-# Public URL
+# Any public HTTPS URL
 uv run posts.py create --channel-id CHANNEL_ID --text "Video caption" \
   --mode customScheduled --due-at "2026-04-01T12:00:00Z" \
   --video-url "https://example.com/video.mp4"
-```
-
-**How local file serving works:** A local HTTP server is started and exposed via a cloudflared Quick Tunnel (no auth required). The tunnel stays alive for `--tunnel-wait` seconds (default 90) after the API call to give Buffer time to download the file, then shuts down automatically. All local files in a single create call share one server and one tunnel.
-
-You can adjust the wait time if needed:
-```bash
-uv run posts.py create ... --video-url path/to/video.mp4 --tunnel-wait 120
 ```
 
 ### Instagram-Specific Features
@@ -170,7 +173,7 @@ Example — Instagram reel with first comment:
 uv run posts.py create --channel-id IG_CHANNEL_ID \
   --text "Amazing reel!" \
   --mode customScheduled --due-at "2026-04-01T12:00:00Z" \
-  --video-url path/to/reel.mp4 \
+  --video-url "https://drive.google.com/file/d/FILE_ID/view" \
   --ig-type reel \
   --ig-first-comment "Follow for more!"
 ```
@@ -225,3 +228,4 @@ Scripts exit with a non-zero code and print the error message to stderr on failu
 - TikTok channels are not supported (Instagram and LinkedIn only)
 - The Buffer API is in Beta — endpoints may change
 - Local file serving requires `cloudflared` to be installed and on PATH
+- Local video files only work with `--mode shareNow` — scheduled/queued video posts require a persistent URL (Google Drive or public HTTPS)

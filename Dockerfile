@@ -96,7 +96,8 @@ RUN curl -fsSL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ff
 ENV LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}"
 
 # Python packages
-RUN pip3 install --no-cache-dir --break-system-packages protobuf tiktoken
+RUN pip3 install --no-cache-dir --break-system-packages protobuf tiktoken playwright && \
+    playwright install --with-deps chromium
 
 USER node
 ENV HOMEBREW_PREFIX="/home/node/.linuxbrew"

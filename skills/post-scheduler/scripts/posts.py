@@ -103,9 +103,7 @@ mutation CreatePost($input: CreatePostInput!) {
 """
 
 # Matches: https://drive.google.com/file/d/FILE_ID/view...
-_GDRIVE_SHARE_RE = re.compile(
-    r"https://drive\.google\.com/file/d/([a-zA-Z0-9_-]+)"
-)
+_GDRIVE_SHARE_RE = re.compile(r"https://drive\.google\.com/file/d/([a-zA-Z0-9_-]+)")
 
 
 _TUNNEL_URL_RE = re.compile(r"https://[a-z0-9-]+\.trycloudflare\.com")
@@ -148,7 +146,9 @@ def _serve_local_files(paths: list[str]) -> tuple[dict[str, str], "callable"]:
 
     server = http.server.HTTPServer(("", port), _Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    print(f"Local HTTP server started on :{port} (serving {serve_dir})", file=sys.stderr)
+    print(
+        f"Local HTTP server started on :{port} (serving {serve_dir})", file=sys.stderr
+    )
 
     try:
         proc = subprocess.Popen(
@@ -212,7 +212,10 @@ def _probe_url(url: str, retries: int = 3) -> None:
             if resp.status == 200 and cl > 0:
                 print(f"  verified: {url} ({cl} bytes)", file=sys.stderr)
                 return
-            print(f"  attempt {attempt}: status={resp.status} content-length={cl}", file=sys.stderr)
+            print(
+                f"  attempt {attempt}: status={resp.status} content-length={cl}",
+                file=sys.stderr,
+            )
         except Exception as e:
             print(f"  attempt {attempt} failed: {e}", file=sys.stderr)
         if attempt < retries:
@@ -350,13 +353,19 @@ def cmd_create(args: argparse.Namespace) -> None:
     if metadata:
         post_input["metadata"] = metadata
 
+    api_succeeded = False
     try:
         data = graphql(CREATE_MUTATION, {"input": post_input})
+        api_succeeded = True
     finally:
         if shutdown_tunnel:
-            wait = getattr(args, "tunnel_wait", 60)
-            print(f"API call complete. Keeping tunnel alive for {wait}s while Buffer fetches the video...", file=sys.stderr)
-            time.sleep(wait)
+            if api_succeeded:
+                wait = getattr(args, "tunnel_wait", 90)
+                print(
+                    f"API call complete. Keeping tunnel alive for {wait}s while Buffer fetches the video...",
+                    file=sys.stderr,
+                )
+                time.sleep(wait)
             shutdown_tunnel()
 
     result = data["createPost"]
@@ -375,7 +384,9 @@ def main() -> None:
     p_list.add_argument("--org-id", required=True, metavar="ORG_ID")
     p_list.add_argument("--status", required=True, choices=["scheduled", "sent"])
     p_list.add_argument("--channel-id", metavar="CHANNEL_ID")
-    p_list.add_argument("--with-assets", action="store_true", help="Include asset details")
+    p_list.add_argument(
+        "--with-assets", action="store_true", help="Include asset details"
+    )
     p_list.add_argument("--limit", type=int, metavar="N")
     p_list.add_argument("--after", metavar="CURSOR", help="Pagination cursor")
 
@@ -385,9 +396,17 @@ def main() -> None:
     p_create.add_argument(
         "--mode",
         required=True,
-        choices=["shareNow", "addToQueue", "shareNext", "customScheduled", "recommendedTime"],
+        choices=[
+            "shareNow",
+            "addToQueue",
+            "shareNext",
+            "customScheduled",
+            "recommendedTime",
+        ],
     )
-    p_create.add_argument("--due-at", metavar="ISO8601", help="Schedule time (for customScheduled)")
+    p_create.add_argument(
+        "--due-at", metavar="ISO8601", help="Schedule time (for customScheduled)"
+    )
     p_create.add_argument(
         "--image-url",
         action="append",
@@ -404,15 +423,21 @@ def main() -> None:
         choices=["post", "reel", "story"],
         help="Instagram post type (required for Instagram channels)",
     )
-    p_create.add_argument("--ig-first-comment", metavar="TEXT", help="Instagram first comment")
-    p_create.add_argument("--li-first-comment", metavar="TEXT", help="LinkedIn first comment")
-    p_create.add_argument("--link-attachment", metavar="URL", help="LinkedIn link attachment URL")
+    p_create.add_argument(
+        "--ig-first-comment", metavar="TEXT", help="Instagram first comment"
+    )
+    p_create.add_argument(
+        "--li-first-comment", metavar="TEXT", help="LinkedIn first comment"
+    )
+    p_create.add_argument(
+        "--link-attachment", metavar="URL", help="LinkedIn link attachment URL"
+    )
     p_create.add_argument(
         "--tunnel-wait",
         type=int,
-        default=60,
+        default=90,
         metavar="SECONDS",
-        help="Seconds to keep cloudflared tunnel alive after API call (for local video files). Default: 60",
+        help="Seconds to keep cloudflared tunnel alive after API call (for local video files). Default: 90",
     )
 
     args = parser.parse_args()
