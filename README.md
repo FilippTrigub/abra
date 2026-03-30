@@ -104,6 +104,7 @@ Brand assets are stored in `skills/brand-manager/brand-assets/`:
 brand-assets/
 ├── images/              # Logos, profile pics, templates
 ├── fonts/               # .ttf, .otf, .woff files
+├── videos/              # Hook intro clips and other reusable brand videos
 └── asset-manifest.json   # Asset index
 ```
 
@@ -117,6 +118,10 @@ python skills/brand-manager/scripts/brand_assets.py store-image \
 # Store a brand font
 python skills/brand-manager/scripts/brand_assets.py store-font \
   --input ./Inter-Bold.ttf --name inter-bold --tags heading
+
+# Store a brand hook video
+python skills/brand-manager/scripts/brand_assets.py store-video \
+  --input ./intro-hook.mp4 --name intro-fast --tags hook-video --default
 
 # List all assets
 python skills/brand-manager/scripts/brand_assets.py list
@@ -147,6 +152,9 @@ def get_brand_asset(tag: str) -> Path | None:
             return MANIFEST.parent / img["path"]
     return None
 ```
+
+Video assets follow the same manifest structure under `videos`, with optional
+`default: true` for a default hook clip.
 
 ---
 

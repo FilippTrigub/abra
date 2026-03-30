@@ -84,7 +84,7 @@ description: >-
 
 ## Asset Storage
 
-This skill manages brand assets (images and fonts) that can be consumed by other skills.
+This skill manages brand assets (images, fonts, and videos) that can be consumed by other skills.
 
 **Asset Directory Structure**:
 ```
@@ -92,6 +92,7 @@ $SKILL_DIR/
 ├── brand-assets/
 │   ├── images/          # Brand images (logos, profile pics, templates)
 │   ├── fonts/           # Brand fonts (.ttf, .otf files)
+│   ├── videos/          # Brand video clips (hook intros, bumpers)
 │   └── asset-manifest.json  # Index of all stored assets
 ```
 
@@ -153,12 +154,33 @@ python scripts/brand_assets.py store-font \
 
 ---
 
-### 5. list-brand-assets
+### 5. store-brand-video
+
+**Purpose**: Stores a reusable brand video clip in the brand-assets repository and registers it in the manifest.
+
+**Input**:
+- Video file path (.mp4, .mov, .avi, .mkv, .m4v, .webm)
+- Asset name
+- Optional tags (e.g. "hook-video", "bumper")
+- Optional `--default` flag to make it the default hook clip
+
+**Script Usage**:
+```bash
+python scripts/brand_assets.py store-video \
+  --input /path/to/intro-hook.mp4 \
+  --name intro-fast \
+  --tags hook-video \
+  --default
+```
+
+---
+
+### 6. list-brand-assets
 
 **Purpose**: Lists all stored brand assets, optionally filtered by type or tags.
 
 **Input**:
-- Optional filter: "images", "fonts", or specific tag
+- Optional filter: "images", "fonts", "videos", or specific tag
 
 **Output**:
 - List of all matching assets with names, paths, and tags
@@ -177,7 +199,7 @@ python scripts/brand_assets.py list --tag logo
 
 ---
 
-### 6. get-brand-asset-path
+### 7. get-brand-asset-path
 
 **Purpose**: Returns the absolute path to a specific brand asset for consumption by other skills.
 
@@ -199,7 +221,7 @@ python scripts/brand_assets.py get-path --tag logo
 
 ---
 
-### 7. remove-brand-asset
+### 8. remove-brand-asset
 
 **Purpose**: Removes a brand asset from the repository and manifest.
 
