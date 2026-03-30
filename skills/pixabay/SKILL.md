@@ -1,10 +1,10 @@
 ---
 name: pixabay
 description: >-
-  Overlay royalty-free images and short video clips from Pixabay onto videos
-  with optional sound effects. Use this skill when the user wants to add
+  Overlay royalty-free images and short video clips from Pixabay onto videos or images,
+  with optional sound effects for videos. Use this skill when the user wants to add
   branded backgrounds, illustrative overlays, or short animated clips to
-  a video — no attribution required.
+  media — no attribution required.
 metadata:
   {
     "openclaw":
@@ -18,7 +18,7 @@ metadata:
 
 # pixabay — Royalty-Free Image & Video Overlays
 
-Overlay royalty-free Pixabay images and short video clips on top of videos, with optional SFX and optional pause moments.
+Overlay royalty-free Pixabay images and short video clips on top of videos or images, with optional SFX and optional pause moments on videos.
 
 The skill directory (where this file lives) is referred to as `$SKILL_DIR` below.
 
@@ -27,6 +27,7 @@ The skill directory (where this file lives) is referred to as `$SKILL_DIR` below
 Use this skill when the user wants to:
 - Add image overlays for branded context (logos, textures, motifs, themes)
 - Add short visual clips for emphasis (confetti, particles, ambient loops)
+- Add overlays onto static images
 - Build social-style moments with visual + sound effects at key timestamps
 - Use royalty-free media without attribution requirements
 - Trigger overlays by timestamp or text cue from transcript output
@@ -99,6 +100,12 @@ cd "$SKILL_DIR" && uv run python scripts/pixabay.py
 | `effects[].sfx.volume` | float | `1.0` | SFX volume multiplier |
 | `effects[].pause_video` | bool | `false` | Freeze frame effect window |
 | `effects[].duration` | float | `3.0` | Effect duration |
+
+## Image input mode
+
+- Supported image inputs include `.jpg`, `.jpeg`, `.png`, `.webp`, `.bmp`, `.tif`, `.tiff`
+- `text_cue`, `pause_video`, and `sfx` are not supported for images and will hard-error
+- Keep `trigger.type` as `timestamp` for image-compatible configs
 
 ## Overlay Source Values
 

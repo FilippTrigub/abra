@@ -229,6 +229,66 @@ def build_overlay_command(
     return cmd
 
 
+def build_image_overlay_command(
+    input_path: Path,
+    output_path: Path,
+    effects: list[Effect],
+    resolved_overlays: dict[int, Path],
+) -> list[str]:
+    """Build an ffmpeg command to overlay assets onto a single image."""
+    info = probe_video(input_path)
+    video_width = info["width"]
+    video_height = info["height"]
+
+    overlay_pairs = [
+        (i, effect)
+        for i, effect in enumerate(effects)
+        if effect.overlay is not None
+        and not effect.pause_video
+        and i in resolved_overlays
+    ]
+
+    cmd: list[str] = ["ffmpeg", "-y", "-i", str(input_path)]
+    filter_parts: list[str] = []
+    prev_video = "[0:v]"
+
+    for i, (_, effect) in enumerate(overlay_pairs):
+        overlay = effect.overlay
+        if overlay is None:
+            continue
+        input_idx = i + 1
+        overlay_label = f"[g{i}]"
+        out_label = f"[v{i}]"
+        path = resolved_overlays[overlay_pairs[i][0]]
+        cmd += _overlay_input_flags(path)
+
+        if overlay.mode == "fullscreen":
+            scale = (
+                f"[{input_idx}:v]scale={video_width}:{video_height},"
+                f"format=rgba{overlay_label}"
+            )
+        else:
+            scale = f"[{input_idx}:v]scale={overlay.width}:-1,format=rgba{overlay_label}"
+
+        x, y = overlay_position(overlay, video_width, video_height)
+        overlay_filter = (
+            f"{prev_video}{overlay_label}overlay={x}:{y}:shortest=1{out_label}"
+        )
+        filter_parts.append(scale)
+        filter_parts.append(overlay_filter)
+        prev_video = out_label
+
+    if filter_parts:
+        last_label = f"[v{len(overlay_pairs) - 1}]"
+        filter_parts[-1] = filter_parts[-1].replace(last_label, "[vout]", 1)
+        cmd += ["-filter_complex", "; ".join(filter_parts), "-map", "[vout]"]
+    else:
+        cmd += ["-map", "0:v"]
+
+    cmd += ["-frames:v", "1", "-hide_banner", "-loglevel", "error", str(output_path)]
+    return cmd
+
+
 def build_pause_command(
     input_path: Path,
     output_path: Path,

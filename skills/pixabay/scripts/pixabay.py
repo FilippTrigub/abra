@@ -20,6 +20,7 @@ from ffmpeg_utils import (  # type: ignore  # noqa: E402
     Effect,
     OverlaySpec,
     SfxSpec,
+    build_image_overlay_command,
     build_overlay_command,
     build_pause_command,
     mix_sfx_into_audio,
@@ -29,6 +30,7 @@ from timeline import resolve_text_cue  # type: ignore[import]  # noqa: E402
 
 SKILL_DIR = Path(__file__).parent.parent
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".m4v", ".webm"}
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff"}
 
 
 def load_config(path: Path) -> dict:
@@ -309,9 +311,70 @@ def process_video(
     print(f"  -> {out_path}")
 
 
+def process_image(
+    image_path: Path,
+    config: dict,
+    skill_dir: Path,
+    presets: dict,
+    favourites_path: Path,
+    output_dir: Path,
+) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    out_path = output_dir / image_path.name
+
+    effects: list[Effect] = []
+    resolved_overlays: dict[int, Path] = {}
+
+    for i, eff_cfg in enumerate(config.get("effects", [])):
+        eff_cfg = apply_preset(eff_cfg, presets)
+        trigger_cfg = eff_cfg.get("trigger", {})
+        trigger_type = trigger_cfg.get("type")
+        if trigger_type == "text_cue":
+            raise ValueError(
+                f"effects[{i}]: text_cue is not supported for image inputs"
+            )
+        if bool(eff_cfg.get("pause_video", False)):
+            raise ValueError(
+                f"effects[{i}]: pause_video is not supported for image inputs"
+            )
+        if "sfx" in eff_cfg:
+            raise ValueError(f"effects[{i}]: sfx is not supported for image inputs")
+        if trigger_type != "timestamp":
+            raise ValueError(
+                f"effects[{i}]: trigger.type must be 'timestamp' for image inputs"
+            )
+
+        trigger_time = float(trigger_cfg.get("value", 0.0))
+        overlay_spec: Optional[OverlaySpec] = None
+        if "overlay" in eff_cfg:
+            overlay_spec = _parse_overlay_spec(eff_cfg["overlay"])
+            resolved_overlays[i] = resolve_overlay(
+                overlay_spec.source, skill_dir, favourites_path
+            )
+
+        effects.append(
+            Effect(
+                trigger_time=trigger_time,
+                overlay=overlay_spec,
+                sfx=None,
+                pause_video=False,
+                duration=float(eff_cfg.get("duration", 3.0)),
+            )
+        )
+
+    cmd = build_image_overlay_command(
+        input_path=image_path,
+        output_path=out_path,
+        effects=effects,
+        resolved_overlays=resolved_overlays,
+    )
+    subprocess.run(cmd, check=True)
+    print(f"  -> {out_path}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="pixabay — Add Pixabay overlays and sound effects to videos"
+        description="pixabay — Add Pixabay overlays to videos and images"
     )
     parser.add_argument("--config", default="config.json", help="Path to config.json")
     parser.add_argument("--input", help="Override input_dir from config")
@@ -342,13 +405,14 @@ def main() -> None:
         print(f"Error: input directory not found: {input_dir}", file=sys.stderr)
         sys.exit(1)
 
-    videos = sorted(
+    media_files = sorted(
         p
         for p in input_dir.iterdir()
-        if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS
+        if p.is_file()
+        and p.suffix.lower() in (VIDEO_EXTENSIONS | IMAGE_EXTENSIONS)
     )
-    if not videos:
-        print(f"No video files found in {input_dir}")
+    if not media_files:
+        print(f"No supported media files found in {input_dir}")
         sys.exit(0)
 
     presets = load_presets(SKILL_DIR)
@@ -358,26 +422,36 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory(prefix="pixabay_") as tmp_str:
         tmp = Path(tmp_str)
-        for video_path in videos:
-            print(f"Processing {video_path.name}...")
-            video_tmp = tmp / video_path.stem
-            video_tmp.mkdir(parents=True, exist_ok=True)
+        for media_path in media_files:
+            print(f"Processing {media_path.name}...")
             try:
-                process_video(
-                    video_path=video_path,
-                    config=cfg,
-                    skill_dir=SKILL_DIR,
-                    presets=presets,
-                    favourites_path=favourites_path,
-                    output_dir=output_dir,
-                    tmp_dir=video_tmp,
-                )
+                if media_path.suffix.lower() in VIDEO_EXTENSIONS:
+                    video_tmp = tmp / media_path.stem
+                    video_tmp.mkdir(parents=True, exist_ok=True)
+                    process_video(
+                        video_path=media_path,
+                        config=cfg,
+                        skill_dir=SKILL_DIR,
+                        presets=presets,
+                        favourites_path=favourites_path,
+                        output_dir=output_dir,
+                        tmp_dir=video_tmp,
+                    )
+                else:
+                    process_image(
+                        image_path=media_path,
+                        config=cfg,
+                        skill_dir=SKILL_DIR,
+                        presets=presets,
+                        favourites_path=favourites_path,
+                        output_dir=output_dir,
+                    )
                 succeeded += 1
             except Exception as exc:
-                print(f"  x {video_path.name}: {exc}", file=sys.stderr)
-                failed.append(video_path.name)
+                print(f"  x {media_path.name}: {exc}", file=sys.stderr)
+                failed.append(media_path.name)
 
-    total = len(videos)
+    total = len(media_files)
     print(f"\nDone: {succeeded}/{total} succeeded")
     if failed:
         print("Failed:")
