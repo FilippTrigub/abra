@@ -119,6 +119,15 @@ def gif_position(spec: GifSpec, video_width: int, video_height: int) -> tuple[in
     return pos_map.get(spec.position, (MARGIN, MARGIN))
 
 
+def _overlay_input_flags(path: Path) -> list[str]:
+    ext = path.suffix.lower()
+    if ext in {".gif", ".webp", ".apng"}:
+        return ["-ignore_loop", "0", "-i", str(path)]
+    if ext in {".jpg", ".jpeg", ".png", ".bmp", ".tiff"}:
+        return ["-loop", "1", "-i", str(path)]
+    return ["-i", str(path)]
+
+
 # ---------------------------------------------------------------------------
 # FFmpeg filter_complex builder
 # ---------------------------------------------------------------------------
@@ -150,7 +159,7 @@ def build_gif_filter(
         gif_label = f"[g{i}]"
         out_label = f"[v{i}]"
 
-        extra_inputs += ["-ignore_loop", "0", "-i", str(path)]
+        extra_inputs += _overlay_input_flags(path)
 
         if spec.mode == "fullscreen":
             scale = f"[{input_idx}:v]scale={video_width}:{video_height},format=rgba{gif_label}"
@@ -250,6 +259,59 @@ def build_overlay_command(
         "error",
         str(output_path),
     ]
+    return cmd
+
+
+def build_image_overlay_command(
+    input_path: Path,
+    output_path: Path,
+    effects: list[Effect],
+    resolved_gifs: dict[int, Path],
+) -> list[str]:
+    """Build an ffmpeg command to overlay GIF/image assets onto a single image."""
+    info = probe_video(input_path)
+    video_width = info["width"]
+    video_height = info["height"]
+
+    gif_pairs = [
+        (i, e)
+        for i, e in enumerate(effects)
+        if e.gif is not None and not e.pause_video and i in resolved_gifs
+    ]
+
+    cmd: list[str] = ["ffmpeg", "-y", "-i", str(input_path)]
+    filter_parts: list[str] = []
+    prev_video = "[0:v]"
+
+    for i, (_, effect) in enumerate(gif_pairs):
+        gif = effect.gif
+        if gif is None:
+            continue
+        input_idx = i + 1
+        gif_label = f"[g{i}]"
+        out_label = f"[v{i}]"
+        path = resolved_gifs[gif_pairs[i][0]]
+        cmd += _overlay_input_flags(path)
+
+        if gif.mode == "fullscreen":
+            scale = f"[{input_idx}:v]scale={video_width}:{video_height},format=rgba{gif_label}"
+        else:
+            scale = f"[{input_idx}:v]scale={gif.width}:-1,format=rgba{gif_label}"
+
+        x, y = gif_position(gif, video_width, video_height)
+        overlay = f"{prev_video}{gif_label}overlay={x}:{y}:shortest=1{out_label}"
+        filter_parts.append(scale)
+        filter_parts.append(overlay)
+        prev_video = out_label
+
+    if filter_parts:
+        last_label = f"[v{len(gif_pairs) - 1}]"
+        filter_parts[-1] = filter_parts[-1].replace(last_label, "[vout]", 1)
+        cmd += ["-filter_complex", "; ".join(filter_parts), "-map", "[vout]"]
+    else:
+        cmd += ["-map", "0:v"]
+
+    cmd += ["-frames:v", "1", "-hide_banner", "-loglevel", "error", str(output_path)]
     return cmd
 
 

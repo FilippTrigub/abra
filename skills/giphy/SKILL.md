@@ -1,7 +1,7 @@
 ---
 name: giphy
 description: >-
-  Overlay animated GIF stickers from GIPHY onto videos with optional sound effects.
+  Overlay animated GIF stickers from GIPHY onto videos or images, with optional sound effects for videos.
   Use this skill when the user wants to add Instagram-style reactions, celebrations,
   or any GIPHY-sourced animated sticker to a video clip.
 metadata:
@@ -18,9 +18,8 @@ metadata:
 # giphy — Animated GIF Sticker Overlays
 
 Overlay animated GIF stickers (hearts, sparkles, confetti, fire, stars, etc.)
-paired with social sound effects (pop, whoosh, chime, etc.) onto videos at
-specific timestamps or text cues. Perfect for Instagram/TikTok-style reactions,
-viral moment highlights, birthday celebrations, or captioned video edits.
+onto videos or images. For videos, optionally pair with social sound effects
+(pop, whoosh, chime, etc.) at specific timestamps or text cues.
 
 The skill directory (where this SKILL.md lives) is referred to as `$SKILL_DIR` below.
 
@@ -30,6 +29,7 @@ The skill directory (where this SKILL.md lives) is referred to as `$SKILL_DIR` b
 
 Use this skill when the user wants to:
 - Add Instagram/TikTok-style reactions to videos (hearts, sparkles, emojis)
+- Add GIF stickers onto static images
 - Highlight viral moments with celebration animations (confetti, fire, crown)
 - Add emotional beats with sound effects (pop, whoosh, chime, bass drop)
 - Create viral-style video edits with presets (`viral`, `party`, `love`, etc.)
@@ -168,6 +168,11 @@ Tell the user:
 | `effects[].sfx.volume` | float | `1.0` | SFX volume (0-1) |
 | `effects[].pause_video` | bool | `false` | Pause video during effect |
 | `effects[].duration` | float | `3.0` | Effect duration in seconds |
+
+### Image input mode
+- Supported inputs include common image formats (`.jpg`, `.jpeg`, `.png`, `.webp`, `.bmp`, `.tif`, `.tiff`)
+- `text_cue`, `pause_video`, and `sfx` are not supported for images and will hard-error
+- Use `timestamp` triggers in config for compatibility; overlays are composited onto the output image
 
 ### GIF source values:
 - `"local:<name>"` — file in `assets/gifs/library/<name>.(gif|webp|png)`; no API key needed; **recommended for personal sticker packs**
