@@ -23,9 +23,10 @@ Transform raw video into a branded reel.
 | 4 | `audio-splitter` | Isolate vocals / strip original audio |
 | 5 | `music-generator` | Generate background music (optional) |
 | 6 | `video-enhancer` | Color grade + audio normalization |
-| 7 | `video-captioner` | Burn animated captions |
-| 8 | `brand-manager` | Adapt caption to brand voice |
-| 9 | `post-scheduler` | Schedule to Instagram/LinkedIn |
+| 7 | `visual-hook` | Add a scroll-stopping first-frame hook overlay |
+| 8 | `video-captioner` | Burn animated captions |
+| 9 | `brand-manager` | Adapt caption to brand voice |
+| 10 | `post-scheduler` | Schedule to Instagram/LinkedIn |
 
 ---
 
@@ -40,9 +41,10 @@ Transform photos into a branded post.
 | 3 | `background-remover` | Remove background, apply brand color |
 | 4 | `bokeh-effect` | Apply synthetic depth blur |
 | 5 | `social-resizer` | Resize/crop to platform format |
-| 6 | `image-captioner` | Auto-generate caption + tags |
-| 7 | `brand-manager` | Refine to brand voice |
-| 8 | `post-scheduler` | Schedule post |
+| 6 | `visual-hook` | Add a bold visual hook in the safe text zone |
+| 7 | `image-captioner` | Auto-generate caption + tags |
+| 8 | `brand-manager` | Refine to brand voice |
+| 9 | `post-scheduler` | Schedule post |
 
 ---
 
@@ -110,10 +112,11 @@ The Orchestrator applies these rules:
 2. **Transcription first** — if input contains video/audio, `audio-transcriber` runs before editing
 3. **Selection before enhancement** — `photo-picker` before `bokeh-effect` / `background-remover`
 4. **Clean before composite** — `audio-splitter` / `video-matte` before `video-enhancer`
-5. **Enhance before caption** — `video-enhancer` before `video-captioner`
-6. **Brand last** — `brand-manager` runs before `post-scheduler` to adapt content
-7. **Always confirm** — show plan before execution
-8. **VRAM aware** — recommend `--device cpu` when GPU memory is limited
+5. **Enhance before hook** — `video-enhancer` before `visual-hook`
+6. **Hook before caption** — `visual-hook` before `video-captioner` / `image-captioner`
+7. **Brand last** — `brand-manager` runs before `post-scheduler` to adapt content
+8. **Always confirm** — show plan before execution
+9. **VRAM aware** — recommend `--device cpu` when GPU memory is limited
 
 ---
 
@@ -229,6 +232,7 @@ This ensures:
 | `audio-splitter` | video/audio | vocal/music stems | mid |
 | `music-generator` | prompt | music file | mid |
 | `video-enhancer` | video | graded video | late |
+| `visual-hook` | image/video | hook-overlaid media | late |
 | `video-captioner` | video | captioned video | late |
 | `social-resizer` | images | resized images | late |
 | `post-scheduler` | text + media | scheduled post | final |
@@ -265,4 +269,4 @@ BUFFER_API_KEY=your-buffer-token
 2. **Always confirm** — review the plan before execution
 3. **Keep brand fresh** — add new content regularly
 4. **GPU-heavy last** — run intensive skills when LLM is idle
-5. **Enhance then caption** — `video-enhancer` before `video-captioner`
+5. **Enhance then hook then caption** — `video-enhancer` → `visual-hook` → `video-captioner`

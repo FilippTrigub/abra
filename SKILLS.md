@@ -446,6 +446,20 @@ uv run python scripts/process.py --config config.json
 
 ---
 
+### visual-hook — Visual Hook Overlays
+
+**What it does:** Adds bold, high-contrast hook text overlays to images and videos in Instagram-safe zones. Useful for questions, teasers, bold claims, and other scroll-stopping first-frame treatments. CPU-only — no GPU required.
+
+**Requires:** `uv`, `ffmpeg`
+
+**Usage:**
+```bash
+cd skills/visual-hook && uv sync
+uv run python scripts/hook.py --config config.json
+```
+
+---
+
 ### post-scheduler — Content Scheduling
 
 **What it does:** Schedules, creates, and manages social media posts on Instagram and LinkedIn using the Buffer GraphQL API.
@@ -492,5 +506,6 @@ uv run python scripts/posts.py create \
 | pixabay | videos | Royalty-free image/video overlays + optional SFX | 0 GB | ✅ instant |
 | video-enhancer | videos | Sharpen, colour grade, normalise audio | 0 GB | ✅ fast |
 | video-captioner | videos | Whisper transcription + animated captions | 0 GB | ✅ ~30s/clip |
+| visual-hook | images/videos | Bold hook text overlays for Instagram-safe zones | 0 GB | ✅ instant |
 
 Core: brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, social-resizer, post-scheduler, canva-connector
