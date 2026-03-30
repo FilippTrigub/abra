@@ -460,6 +460,20 @@ uv run python scripts/hook.py --config config.json
 
 ---
 
+### end-cta — End CTA Renderer
+
+**What it does:** Applies a brand-defined CTA at the end of content. Text and image CTAs can overlay images, while videos receive an appended CTA card or CTA video. CPU-only — no GPU required.
+
+**Requires:** `uv`, `ffmpeg`
+
+**Usage:**
+```bash
+cd skills/end-cta && uv sync
+uv run python scripts/cta.py --config config.json
+```
+
+---
+
 ### post-scheduler — Content Scheduling
 
 **What it does:** Schedules, creates, and manages social media posts on Instagram and LinkedIn using the Buffer GraphQL API.
@@ -507,5 +521,6 @@ uv run python scripts/posts.py create \
 | video-enhancer | videos | Sharpen, colour grade, normalise audio | 0 GB | ✅ fast |
 | video-captioner | videos | Whisper transcription + animated captions | 0 GB | ✅ ~30s/clip |
 | visual-hook | images/videos | Bold hook text overlays for Instagram-safe zones | 0 GB | ✅ instant |
+| end-cta | images/videos | Brand CTA overlays and appended CTA cards/videos | 0 GB | ✅ instant |
 
 Core: brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, social-resizer, post-scheduler, canva-connector

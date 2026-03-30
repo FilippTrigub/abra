@@ -25,8 +25,9 @@ Transform raw video into a branded reel.
 | 6 | `video-enhancer` | Color grade + audio normalization |
 | 7 | `visual-hook` | Add a scroll-stopping first-frame hook overlay |
 | 8 | `video-captioner` | Burn animated captions |
-| 9 | `brand-manager` | Adapt caption to brand voice |
-| 10 | `post-scheduler` | Schedule to Instagram/LinkedIn |
+| 9 | `end-cta` | Append a brand CTA card or CTA video |
+| 10 | `brand-manager` | Adapt caption to brand voice |
+| 11 | `post-scheduler` | Schedule to Instagram/LinkedIn |
 
 ---
 
@@ -42,9 +43,10 @@ Transform photos into a branded post.
 | 4 | `bokeh-effect` | Apply synthetic depth blur |
 | 5 | `social-resizer` | Resize/crop to platform format |
 | 6 | `visual-hook` | Add a bold visual hook in the safe text zone |
-| 7 | `image-captioner` | Auto-generate caption + tags |
-| 8 | `brand-manager` | Refine to brand voice |
-| 9 | `post-scheduler` | Schedule post |
+| 7 | `end-cta` | Add the final CTA overlay |
+| 8 | `image-captioner` | Auto-generate caption + tags |
+| 9 | `brand-manager` | Refine to brand voice |
+| 10 | `post-scheduler` | Schedule post |
 
 ---
 
@@ -114,9 +116,10 @@ The Orchestrator applies these rules:
 4. **Clean before composite** — `audio-splitter` / `video-matte` before `video-enhancer`
 5. **Enhance before hook** — `video-enhancer` before `visual-hook`
 6. **Hook before caption** — `visual-hook` before `video-captioner` / `image-captioner`
-7. **Brand last** — `brand-manager` runs before `post-scheduler` to adapt content
-8. **Always confirm** — show plan before execution
-9. **VRAM aware** — recommend `--device cpu` when GPU memory is limited
+7. **CTA after captioning** — `end-cta` runs after main content edits and before scheduling
+8. **Brand last** — `brand-manager` runs before `post-scheduler` to adapt content
+9. **Always confirm** — show plan before execution
+10. **VRAM aware** — recommend `--device cpu` when GPU memory is limited
 
 ---
 
@@ -233,6 +236,7 @@ This ensures:
 | `music-generator` | prompt | music file | mid |
 | `video-enhancer` | video | graded video | late |
 | `visual-hook` | image/video | hook-overlaid media | late |
+| `end-cta` | image/video | CTA-finished media | late |
 | `video-captioner` | video | captioned video | late |
 | `social-resizer` | images | resized images | late |
 | `post-scheduler` | text + media | scheduled post | final |
@@ -269,4 +273,4 @@ BUFFER_API_KEY=your-buffer-token
 2. **Always confirm** — review the plan before execution
 3. **Keep brand fresh** — add new content regularly
 4. **GPU-heavy last** — run intensive skills when LLM is idle
-5. **Enhance then hook then caption** — `video-enhancer` → `visual-hook` → `video-captioner`
+5. **Finish with CTA** — `video-enhancer` → `visual-hook` → `video-captioner` → `end-cta`
