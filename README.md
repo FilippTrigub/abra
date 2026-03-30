@@ -94,7 +94,7 @@ After scheduling, input files are archived to `archive/<workflow>/<timestamp>/`.
 
 ## 🎨 Brand Asset Management
 
-Store and manage brand images and fonts for use across all content processing skills.
+Store and manage brand images, fonts, videos, and CTA definitions for use across all content processing skills.
 
 ### Asset Storage
 
@@ -122,6 +122,18 @@ python skills/brand-manager/scripts/brand_assets.py store-font \
 # Store a brand hook video
 python skills/brand-manager/scripts/brand_assets.py store-video \
   --input ./intro-hook.mp4 --name intro-fast --tags hook-video --default
+
+# Store a text CTA
+python skills/brand-manager/scripts/brand_assets.py store-cta-text \
+  --name book-call --text "Book a call" --tags cta --default
+
+# Store an image CTA from an existing brand image
+python skills/brand-manager/scripts/brand_assets.py store-cta-image \
+  --name follow-instagram --asset-name main-logo --tags cta
+
+# Store a video CTA from an existing brand video
+python skills/brand-manager/scripts/brand_assets.py store-cta-video \
+  --name subscribe-endcard --asset-name intro-fast --tags cta
 
 # List all assets
 python skills/brand-manager/scripts/brand_assets.py list
@@ -155,6 +167,9 @@ def get_brand_asset(tag: str) -> Path | None:
 
 Video assets follow the same manifest structure under `videos`, with optional
 `default: true` for a default hook clip.
+
+CTA definitions live under `ctas` in the same manifest. Text CTAs store inline text,
+while image and video CTAs reference stored brand asset paths.
 
 ---
 

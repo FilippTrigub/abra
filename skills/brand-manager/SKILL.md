@@ -84,7 +84,7 @@ description: >-
 
 ## Asset Storage
 
-This skill manages brand assets (images, fonts, and videos) that can be consumed by other skills.
+This skill manages brand assets (images, fonts, videos, and CTA definitions) that can be consumed by other skills.
 
 **Asset Directory Structure**:
 ```
@@ -93,7 +93,7 @@ $SKILL_DIR/
 │   ├── images/          # Brand images (logos, profile pics, templates)
 │   ├── fonts/           # Brand fonts (.ttf, .otf files)
 │   ├── videos/          # Brand video clips (hook intros, bumpers)
-│   └── asset-manifest.json  # Index of all stored assets
+│   └── asset-manifest.json  # Index of all stored assets and CTA definitions
 ```
 
 ---
@@ -180,7 +180,7 @@ python scripts/brand_assets.py store-video \
 **Purpose**: Lists all stored brand assets, optionally filtered by type or tags.
 
 **Input**:
-- Optional filter: "images", "fonts", "videos", or specific tag
+- Optional filter: "images", "fonts", "videos", "ctas", or specific tag
 
 **Output**:
 - List of all matching assets with names, paths, and tags
@@ -235,6 +235,36 @@ python scripts/brand_assets.py get-path --tag logo
 **Script Usage**:
 ```bash
 python scripts/brand_assets.py remove --name logo-square
+```
+
+---
+
+### 9. store-cta-definitions
+
+**Purpose**: Registers CTA definitions in the manifest for downstream skills such as `end-cta`.
+
+**Supported forms**:
+- `store-cta-text` for inline text CTAs
+- `store-cta-image` for CTAs backed by an existing stored image asset
+- `store-cta-video` for CTAs backed by an existing stored video asset
+
+**Script Usage**:
+```bash
+python scripts/brand_assets.py store-cta-text \
+  --name book-call \
+  --text "Book a call" \
+  --tags cta \
+  --default
+
+python scripts/brand_assets.py store-cta-image \
+  --name follow-instagram \
+  --asset-name logo-square \
+  --tags cta
+
+python scripts/brand_assets.py store-cta-video \
+  --name subscribe-endcard \
+  --asset-name intro-fast \
+  --tags cta
 ```
 
 ---

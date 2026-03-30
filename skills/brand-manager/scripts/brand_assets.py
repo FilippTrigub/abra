@@ -32,12 +32,14 @@ def load_manifest() -> dict:
             "images": [],
             "fonts": [],
             "videos": [],
+            "ctas": [],
         }
     with MANIFEST_PATH.open() as f:
         manifest = json.load(f)
     manifest.setdefault("images", [])
     manifest.setdefault("fonts", [])
     manifest.setdefault("videos", [])
+    manifest.setdefault("ctas", [])
     return manifest
 
 
@@ -57,6 +59,82 @@ def find_by_tag(manifest: dict, asset_type: str, tag: str) -> list[dict]:
     return [
         asset for asset in manifest.get(asset_type, []) if tag in asset.get("tags", [])
     ]
+
+
+def _set_default_cta(manifest: dict, default: bool) -> None:
+    if default:
+        for cta in manifest["ctas"]:
+            cta.pop("default", None)
+
+
+def store_cta_text(
+    name: str, text: str, tags: list[str], force: bool = False, default: bool = False
+) -> None:
+    if not text.strip():
+        print("Error: CTA text must not be empty.", file=sys.stderr)
+        sys.exit(1)
+
+    manifest = load_manifest()
+    existing = find_by_name(manifest, "ctas", name)
+    if existing and not force:
+        print(f"Error: CTA '{name}' exists. Use --force.", file=sys.stderr)
+        sys.exit(1)
+    if existing:
+        manifest["ctas"].remove(existing)
+
+    _set_default_cta(manifest, default)
+    manifest["ctas"].append(
+        {
+            "name": name,
+            "type": "text",
+            "text": text,
+            "tags": tags,
+            "default": default,
+            "added": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    save_manifest(manifest)
+    print(f"Stored CTA text: {name}")
+
+
+def store_cta_asset(
+    name: str,
+    asset_name: str,
+    cta_type: str,
+    tags: list[str],
+    force: bool = False,
+    default: bool = False,
+) -> None:
+    manifest = load_manifest()
+    asset_type = "images" if cta_type == "image" else "videos"
+    asset = find_by_name(manifest, asset_type, asset_name)
+    if asset is None:
+        print(
+            f"Error: {cta_type} asset '{asset_name}' not found. Store it first.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    existing = find_by_name(manifest, "ctas", name)
+    if existing and not force:
+        print(f"Error: CTA '{name}' exists. Use --force.", file=sys.stderr)
+        sys.exit(1)
+    if existing:
+        manifest["ctas"].remove(existing)
+
+    _set_default_cta(manifest, default)
+    manifest["ctas"].append(
+        {
+            "name": name,
+            "type": cta_type,
+            "asset_path": asset["path"],
+            "tags": tags,
+            "default": default,
+            "added": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+    save_manifest(manifest)
+    print(f"Stored CTA {cta_type}: {name} -> {asset['path']}")
 
 
 def store_image(
@@ -213,6 +291,11 @@ def list_assets(asset_type: str | None, tag: str | None) -> None:
             if tag is None or tag in video.get("tags", []):
                 results.append(("video", video))
 
+    if asset_type in (None, "ctas"):
+        for cta in manifest.get("ctas", []):
+            if tag is None or tag in cta.get("tags", []):
+                results.append(("cta", cta))
+
     if not results:
         print("No assets found.")
         return
@@ -220,7 +303,14 @@ def list_assets(asset_type: str | None, tag: str | None) -> None:
     print(f"Brand Assets ({len(results)}):\n")
     for atype, asset in results:
         print(f"  [{atype.upper()}] {asset['name']}")
-        print(f"    Path: {ASSETS_DIR / asset['path']}")
+        if "path" in asset:
+            print(f"    Path: {ASSETS_DIR / asset['path']}")
+        elif "asset_path" in asset:
+            print(f"    Asset Path: {ASSETS_DIR / asset['asset_path']}")
+        elif "text" in asset:
+            print(f"    Text: {asset['text']}")
+        if asset.get("type"):
+            print(f"    Type: {asset['type']}")
         if asset.get("tags"):
             print(f"    Tags: {', '.join(asset['tags'])}")
         print()
@@ -239,8 +329,15 @@ def get_asset_path(name: str | None, tag: str | None) -> None:
             asset = find_by_name(manifest, "fonts", name)
         if not asset:
             asset = find_by_name(manifest, "videos", name)
+        if not asset:
+            asset = find_by_name(manifest, "ctas", name)
         if asset:
-            print(ASSETS_DIR / asset["path"])
+            if "path" in asset:
+                print(ASSETS_DIR / asset["path"])
+            elif "asset_path" in asset:
+                print(ASSETS_DIR / asset["asset_path"])
+            else:
+                print(asset["text"])
             return
         print(f"Error: Asset '{name}' not found.", file=sys.stderr)
         sys.exit(1)
@@ -251,8 +348,15 @@ def get_asset_path(name: str | None, tag: str | None) -> None:
             assets = find_by_tag(manifest, "fonts", tag)
         if not assets:
             assets = find_by_tag(manifest, "videos", tag)
+        if not assets:
+            assets = find_by_tag(manifest, "ctas", tag)
         if assets:
-            print(ASSETS_DIR / assets[0]["path"])
+            if "path" in assets[0]:
+                print(ASSETS_DIR / assets[0]["path"])
+            elif "asset_path" in assets[0]:
+                print(ASSETS_DIR / assets[0]["asset_path"])
+            else:
+                print(assets[0]["text"])
             return
         print(f"Error: No asset with tag '{tag}'.", file=sys.stderr)
         sys.exit(1)
@@ -285,6 +389,13 @@ def remove_asset(name: str) -> None:
         print(f"Removed video: {name}")
         return
 
+    asset = find_by_name(manifest, "ctas", name)
+    if asset:
+        manifest["ctas"].remove(asset)
+        save_manifest(manifest)
+        print(f"Removed CTA: {name}")
+        return
+
     print(f"Error: Asset '{name}' not found.", file=sys.stderr)
     sys.exit(1)
 
@@ -312,8 +423,33 @@ def main() -> None:
     p_store_video.add_argument("--default", action="store_true")
     p_store_video.add_argument("--force", "-f", action="store_true")
 
+    p_store_cta_text = subparsers.add_parser("store-cta-text", help="Store a text CTA")
+    p_store_cta_text.add_argument("--name", "-n", required=True)
+    p_store_cta_text.add_argument("--text", required=True)
+    p_store_cta_text.add_argument("--tags", "-t", default="")
+    p_store_cta_text.add_argument("--default", action="store_true")
+    p_store_cta_text.add_argument("--force", "-f", action="store_true")
+
+    p_store_cta_image = subparsers.add_parser(
+        "store-cta-image", help="Store an image CTA"
+    )
+    p_store_cta_image.add_argument("--name", "-n", required=True)
+    p_store_cta_image.add_argument("--asset-name", required=True)
+    p_store_cta_image.add_argument("--tags", "-t", default="")
+    p_store_cta_image.add_argument("--default", action="store_true")
+    p_store_cta_image.add_argument("--force", "-f", action="store_true")
+
+    p_store_cta_video = subparsers.add_parser(
+        "store-cta-video", help="Store a video CTA"
+    )
+    p_store_cta_video.add_argument("--name", "-n", required=True)
+    p_store_cta_video.add_argument("--asset-name", required=True)
+    p_store_cta_video.add_argument("--tags", "-t", default="")
+    p_store_cta_video.add_argument("--default", action="store_true")
+    p_store_cta_video.add_argument("--force", "-f", action="store_true")
+
     p_list = subparsers.add_parser("list", help="List brand assets")
-    p_list.add_argument("--type", choices=["images", "fonts", "videos"])
+    p_list.add_argument("--type", choices=["images", "fonts", "videos", "ctas"])
     p_list.add_argument("--tag", "-t")
 
     p_get = subparsers.add_parser("get-path", help="Get asset path")
@@ -337,6 +473,16 @@ def main() -> None:
             store_font(args.input, args.name, tags, args.force)
         case "store-video":
             store_video(args.input, args.name, tags, args.force, args.default)
+        case "store-cta-text":
+            store_cta_text(args.name, args.text, tags, args.force, args.default)
+        case "store-cta-image":
+            store_cta_asset(
+                args.name, args.asset_name, "image", tags, args.force, args.default
+            )
+        case "store-cta-video":
+            store_cta_asset(
+                args.name, args.asset_name, "video", tags, args.force, args.default
+            )
         case "list":
             list_assets(args.type, args.tag)
         case "get-path":
