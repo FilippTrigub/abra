@@ -1,0 +1,9 @@
+[project]
+name = "visual-hook"
+version = "0.1.0"
+description = "Add high-contrast visual hook text overlays to images and videos"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "ffmpeg-python>=0.2.0",
+    "pillow>=10.0",
+]

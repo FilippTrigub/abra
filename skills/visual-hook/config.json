@@ -1,0 +1,17 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "format": "auto",
+  "video_hook": {
+    "selection": "auto"
+  },
+  "hook": {
+    "text": "You need to see this →",
+    "preset": "bold-white",
+    "position": "upper-middle",
+    "font_size": null,
+    "stroke_width": 4,
+    "duration": 3.0,
+    "font": "auto"
+  }
+}
