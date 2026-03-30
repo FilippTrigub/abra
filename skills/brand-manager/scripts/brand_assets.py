@@ -15,10 +15,12 @@ SKILL_DIR = Path(__file__).parent.parent.resolve()
 ASSETS_DIR = SKILL_DIR / "brand-assets"
 IMAGES_DIR = ASSETS_DIR / "images"
 FONTS_DIR = ASSETS_DIR / "fonts"
+VIDEOS_DIR = ASSETS_DIR / "videos"
 MANIFEST_PATH = ASSETS_DIR / "asset-manifest.json"
 
 VALID_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"}
 VALID_FONT_EXTENSIONS = {".ttf", ".otf", ".woff", ".woff2"}
+VALID_VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".m4v", ".webm"}
 
 
 def load_manifest() -> dict:
@@ -29,9 +31,14 @@ def load_manifest() -> dict:
             "updated": datetime.now(timezone.utc).isoformat(),
             "images": [],
             "fonts": [],
+            "videos": [],
         }
     with MANIFEST_PATH.open() as f:
-        return json.load(f)
+        manifest = json.load(f)
+    manifest.setdefault("images", [])
+    manifest.setdefault("fonts", [])
+    manifest.setdefault("videos", [])
+    return manifest
 
 
 def save_manifest(manifest: dict) -> None:
@@ -136,6 +143,57 @@ def store_font(
     print(f"Stored font: {name} -> {dest_path}")
 
 
+def store_video(
+    input_path: Path,
+    name: str,
+    tags: list[str],
+    force: bool = False,
+    default: bool = False,
+) -> None:
+    if not input_path.exists():
+        print(f"Error: Input file not found: {input_path}", file=sys.stderr)
+        sys.exit(1)
+
+    if input_path.suffix.lower() not in VALID_VIDEO_EXTENSIONS:
+        print(
+            f"Error: Invalid video extension: {', '.join(sorted(VALID_VIDEO_EXTENSIONS))}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    VIDEOS_DIR.mkdir(parents=True, exist_ok=True)
+    dest_name = f"{name}{input_path.suffix.lower()}"
+    dest_path = VIDEOS_DIR / dest_name
+
+    if dest_path.exists() and not force:
+        print(f"Error: Asset '{name}' exists. Use --force.", file=sys.stderr)
+        sys.exit(1)
+
+    shutil.copy2(input_path, dest_path)
+
+    manifest = load_manifest()
+    existing = find_by_name(manifest, "videos", name)
+    if existing:
+        manifest["videos"].remove(existing)
+
+    if default:
+        for video in manifest["videos"]:
+            video.pop("default", None)
+
+    manifest["videos"].append(
+        {
+            "name": name,
+            "path": f"videos/{dest_name}",
+            "tags": tags,
+            "default": default,
+            "added": datetime.now(timezone.utc).isoformat(),
+        }
+    )
+
+    save_manifest(manifest)
+    print(f"Stored video: {name} -> {dest_path}")
+
+
 def list_assets(asset_type: str | None, tag: str | None) -> None:
     manifest = load_manifest()
     results: list[tuple[str, dict]] = []
@@ -149,6 +207,11 @@ def list_assets(asset_type: str | None, tag: str | None) -> None:
         for font in manifest.get("fonts", []):
             if tag is None or tag in font.get("tags", []):
                 results.append(("font", font))
+
+    if asset_type in (None, "videos"):
+        for video in manifest.get("videos", []):
+            if tag is None or tag in video.get("tags", []):
+                results.append(("video", video))
 
     if not results:
         print("No assets found.")
@@ -174,6 +237,8 @@ def get_asset_path(name: str | None, tag: str | None) -> None:
         asset = find_by_name(manifest, "images", name)
         if not asset:
             asset = find_by_name(manifest, "fonts", name)
+        if not asset:
+            asset = find_by_name(manifest, "videos", name)
         if asset:
             print(ASSETS_DIR / asset["path"])
             return
@@ -184,6 +249,8 @@ def get_asset_path(name: str | None, tag: str | None) -> None:
         assets = find_by_tag(manifest, "images", tag)
         if not assets:
             assets = find_by_tag(manifest, "fonts", tag)
+        if not assets:
+            assets = find_by_tag(manifest, "videos", tag)
         if assets:
             print(ASSETS_DIR / assets[0]["path"])
             return
@@ -210,6 +277,14 @@ def remove_asset(name: str) -> None:
         print(f"Removed font: {name}")
         return
 
+    asset = find_by_name(manifest, "videos", name)
+    if asset:
+        (ASSETS_DIR / asset["path"]).unlink(missing_ok=True)
+        manifest["videos"].remove(asset)
+        save_manifest(manifest)
+        print(f"Removed video: {name}")
+        return
+
     print(f"Error: Asset '{name}' not found.", file=sys.stderr)
     sys.exit(1)
 
@@ -230,8 +305,15 @@ def main() -> None:
     p_store_font.add_argument("--tags", "-t", default="")
     p_store_font.add_argument("--force", "-f", action="store_true")
 
+    p_store_video = subparsers.add_parser("store-video", help="Store a brand video")
+    p_store_video.add_argument("--input", "-i", required=True, type=Path)
+    p_store_video.add_argument("--name", "-n", required=True)
+    p_store_video.add_argument("--tags", "-t", default="")
+    p_store_video.add_argument("--default", action="store_true")
+    p_store_video.add_argument("--force", "-f", action="store_true")
+
     p_list = subparsers.add_parser("list", help="List brand assets")
-    p_list.add_argument("--type", choices=["images", "fonts"])
+    p_list.add_argument("--type", choices=["images", "fonts", "videos"])
     p_list.add_argument("--tag", "-t")
 
     p_get = subparsers.add_parser("get-path", help="Get asset path")
@@ -253,6 +335,8 @@ def main() -> None:
             store_image(args.input, args.name, tags, args.force)
         case "store-font":
             store_font(args.input, args.name, tags, args.force)
+        case "store-video":
+            store_video(args.input, args.name, tags, args.force, args.default)
         case "list":
             list_assets(args.type, args.tag)
         case "get-path":
