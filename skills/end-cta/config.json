@@ -1,0 +1,15 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "format": "auto",
+  "cta": {
+    "selection": "auto",
+    "duration": 2.0,
+    "position": "lower-middle",
+    "font": "auto",
+    "font_size": null,
+    "stroke_width": 4,
+    "preset": "bold-white",
+    "background": "#000000"
+  }
+}

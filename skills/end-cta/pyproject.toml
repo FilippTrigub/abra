@@ -1,0 +1,9 @@
+[project]
+name = "end-cta"
+version = "0.1.0"
+description = "Append or overlay brand CTA assets onto images and videos"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "ffmpeg-python>=0.2.0",
+    "pillow>=10.0",
+]
