@@ -13,11 +13,120 @@ CONTAINER_OPENCLAW_DIR="/home/node/.openclaw"
 AGENT_WORKSPACE_HOST="${HOST_OPENCLAW_DIR}/workspace-${AGENT_NAME}"
 AGENT_WORKSPACE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/workspace-${AGENT_NAME}"
 SKILLS_DEST="${AGENT_WORKSPACE_HOST}/skills"
+POST_SCHEDULER_ENV_FILE="${SKILLS_DEST}/post-scheduler/.env"
+
+read_env_value() {
+    local file="$1"
+    local key="$2"
+    [ -f "${file}" ] || return 0
+
+    python3 - "$file" "$key" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+key = sys.argv[2]
+
+for raw_line in path.read_text(encoding="utf-8").splitlines():
+    line = raw_line.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    current_key, raw_value = line.split("=", 1)
+    if current_key.strip() != key:
+        continue
+    value = raw_value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        value = value[1:-1]
+    print(value.strip())
+    break
+PY
+}
+
+escape_env_value() {
+    local value="$1"
+    value="${value//\\/\\\\}"
+    value="${value//\"/\\\"}"
+    printf '%s' "${value}"
+}
+
+configure_post_scheduler_env() {
+    local configure_choice="${ABRA_CONFIGURE_POST_SCHEDULER_ENV:-}"
+    local should_configure=1
+
+    case "${configure_choice}" in
+        1|true|TRUE|yes|YES)
+            should_configure=0
+            ;;
+        0|false|FALSE|no|NO)
+            should_configure=1
+            ;;
+        *)
+            if [ -t 0 ]; then
+                echo
+                read -r -p "Configure optional Backblaze B2 env vars for post-scheduler now? [y/N] " reply
+                case "${reply}" in
+                    y|Y|yes|YES)
+                        should_configure=0
+                        ;;
+                    *)
+                        should_configure=1
+                        ;;
+                esac
+            fi
+            ;;
+    esac
+
+    if [ "${should_configure}" -ne 0 ]; then
+        echo "  • Skipping optional post-scheduler Backblaze B2 env setup"
+        return 0
+    fi
+
+    mkdir -p "$(dirname "${POST_SCHEDULER_ENV_FILE}")"
+
+    local existing_key_id existing_app_key existing_bucket_id existing_bucket_name
+    existing_key_id="$(read_env_value "${POST_SCHEDULER_ENV_FILE}" "BACKBLAZE_B2_KEY_ID")"
+    existing_app_key="$(read_env_value "${POST_SCHEDULER_ENV_FILE}" "BACKBLAZE_B2_APPLICATION_KEY")"
+    existing_bucket_id="$(read_env_value "${POST_SCHEDULER_ENV_FILE}" "BACKBLAZE_B2_BUCKET_ID")"
+    existing_bucket_name="$(read_env_value "${POST_SCHEDULER_ENV_FILE}" "BACKBLAZE_B2_BUCKET_NAME")"
+
+    local b2_key_id="${BACKBLAZE_B2_KEY_ID:-${existing_key_id}}"
+    local b2_app_key="${BACKBLAZE_B2_APPLICATION_KEY:-${existing_app_key}}"
+    local b2_bucket_id="${BACKBLAZE_B2_BUCKET_ID:-${existing_bucket_id}}"
+    local b2_bucket_name="${BACKBLAZE_B2_BUCKET_NAME:-${existing_bucket_name}}"
+
+    if [ -t 0 ]; then
+        echo
+        echo "Optional Backblaze B2 settings for post-scheduler:"
+        echo "  File: ${POST_SCHEDULER_ENV_FILE}"
+
+        read -r -p "BACKBLAZE_B2_KEY_ID [${b2_key_id}]: " reply
+        b2_key_id="${reply:-${b2_key_id}}"
+        read -r -p "BACKBLAZE_B2_APPLICATION_KEY [${b2_app_key}]: " reply
+        b2_app_key="${reply:-${b2_app_key}}"
+        read -r -p "BACKBLAZE_B2_BUCKET_ID [${b2_bucket_id}]: " reply
+        b2_bucket_id="${reply:-${b2_bucket_id}}"
+        read -r -p "BACKBLAZE_B2_BUCKET_NAME [${b2_bucket_name}]: " reply
+        b2_bucket_name="${reply:-${b2_bucket_name}}"
+    fi
+
+    cat > "${POST_SCHEDULER_ENV_FILE}" <<EOF
+# Optional Backblaze B2 settings for the post-scheduler skill.
+# BUFFER_API_KEY still belongs in the normal shell/container environment.
+BACKBLAZE_B2_KEY_ID="$(escape_env_value "${b2_key_id}")"
+BACKBLAZE_B2_APPLICATION_KEY="$(escape_env_value "${b2_app_key}")"
+BACKBLAZE_B2_BUCKET_ID="$(escape_env_value "${b2_bucket_id}")"
+BACKBLAZE_B2_BUCKET_NAME="$(escape_env_value "${b2_bucket_name}")"
+EOF
+
+    echo "  ✓ post-scheduler Backblaze B2 env file: ${POST_SCHEDULER_ENV_FILE}"
+    echo "    Shell env still takes precedence over values in this file."
+}
 
 echo "Installing Abra - Agent de Branding..."
 echo
 
 command -v jq >/dev/null 2>&1 || { echo "jq required: brew install jq"; exit 1; }
+command -v python3 >/dev/null 2>&1 || { echo "python3 required to scaffold post-scheduler env values"; exit 1; }
 
 mkdir -p "${AGENT_WORKSPACE_HOST}"
 
@@ -56,6 +165,8 @@ for skill_dir in "${SKILL_SOURCE}"/*; do
 done
 [ -n "${TEMP_CLONE}" ] && rm -rf "${TEMP_CLONE}"
 
+configure_post_scheduler_env
+
 CONFIG_FILE="${HOST_OPENCLAW_DIR}/openclaw.json"
 cp "${CONFIG_FILE}" "${CONFIG_FILE}.backup.$(date +%Y%m%d%H%M%S)"
 
@@ -93,6 +204,8 @@ echo "Done! Agent '${AGENT_DISPLAY_NAME}' installed."
 echo "Workspace: ${AGENT_WORKSPACE_HOST}"
 echo "Workflows: ${WORKFLOWS_DEST}"
 echo "Skills: ${SKILLS_DEST}"
+echo "Post-scheduler env: ${POST_SCHEDULER_ENV_FILE}"
 echo
 echo "To customize, edit: ${CONFIG_FILE}"
+echo "Reminder: BUFFER_API_KEY must still be provided in the shell/container environment."
 echo "Restart gateway: openclaw gateway restart"

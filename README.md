@@ -34,13 +34,16 @@ Transform articles, notes, ideas, and meeting recordings into ready-to-publish c
 cd workflows
 
 # Video → branded reel
-uv run python run.py --workflow video-to-reel --input ../video.mp4
+uv run python run.py --workflow video-to-reel --input ../video.mp4 \
+  --channel-id CHANNEL_ID --due-at 2026-04-01T12:00:00Z
 
 # Photo(s) → branded post  
-uv run python run.py --workflow image-to-post --input ../photos/
+uv run python run.py --workflow image-to-post --input ../photos/ \
+  --channel-id CHANNEL_ID
 
 # Voice → text post
-uv run python run.py --workflow audio-to-post --input ../voice.m4a
+uv run python run.py --workflow audio-to-post --input ../voice.m4a \
+  --channel-id CHANNEL_ID
 
 # Add content to brand knowledge
 uv run python run.py --workflow brand-enrichment --input ../article.md
@@ -55,6 +58,11 @@ uv run python run.py --workflow brand-enrichment --input ../article.md
 | `--skip-optional` | Skip enhancement steps like music generation |
 | `--device` | Device: auto, cpu, cuda |
 | `--no-archive` | Don't archive input after scheduling |
+| `--channel-id` | Required Buffer channel ID for workflows that schedule posts |
+| `--text` | Override derived scheduler text |
+| `--mode`, `--due-at` | Override scheduler mode or custom schedule time |
+| `--image-url`, `--video-url`, `--video-staging-provider` | Override scheduler media and local video staging behavior |
+| `--ig-type`, `--ig-first-comment`, `--li-first-comment`, `--link-attachment` | Pass scheduler-specific social options through the workflow runner |
 
 ---
 
@@ -79,7 +87,9 @@ uv run python run.py --workflow brand-enrichment --input ../article.md
 1. **Brand first** — `brand-manager` runs first to refresh brand knowledge
 2. **Process** — Skills run sequentially, each taking the previous step's output as input
 3. **Brand last** — `brand-manager` adapts content to brand voice
-4. **Schedule** — `post-scheduler` queues to Buffer
+4. **Schedule** — `post-scheduler` queues to Buffer via its native `create`
+   command, using workflow defaults plus any CLI overrides passed to
+   `workflows/run.py`
 
 ### Input/Output Convention
 
@@ -89,6 +99,15 @@ step1_output/ → step2 --input → step2_output/ → ...
 ```
 
 After scheduling, input files are archived to `archive/<workflow>/<timestamp>/`.
+
+Creative workflows that end in `post-scheduler` require `--channel-id` with a
+real Buffer channel ID. The older `CLAW_DEFAULT_CHANNEL=instagram` value is only
+a platform label and is not sufficient for workflow scheduling. When `--text` is
+omitted, the runner derives scheduler text from earlier outputs: image caption
+JSON sidecars for image workflows, transcript segments for audio workflows, and
+the transcript JSON produced earlier in video workflows. `video-to-reel` defaults
+to `--mode customScheduled --ig-type reel --video-staging-provider backblaze-b2`,
+so local scheduled reels also need `--due-at`.
 
 ---
 
@@ -226,12 +245,37 @@ CLAW_OUTPUT_DIR=./output/          # Processed output location
 
 # Scheduling defaults
 CLAW_BUFFER_DAYS=5                 # Default buffer days
-CLAW_DEFAULT_CHANNEL=instagram     # Default target channel
+CLAW_DEFAULT_CHANNEL=instagram     # Platform label only; workflow scheduling still needs --channel-id
 
 # External services
 CLAW_GDRIVE_ENABLED=true           # Enable Google Drive sync
 BUFFER_API_KEY=your-buffer-token   # Required for scheduling
 ```
+
+### Optional post-scheduler Backblaze B2 setup
+
+Scheduled local video posts can stage through Backblaze B2. During
+`./install-abra.sh`, Abra can optionally scaffold the post-scheduler skill's B2
+env file inside the installed workspace:
+
+```bash
+~/.openclaw/workspace-abra/skills/post-scheduler/.env
+```
+
+That file uses plain dotenv syntax:
+
+```bash
+BACKBLAZE_B2_KEY_ID=...
+BACKBLAZE_B2_APPLICATION_KEY=...
+BACKBLAZE_B2_BUCKET_ID=...
+BACKBLAZE_B2_BUCKET_NAME=...
+```
+
+Notes:
+- this installer step is optional
+- shell environment values still override the skill-local `.env`
+- `BUFFER_API_KEY` is still read from the normal shell/container environment, not from the skill-local `.env`
+- for non-interactive installs, set `ABRA_CONFIGURE_POST_SCHEDULER_ENV=1` to force the scaffold step or `ABRA_CONFIGURE_POST_SCHEDULER_ENV=0` to skip it
 
 ---
 

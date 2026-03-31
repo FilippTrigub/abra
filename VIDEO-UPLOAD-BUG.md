@@ -64,21 +64,43 @@ URL is dead.
 
 ## Fix
 
-### Short-term (implemented)
+### Current implementation
 
-- Detect the incompatible combination: local video file + non-`shareNow` mode
-- Exit with a clear error message directing the user to use a persistent URL
-- `shareNow` with a local file continues to work via tunnel (publish is immediate)
-- Images are unaffected (Buffer appears to handle them differently / faster)
+- `shareNow` with a local video still uses `cloudflared`
+- Scheduled/queued local videos now support explicit staging providers instead of
+  relying on the short-lived tunnel
+- `0x0.st` remains supported in code as a fixed-retention temp host option
+- `backblaze-b2` is now supported as the practical persistent-hosting path for
+  scheduled local videos
+- Backblaze B2 is treated as operator-managed persistent storage: the bucket must
+  already be `allPublic`, and the bucket lifecycle/deletion policy must outlive
+  the scheduling window
+
+### Verified working path
+
+This issue is now resolved for scheduled local videos when the media is staged to
+Backblaze B2 first.
+
+Verified flow:
+
+1. Local MP4 passed to `--video-url`
+2. Scheduler uploads it via the B2 native API
+3. Scheduler constructs a public B2 URL and verifies it
+4. Buffer accepts the post and stores the staged B2 URL as the asset source
+5. Scheduled Instagram Reel appears in Buffer successfully
+
+### Remaining caveats
+
+- `cloudflared` is still only valid for local `shareNow` video posts
+- Temp hosts that serve HTML wrappers on `GET` are still incompatible
+- Instagram Reels have their own media rules; during verification Buffer/Instagram
+  rejected a 2-second test clip with `Video must be at least 3 seconds for Instagram Reels.`
 
 ### Persistent URL options for scheduled video posts
 
-1. **Google Drive** — already supported. Upload the video to Drive, share with
-   "Anyone with the link", pass the share URL to `--video-url`. The script
-   auto-converts it to a direct-download URL.
-
-2. **Any public HTTPS URL** — a CDN, S3 bucket, or any server that serves the
-   file at a stable URL works out of the box. Pass the URL directly.
+1. **Backblaze B2** — cheapest repo-supported persistent staging option for local scheduled videos.
+2. **Google Drive** — technically supported by URL conversion, but was reported unreliable in practice for video uploads.
+3. **Any public HTTPS direct-download URL** — CDN, object storage, or other raw-file host that serves the media bytes on normal unauthenticated `GET`.
 
 ## Other bugs fixed in this session
 

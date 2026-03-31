@@ -6,10 +6,11 @@ Usage:
                          [--limit N] [--after CURSOR]
 
     uv run posts.py create --channel-id CHANNEL_ID --text TEXT
-                           --mode shareNow|addToQueue|customScheduled
+                           --mode shareNow|addToQueue|shareNext|customScheduled|recommendedTime
                            [--due-at ISO8601]
                            [--image-url URL|PATH ...]
                            [--video-url URL|PATH]
+                            [--video-staging-provider 0x0.st|backblaze-b2]
                            [--ig-type post|reel|story]
                            [--ig-first-comment TEXT]
                            [--li-first-comment TEXT]
@@ -21,11 +22,16 @@ Image and video URLs:
     - Google Drive share URLs (drive.google.com/file/d/...) are auto-converted
       to direct-fetch format for images (lh3.googleusercontent.com) and direct-download
       format for video (drive.google.com/uc?export=download&id=FILE_ID).
-    - Local file paths are supported via a cloudflared tunnel (cloudflared must be
-      installed). All local files are served from a single HTTP server exposed through
-      the tunnel. The tunnel stays alive for --tunnel-wait seconds (default 90) after
-      the API call to give Buffer time to fetch the media, then shuts down automatically.
-      Install cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+    - Local image paths and local shareNow video paths are supported via a
+      cloudflared tunnel (cloudflared must be installed). All local files are
+      served from a single HTTP server exposed through the tunnel. The tunnel
+      stays alive for --tunnel-wait seconds (default 90) after the API call to
+      give Buffer time to fetch the media, then shuts down automatically.
+      Install cloudflared:
+      https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+    - Local scheduled/queued video paths must be staged first with
+      --video-staging-provider 0x0.st or backblaze-b2. Staging is allowed only when the
+      provider retention is known and strictly longer than (due_at - now) + 12h.
 """
 
 import argparse
@@ -38,9 +44,11 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 from _client import graphql
+from video_staging import requires_video_staging, stage_local_video
 
 BASE_NODE_FIELDS = """
   id
@@ -109,7 +117,7 @@ _GDRIVE_SHARE_RE = re.compile(r"https://drive\.google\.com/file/d/([a-zA-Z0-9_-]
 _TUNNEL_URL_RE = re.compile(r"https://[a-z0-9-]+\.trycloudflare\.com")
 
 
-def _serve_local_files(paths: list[str]) -> tuple[dict[str, str], "callable"]:
+def _serve_local_files(paths: list[str]) -> tuple[dict[str, str], Callable[[], None]]:
     """Start a single HTTP server + cloudflared tunnel for one or more local files.
 
     Serves from the common ancestor directory of all files so a single server
@@ -141,8 +149,8 @@ def _serve_local_files(paths: list[str]) -> tuple[dict[str, str], "callable"]:
         def __init__(self, *args, **kwargs):
             super().__init__(*args, directory=str(serve_dir), **kwargs)
 
-        def log_message(self, fmt, *args):
-            print(f"HTTP server: {fmt % args}", file=sys.stderr)
+        def log_message(self, format: str, *args: object) -> None:
+            print(f"HTTP server: {format % args}", file=sys.stderr)
 
     server = http.server.HTTPServer(("", port), _Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -168,6 +176,15 @@ def _serve_local_files(paths: list[str]) -> tuple[dict[str, str], "callable"]:
 
     print("Waiting for cloudflared tunnel URL...", file=sys.stderr)
     tunnel_base = None
+    if proc.stderr is None:
+        proc.terminate()
+        server.shutdown()
+        print(
+            "Error: cloudflared did not expose stderr for tunnel discovery.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     for line in proc.stderr:
         m = _TUNNEL_URL_RE.search(line)
         if m:
@@ -305,11 +322,19 @@ def cmd_create(args: argparse.Namespace) -> None:
     if args.due_at:
         post_input["dueAt"] = args.due_at
 
-    # Collect all local paths so they can share a single tunnel.
-    local_paths = []
+    local_image_paths = []
     if args.image_url:
-        local_paths.extend(u for u in args.image_url if not u.startswith("http"))
-    if args.video_url and not args.video_url.startswith("http"):
+        local_image_paths.extend(u for u in args.image_url if not u.startswith("http"))
+
+    video_uses_staging = requires_video_staging(args.mode, args.video_url)
+    share_now_local_video = bool(
+        args.video_url
+        and not args.video_url.startswith("http")
+        and not video_uses_staging
+    )
+
+    local_paths = list(local_image_paths)
+    if share_now_local_video:
         local_paths.append(args.video_url)
 
     url_map: dict[str, str] = {}
@@ -327,7 +352,17 @@ def cmd_create(args: argparse.Namespace) -> None:
             for u in args.image_url
         ]
     if args.video_url:
-        video_url = url_map.get(args.video_url) or resolve_video_url(args.video_url)
+        if video_uses_staging:
+            video_url = stage_local_video(
+                video_path=args.video_url,
+                mode=args.mode,
+                due_at=args.due_at,
+                provider_name=args.video_staging_provider,
+            )
+            print("Verifying staged video URL...", file=sys.stderr)
+            _probe_url(video_url)
+        else:
+            video_url = url_map.get(args.video_url) or resolve_video_url(args.video_url)
         assets["videos"] = [{"url": video_url}]
     if assets:
         post_input["assets"] = assets
@@ -416,7 +451,12 @@ def main() -> None:
     p_create.add_argument(
         "--video-url",
         metavar="URL|PATH",
-        help="Video URL, Google Drive share URL, or local file path. Local paths are served via a cloudflared tunnel (cloudflared must be installed).",
+        help="Video URL, Google Drive share URL, or local file path. Local shareNow paths use cloudflared; local scheduled/queued paths require --video-staging-provider 0x0.st or backblaze-b2.",
+    )
+    p_create.add_argument(
+        "--video-staging-provider",
+        choices=["0x0.st", "backblaze-b2"],
+        help="Stage local scheduled/queued videos before creating the Buffer post. Required for local videos in addToQueue, shareNext, recommendedTime, and customScheduled modes.",
     )
     p_create.add_argument(
         "--ig-type",

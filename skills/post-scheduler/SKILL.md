@@ -10,7 +10,18 @@ metadata:
     "openclaw":
       {
         "emoji": "📲",
-        "requires": { "bins": ["uv", "cloudflared"], "env": ["BUFFER_API_KEY"] },
+        "requires":
+          {
+            "bins": ["uv", "cloudflared"],
+            "env":
+              [
+                "BUFFER_API_KEY",
+                "BACKBLAZE_B2_KEY_ID",
+                "BACKBLAZE_B2_APPLICATION_KEY",
+                "BACKBLAZE_B2_BUCKET_ID",
+                "BACKBLAZE_B2_BUCKET_NAME",
+              ],
+          },
         "primaryEnv": "BUFFER_API_KEY",
       },
   }
@@ -30,14 +41,14 @@ Schedule, create, and manage social media posts on Instagram and LinkedIn via th
    ```
 4. Install script dependencies:
    ```bash
-   cd skills/buffer/scripts && uv sync
+   cd skills/post-scheduler/scripts && uv sync
    ```
 
 > **Note:** Buffer's API is in Beta. All operations use POST with a JSON body containing `query` (and optionally `variables`).
 
 ## Operations
 
-All scripts are run from `skills/buffer/scripts/` with `uv run`.
+All scripts are run from `skills/post-scheduler/scripts/` with `uv run`.
 
 ### Get Organizations
 
@@ -140,15 +151,72 @@ uv run posts.py create --channel-id CHANNEL_ID --text "Photo carousel" --mode sh
 
 Use `--video-url` for video files.
 
-> **Local video files do not work for scheduled posts.** Buffer stores the URL
-> reference and fetches the video later — by which time the cloudflared tunnel
-> is long gone. Local files via tunnel only work with `--mode shareNow` (Buffer
-> publishes immediately while the tunnel is still alive).
->
-> For any other mode (`customScheduled`, `addToQueue`, etc.) use a **persistent
-> URL**: a Google Drive share link or a direct public HTTPS URL.
+**Local `shareNow` video still uses cloudflared:**
 
-**Schedule with a persistent URL:**
+```bash
+uv run posts.py create --channel-id CHANNEL_ID --text "Publish right now" \
+  --mode shareNow \
+  --video-url path/to/video.mp4
+```
+
+**Local scheduled/queued video must be staged first:**
+
+For local video files in `customScheduled`, `addToQueue`, `shareNext`, or
+`recommendedTime`, pass `--video-staging-provider 0x0.st` or
+`--video-staging-provider backblaze-b2`.
+
+- Staged-upload providers currently supported: `0x0.st`, `backblaze-b2`
+- Unknown retention is never allowed
+- Retention must be known and strictly longer than `(due_at - now) + 12h`
+- `0x0.st` is treated as having a known minimum retention of 30 days
+- `backblaze-b2` assumes your bucket is `allPublic` and operator-managed to outlive the scheduling window
+- If the due time is unknown, local scheduled/queued video staging is rejected
+
+**Backblaze B2 env vars:**
+
+- `BACKBLAZE_B2_KEY_ID`
+- `BACKBLAZE_B2_APPLICATION_KEY`
+- `BACKBLAZE_B2_BUCKET_ID`
+- `BACKBLAZE_B2_BUCKET_NAME`
+
+You can export those in your shell, or place them in:
+
+```bash
+skills/post-scheduler/.env
+```
+
+Shell environment variables take precedence over values in the skill-local `.env`.
+
+The scheduler uses the native B2 flow (`b2_authorize_account` →
+`b2_get_upload_url` → upload file) and then constructs the stable public URL as
+`https://.../file/<bucket-name>/<file-name>`. The bucket must already be public,
+and any lifecycle/deletion policy is your responsibility.
+
+The Backblaze credentials can be provided either via normal shell environment
+variables or via `skills/post-scheduler/.env`. The skill-local `.env` must use
+plain dotenv syntax (`KEY=value`), and shell variables take precedence.
+
+**Schedule a local video with staging:**
+
+```bash
+uv run posts.py create --channel-id CHANNEL_ID --text "Scheduled video" \
+  --mode customScheduled --due-at "2026-04-01T12:00:00Z" \
+  --video-url path/to/video.mp4 \
+  --video-staging-provider backblaze-b2
+```
+
+`temp.sh` was tested and rejected for Buffer video scheduling because its returned
+URL serves an HTML wrapper on `GET` and only returns the raw file on `POST`.
+Buffer expects a direct video URL it can fetch with `GET`, so B2 is the cheapest
+repo-supported provider that satisfies the requirement.
+
+The B2 path was verified end-to-end with a scheduled Instagram Reel: local file →
+B2 upload → Buffer scheduled post. One extra platform rule showed up during
+verification: Instagram Reels require videos to be at least 3 seconds long. The
+older `tests/fixtures/clip_5s.mp4` fixture is actually only 2 seconds, so it was
+rejected until it was extended to a 4-second clip.
+
+**Schedule with a persistent remote URL:**
 
 ```bash
 # Google Drive share URL (auto-converted to direct download)
@@ -227,5 +295,6 @@ Scripts exit with a non-zero code and print the error message to stderr on failu
 - Cannot edit or delete posts via the API
 - TikTok channels are not supported (Instagram and LinkedIn only)
 - The Buffer API is in Beta — endpoints may change
-- Local file serving requires `cloudflared` to be installed and on PATH
-- Local video files only work with `--mode shareNow` — scheduled/queued video posts require a persistent URL (Google Drive or public HTTPS)
+- Local image files and local `shareNow` video files require `cloudflared`
+- Local scheduled/queued video files require `--video-staging-provider 0x0.st` or `backblaze-b2`
+- Local scheduled/queued video staging is rejected unless retention is known and strictly longer than `(due_at - now) + 12h`

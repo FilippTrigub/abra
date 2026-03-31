@@ -35,7 +35,10 @@
     {
       "name": "schedule",
       "skill": "post-scheduler",
-      "description": "Schedule post"
+      "description": "Schedule post",
+      "params": {
+        "mode": "shareNow"
+      }
     }
   ]
 }

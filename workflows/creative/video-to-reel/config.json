@@ -53,7 +53,12 @@
     {
       "name": "schedule",
       "skill": "post-scheduler",
-      "description": "Schedule to Instagram/LinkedIn"
+      "description": "Schedule to Instagram/LinkedIn",
+      "params": {
+        "mode": "customScheduled",
+        "ig_type": "reel",
+        "video_staging_provider": "backblaze-b2"
+      }
     }
   ]
 }

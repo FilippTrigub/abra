@@ -23,7 +23,10 @@
     {
       "name": "schedule",
       "skill": "post-scheduler",
-      "description": "Schedule as text post with transcript"
+      "description": "Schedule as text post with transcript",
+      "params": {
+        "mode": "shareNow"
+      }
     }
   ]
 }

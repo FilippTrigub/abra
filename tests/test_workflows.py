@@ -6,11 +6,13 @@ Does NOT test individual skills (already tested in test_*.py).
 """
 
 import json
+import importlib.util
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
-import pytest
+pytest = __import__("pytest")
 
 REPO_ROOT = Path(__file__).parent.parent
 WORKFLOWS_DIR = REPO_ROOT / "workflows"
@@ -23,6 +25,16 @@ TEST_CLIP = FIXTURES_DIR / "clip_5s.mp4"
 @pytest.fixture
 def runner():
     return [sys.executable, str(RUNNER)]
+
+
+@pytest.fixture(scope="module")
+def workflow_run_module():
+    spec = importlib.util.spec_from_file_location("workflow_run", RUNNER)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class TestConfigDiscovery:
@@ -80,6 +92,27 @@ class TestWorkflowExecution:
             "not found" in result.stderr.decode().lower()
             or "input" in result.stderr.decode().lower()
         )
+
+    def test_prepare_input_clears_staging_between_runs(
+        self, workflow_run_module, tmp_path
+    ):
+        original_input_dir = workflow_run_module.DEFAULT_INPUT_DIR
+        try:
+            workflow_run_module.DEFAULT_INPUT_DIR = tmp_path / "input"
+            staging = workflow_run_module.DEFAULT_INPUT_DIR / "staging"
+            staging.mkdir(parents=True, exist_ok=True)
+            (staging / "stale.txt").write_text("old")
+
+            fresh_input = tmp_path / "fresh.txt"
+            fresh_input.write_text("new")
+
+            result_dir = workflow_run_module.prepare_input(fresh_input)
+
+            assert result_dir == staging
+            assert not (staging / "stale.txt").exists()
+            assert (staging / "fresh.txt").exists()
+        finally:
+            workflow_run_module.DEFAULT_INPUT_DIR = original_input_dir
 
 
 class TestWorkflowSchema:
@@ -152,3 +185,250 @@ class TestArchiveFlag:
             capture_output=True,
         )
         assert "--no-archive" in result.stdout.decode()
+
+
+class TestSchedulerIntegration:
+    def test_builds_video_scheduler_command_from_defaults_and_overrides(
+        self, workflow_run_module, tmp_path, monkeypatch
+    ):
+        posts_script = tmp_path / "posts.py"
+        posts_script.write_text("# stub\n")
+
+        transcript_dir = tmp_path / "transcript"
+        transcript_dir.mkdir()
+        (transcript_dir / "clip_transcription.json").write_text(
+            json.dumps(
+                {
+                    "segments": [
+                        {"text": "First sentence."},
+                        {"text": "Second sentence."},
+                    ]
+                }
+            )
+        )
+
+        video_dir = tmp_path / "video"
+        video_dir.mkdir()
+        rendered_video = video_dir / "rendered.mp4"
+        rendered_video.write_text("video")
+
+        captured = {}
+
+        def fake_get_skill_script(skill_name: str) -> Path:
+            assert skill_name == "post-scheduler"
+            return posts_script
+
+        def fake_run(cmd, cwd):
+            captured["cmd"] = cmd
+            captured["cwd"] = cwd
+            return SimpleNamespace(returncode=0)
+
+        monkeypatch.setattr(
+            workflow_run_module, "get_skill_script", fake_get_skill_script
+        )
+        monkeypatch.setattr(workflow_run_module.subprocess, "run", fake_run)
+
+        ok = workflow_run_module.run_post_scheduler(
+            workflow={"name": "video-to-reel", "input_type": "video"},
+            latest_media_output=video_dir,
+            transcript_output=transcript_dir,
+            caption_output=None,
+            defaults={
+                "mode": "customScheduled",
+                "ig_type": "reel",
+                "video_staging_provider": "backblaze-b2",
+            },
+            overrides={
+                "channel_id": "chan_123",
+                "due_at": "2026-04-01T12:00:00Z",
+            },
+        )
+
+        assert ok is True
+        assert captured["cwd"] == posts_script.parent
+        assert captured["cmd"] == [
+            sys.executable,
+            str(posts_script),
+            "create",
+            "--channel-id",
+            "chan_123",
+            "--text",
+            "First sentence. Second sentence.",
+            "--mode",
+            "customScheduled",
+            "--due-at",
+            "2026-04-01T12:00:00Z",
+            "--video-url",
+            str(rendered_video),
+            "--video-staging-provider",
+            "backblaze-b2",
+            "--ig-type",
+            "reel",
+        ]
+
+    def test_image_workflow_uses_latest_media_output_for_scheduler(
+        self, workflow_run_module, tmp_path, monkeypatch
+    ):
+        staging = tmp_path / "staging"
+        staging.mkdir()
+        (staging / "raw.jpg").write_text("raw")
+
+        output_dir = tmp_path / "output"
+        posts_script = tmp_path / "posts.py"
+        posts_script.write_text("# stub\n")
+
+        captured = {}
+
+        workflow = {
+            "name": "image-to-post",
+            "description": "Test image scheduling workflow",
+            "input_type": "image",
+            "steps": [
+                {
+                    "name": "brand-refresh",
+                    "skill": "brand-manager",
+                    "action": "refresh",
+                    "description": "Refresh",
+                },
+                {
+                    "name": "resize",
+                    "skill": "social-resizer",
+                    "description": "Resize image",
+                },
+                {
+                    "name": "caption",
+                    "skill": "image-captioner",
+                    "description": "Caption image",
+                },
+                {
+                    "name": "schedule",
+                    "skill": "post-scheduler",
+                    "description": "Schedule image",
+                    "params": {"mode": "shareNow"},
+                },
+            ],
+        }
+
+        def fake_load_workflow(name: str) -> dict:
+            assert name == "image-to-post"
+            return workflow
+
+        def fake_prepare_input(input_path: Path) -> Path:
+            return staging
+
+        def fake_run_skill(
+            skill_name, input_dir, step_output, params=None, device="auto"
+        ):
+            if skill_name == "social-resizer":
+                (step_output / "resized.jpg").write_text("image")
+            elif skill_name == "image-captioner":
+                (step_output / "caption.json").write_text(
+                    json.dumps({"caption": "Caption from sidecar."})
+                )
+            else:
+                raise AssertionError(f"Unexpected skill {skill_name}")
+            return True
+
+        def fake_get_skill_script(skill_name: str) -> Path:
+            assert skill_name == "post-scheduler"
+            return posts_script
+
+        def fake_subprocess_run(cmd, cwd):
+            captured["cmd"] = cmd
+            captured["cwd"] = cwd
+            return SimpleNamespace(returncode=0)
+
+        monkeypatch.setattr(workflow_run_module, "load_workflow", fake_load_workflow)
+        monkeypatch.setattr(workflow_run_module, "prepare_input", fake_prepare_input)
+        monkeypatch.setattr(workflow_run_module, "run_skill", fake_run_skill)
+        monkeypatch.setattr(
+            workflow_run_module, "get_skill_script", fake_get_skill_script
+        )
+        monkeypatch.setattr(workflow_run_module.subprocess, "run", fake_subprocess_run)
+
+        ok = workflow_run_module.run_workflow(
+            workflow_name="image-to-post",
+            input_path=tmp_path / "input.jpg",
+            output_path=output_dir,
+            archive=False,
+            scheduler_overrides={"channel_id": "chan_456"},
+        )
+
+        assert ok is True
+        assert "--text" in captured["cmd"]
+        assert "Caption from sidecar." in captured["cmd"]
+        image_url_index = captured["cmd"].index("--image-url") + 1
+        assert captured["cmd"][image_url_index].endswith("resized.jpg")
+        assert not captured["cmd"][image_url_index].endswith("caption.json")
+
+    def test_scheduler_workflow_requires_actual_channel_id(
+        self, workflow_run_module, tmp_path, monkeypatch
+    ):
+        image_dir = tmp_path / "images"
+        image_dir.mkdir()
+        (image_dir / "photo.jpg").write_text("image")
+
+        caption_dir = tmp_path / "captions"
+        caption_dir.mkdir()
+        (caption_dir / "caption.json").write_text(
+            json.dumps({"caption": "Caption from sidecar."})
+        )
+
+        called = {"subprocess": False}
+
+        def fake_subprocess_run(cmd, cwd):
+            called["subprocess"] = True
+            return SimpleNamespace(returncode=0)
+
+        monkeypatch.setattr(workflow_run_module.subprocess, "run", fake_subprocess_run)
+
+        ok = workflow_run_module.run_post_scheduler(
+            workflow={"name": "image-to-post", "input_type": "image"},
+            latest_media_output=image_dir,
+            transcript_output=None,
+            caption_output=caption_dir,
+            defaults={"mode": "shareNow"},
+            overrides=None,
+        )
+
+        assert ok is False
+        assert called["subprocess"] is False
+
+    def test_scheduler_rejects_platform_name_as_channel_id(
+        self, workflow_run_module, tmp_path, monkeypatch
+    ):
+        video_dir = tmp_path / "video"
+        video_dir.mkdir()
+        (video_dir / "rendered.mp4").write_text("video")
+
+        transcript_dir = tmp_path / "transcript"
+        transcript_dir.mkdir()
+        (transcript_dir / "clip_transcription.json").write_text(
+            json.dumps({"segments": [{"text": "hello world"}]})
+        )
+
+        called = {"subprocess": False}
+
+        def fake_subprocess_run(cmd, cwd):
+            called["subprocess"] = True
+            return SimpleNamespace(returncode=0)
+
+        monkeypatch.setattr(workflow_run_module.subprocess, "run", fake_subprocess_run)
+
+        ok = workflow_run_module.run_post_scheduler(
+            workflow={"name": "video-to-reel", "input_type": "video"},
+            latest_media_output=video_dir,
+            transcript_output=transcript_dir,
+            caption_output=None,
+            defaults={
+                "mode": "customScheduled",
+                "video_staging_provider": "backblaze-b2",
+            },
+            overrides={
+                "channel_id": "instagram",
+                "due_at": "2026-04-01T12:00:00Z",
+            },
+        )
+
+        assert ok is False
+        assert called["subprocess"] is False
