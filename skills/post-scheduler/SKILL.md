@@ -28,7 +28,7 @@ metadata:
   }
 ---
 
-# buffer
+# post-scheduler
 
 Schedule, create, and manage social media posts on Instagram and LinkedIn via the Buffer GraphQL API.
 
@@ -36,27 +36,28 @@ Schedule, create, and manage social media posts on Instagram and LinkedIn via th
 
 1. Go to https://publish.buffer.com/settings/api
 2. Copy your access token
-3. Set the environment variable:
+3. Either run `./install-abra.sh` to persist `BUFFER_API_KEY` into
+   `~/.openclaw/openclaw.json`, or set the environment variable manually:
    ```bash
    export BUFFER_API_KEY="your-access-token"
    ```
-4. Install script dependencies:
+4. Install skill dependencies:
    ```bash
-   cd skills/post-scheduler/scripts && uv sync
+   cd skills/post-scheduler && uv sync
    ```
 
 > **Note:** Buffer's API is in Beta. All operations use POST with a JSON body containing `query` (and optionally `variables`).
 
 ## Operations
 
-All scripts are run from `skills/post-scheduler/scripts/` with `uv run`.
+All commands below are run from `skills/post-scheduler/`.
 
 ### Get Organizations
 
 Retrieve your organization IDs — needed for all other calls.
 
 ```bash
-uv run organizations.py list
+uv run python scripts/organizations.py list
 ```
 
 ### List Channels
@@ -64,43 +65,43 @@ uv run organizations.py list
 List connected channels for an organization.
 
 ```bash
-uv run channels.py list --org-id ORG_ID
+uv run python scripts/channels.py list --org-id ORG_ID
 ```
 
 List only unlocked (active) channels:
 
 ```bash
-uv run channels.py list --org-id ORG_ID --unlocked
+uv run python scripts/channels.py list --org-id ORG_ID --unlocked
 ```
 
 ### Get a Single Channel
 
 ```bash
-uv run channels.py get --channel-id CHANNEL_ID
+uv run python scripts/channels.py get --channel-id CHANNEL_ID
 ```
 
 ### Get Scheduled Posts
 
 ```bash
-uv run posts.py list --org-id ORG_ID --status scheduled
+uv run python scripts/posts.py list --org-id ORG_ID --status scheduled
 ```
 
 Filter by channel and include asset details:
 
 ```bash
-uv run posts.py list --org-id ORG_ID --status scheduled --channel-id CHANNEL_ID --with-assets
+uv run python scripts/posts.py list --org-id ORG_ID --status scheduled --channel-id CHANNEL_ID --with-assets
 ```
 
 Paginate results:
 
 ```bash
-uv run posts.py list --org-id ORG_ID --status scheduled --limit 10 --after CURSOR
+uv run python scripts/posts.py list --org-id ORG_ID --status scheduled --limit 10 --after CURSOR
 ```
 
 ### Get Sent Posts
 
 ```bash
-uv run posts.py list --org-id ORG_ID --status sent
+uv run python scripts/posts.py list --org-id ORG_ID --status sent
 ```
 
 ### Create Text Post
@@ -108,19 +109,19 @@ uv run posts.py list --org-id ORG_ID --status sent
 **Share now:**
 
 ```bash
-uv run posts.py create --channel-id CHANNEL_ID --text "Your post text here" --mode shareNow
+uv run python scripts/posts.py create --channel-id CHANNEL_ID --text "Your post text here" --mode shareNow
 ```
 
 **Add to queue:**
 
 ```bash
-uv run posts.py create --channel-id CHANNEL_ID --text "Queued post" --mode addToQueue
+uv run python scripts/posts.py create --channel-id CHANNEL_ID --text "Queued post" --mode addToQueue
 ```
 
 **Schedule for a specific time:**
 
 ```bash
-uv run posts.py create --channel-id CHANNEL_ID --text "Scheduled post" \
+uv run python scripts/posts.py create --channel-id CHANNEL_ID --text "Scheduled post" \
   --mode customScheduled --due-at "2026-04-01T14:00:00Z"
 ```
 
@@ -130,12 +131,12 @@ Pass a local file path or a public HTTPS URL:
 
 ```bash
 # Local file (served automatically via cloudflared tunnel)
-uv run posts.py create --channel-id CHANNEL_ID --text "Check out this photo!" \
+uv run python scripts/posts.py create --channel-id CHANNEL_ID --text "Check out this photo!" \
   --mode shareNow \
   --image-url path/to/photo.jpg
 
 # Public URL
-uv run posts.py create --channel-id CHANNEL_ID --text "Check out this photo!" \
+uv run python scripts/posts.py create --channel-id CHANNEL_ID --text "Check out this photo!" \
   --mode shareNow \
   --image-url "https://example.com/photo.jpg"
 ```
@@ -143,7 +144,7 @@ uv run posts.py create --channel-id CHANNEL_ID --text "Check out this photo!" \
 Multiple images (carousel):
 
 ```bash
-uv run posts.py create --channel-id CHANNEL_ID --text "Photo carousel" --mode shareNow \
+uv run python scripts/posts.py create --channel-id CHANNEL_ID --text "Photo carousel" --mode shareNow \
   --image-url path/to/photo1.jpg \
   --image-url path/to/photo2.jpg
 ```
@@ -155,7 +156,7 @@ Use `--video-url` for video files.
 **Local `shareNow` video still uses cloudflared:**
 
 ```bash
-uv run posts.py create --channel-id CHANNEL_ID --text "Publish right now" \
+uv run python scripts/posts.py create --channel-id CHANNEL_ID --text "Publish right now" \
   --mode shareNow \
   --video-url path/to/video.mp4
 ```
@@ -220,13 +221,16 @@ The Backblaze credentials can be provided via normal shell environment
 variables or a mounted dotenv file referenced by `BACKBLAZE_B2_ENV_FILE`.
 Dotenv files must use plain dotenv syntax (`KEY=value`). `install-abra.sh` now
 writes the recommended file beside `openclaw.json`, sets
-`env.BACKBLAZE_B2_ENV_FILE`, and removes any old workspace-local
-`skills/post-scheduler/.env` during reinstall.
+`env.BACKBLAZE_B2_ENV_FILE`, persists `BUFFER_API_KEY` in `openclaw.json env`
+when provided, and removes any old workspace-local `skills/post-scheduler/.env`
+during reinstall. When resolving `BUFFER_API_KEY`, the installer uses shell env
+first, existing OpenClaw config second, and the repo root `.env` as a fallback
+default before prompting.
 
 **Schedule a local video with staging:**
 
 ```bash
-uv run posts.py create --channel-id CHANNEL_ID --text "Scheduled video" \
+uv run python scripts/posts.py create --channel-id CHANNEL_ID --text "Scheduled video" \
   --mode customScheduled --due-at "2026-04-01T12:00:00Z" \
   --video-url path/to/video.mp4 \
   --video-staging-provider backblaze-b2
@@ -247,12 +251,12 @@ rejected until it was extended to a 4-second clip.
 
 ```bash
 # Google Drive share URL (auto-converted to direct download)
-uv run posts.py create --channel-id CHANNEL_ID --text "Video caption" \
+uv run python scripts/posts.py create --channel-id CHANNEL_ID --text "Video caption" \
   --mode customScheduled --due-at "2026-04-01T12:00:00Z" \
   --video-url "https://drive.google.com/file/d/FILE_ID/view"
 
 # Any public HTTPS URL
-uv run posts.py create --channel-id CHANNEL_ID --text "Video caption" \
+uv run python scripts/posts.py create --channel-id CHANNEL_ID --text "Video caption" \
   --mode customScheduled --due-at "2026-04-01T12:00:00Z" \
   --video-url "https://example.com/video.mp4"
 ```
@@ -265,7 +269,7 @@ uv run posts.py create --channel-id CHANNEL_ID --text "Video caption" \
 Example — Instagram reel with first comment:
 
 ```bash
-uv run posts.py create --channel-id IG_CHANNEL_ID \
+uv run python scripts/posts.py create --channel-id IG_CHANNEL_ID \
   --text "Amazing reel!" \
   --mode customScheduled --due-at "2026-04-01T12:00:00Z" \
   --video-url "https://drive.google.com/file/d/FILE_ID/view" \
@@ -281,7 +285,7 @@ uv run posts.py create --channel-id IG_CHANNEL_ID \
 Example — LinkedIn post with link attachment:
 
 ```bash
-uv run posts.py create --channel-id LI_CHANNEL_ID \
+uv run python scripts/posts.py create --channel-id LI_CHANNEL_ID \
   --text "Great article on AI trends" \
   --mode shareNow \
   --link-attachment "https://example.com/article" \
@@ -293,7 +297,7 @@ uv run posts.py create --channel-id LI_CHANNEL_ID \
 Save content ideas to Buffer for later use.
 
 ```bash
-uv run ideas.py create --org-id ORG_ID --title "Post idea title" --text "Draft content for the post..."
+uv run python scripts/ideas.py create --org-id ORG_ID --title "Post idea title" --text "Draft content for the post..."
 ```
 
 ## Workflow Guidance

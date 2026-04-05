@@ -1,7 +1,7 @@
 """Buffer ideas API.
 
 Usage:
-    uv run ideas.py create --org-id ORG_ID --title TITLE --text TEXT
+    uv run python scripts/ideas.py create --org-id ORG_ID --title TITLE --text TEXT
 """
 
 import argparse

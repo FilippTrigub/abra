@@ -1,21 +1,21 @@
 """Buffer posts API.
 
 Usage:
-    uv run posts.py list --org-id ORG_ID --status scheduled|sent
-                         [--channel-id CHANNEL_ID] [--with-assets]
-                         [--limit N] [--after CURSOR]
+    uv run python scripts/posts.py list --org-id ORG_ID --status scheduled|sent
+                                       [--channel-id CHANNEL_ID] [--with-assets]
+                                       [--limit N] [--after CURSOR]
 
-    uv run posts.py create --channel-id CHANNEL_ID --text TEXT
-                           --mode shareNow|addToQueue|shareNext|customScheduled|recommendedTime
-                           [--due-at ISO8601]
-                           [--image-url URL|PATH ...]
-                           [--video-url URL|PATH]
-                            [--video-staging-provider 0x0.st|backblaze-b2]
-                           [--ig-type post|reel|story]
-                           [--ig-first-comment TEXT]
-                           [--li-first-comment TEXT]
-                           [--link-attachment URL]
-                           [--tunnel-wait SECONDS]
+    uv run python scripts/posts.py create --channel-id CHANNEL_ID --text TEXT
+                                         --mode shareNow|addToQueue|shareNext|customScheduled|recommendedTime
+                                         [--due-at ISO8601]
+                                         [--image-url URL|PATH ...]
+                                         [--video-url URL|PATH]
+                                         [--video-staging-provider 0x0.st|backblaze-b2]
+                                         [--ig-type post|reel|story]
+                                         [--ig-first-comment TEXT]
+                                         [--li-first-comment TEXT]
+                                         [--link-attachment URL]
+                                         [--tunnel-wait SECONDS]
 
 Image and video URLs:
     - Pass a public HTTPS URL directly.

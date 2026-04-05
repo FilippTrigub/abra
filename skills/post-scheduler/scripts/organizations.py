@@ -1,7 +1,7 @@
 """Buffer organizations API.
 
 Usage:
-    uv run organizations.py list
+    uv run python scripts/organizations.py list
 """
 
 import argparse

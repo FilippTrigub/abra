@@ -1,6 +1,6 @@
 [project]
-name = "buffer"
+name = "post-scheduler"
 version = "1.0.0"
-description = "Buffer GraphQL API scripts"
+description = "Buffer GraphQL API skill"
 requires-python = ">=3.11"
 dependencies = ["requests"]
