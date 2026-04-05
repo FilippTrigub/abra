@@ -13,8 +13,7 @@ from collections.abc import Callable
 
 import requests
 
-_SKILL_ROOT = Path(__file__).resolve().parent.parent
-_SKILL_ENV_PATH = _SKILL_ROOT / ".env"
+_B2_ENV_FILE_VAR = "BACKBLAZE_B2_ENV_FILE"
 _B2_ENV_NAMES = {
     "BACKBLAZE_B2_KEY_ID",
     "BACKBLAZE_B2_APPLICATION_KEY",
@@ -75,7 +74,7 @@ def _require_env(name: str) -> str:
     if value:
         return value
 
-    value = _read_skill_env_value(name)
+    value = _read_b2_env_file_value(name)
     if value:
         return value
 
@@ -86,11 +85,38 @@ def _require_env(name: str) -> str:
     sys.exit(1)
 
 
-def _read_skill_env_value(name: str) -> str:
-    if name not in _B2_ENV_NAMES or not _SKILL_ENV_PATH.exists():
+def _read_b2_env_file_value(name: str) -> str:
+    if name not in _B2_ENV_NAMES:
         return ""
 
-    for raw_line in _SKILL_ENV_PATH.read_text(encoding="utf-8").splitlines():
+    configured_env_path = _configured_b2_env_path()
+    if configured_env_path is None:
+        return ""
+
+    return _read_env_file_value(configured_env_path, name)
+
+
+def _configured_b2_env_path() -> Path | None:
+    raw_path = os.environ.get(_B2_ENV_FILE_VAR, "").strip()
+    if not raw_path:
+        return None
+
+    path = Path(raw_path).expanduser()
+    if not path.is_file():
+        print(
+            f"Error: {_B2_ENV_FILE_VAR} must point to a readable dotenv file: {path}",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    return path
+
+
+def _read_env_file_value(path: Path, name: str) -> str:
+    if not path.exists():
+        return ""
+
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
         line = raw_line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue

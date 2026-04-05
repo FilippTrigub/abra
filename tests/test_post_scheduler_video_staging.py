@@ -164,41 +164,61 @@ def test_backblaze_b2_is_treated_as_operator_managed_persistent_storage():
     assert provider.assumes_persistent_storage is True
 
 
-def test_backblaze_b2_reads_missing_env_vars_from_skill_local_dotenv(tmp_path: Path):
-    env_path = tmp_path / ".env"
-    env_path.write_text(
-        "\n".join(
-            [
-                'BACKBLAZE_B2_KEY_ID="dotenv-key-id"',
-                "BACKBLAZE_B2_APPLICATION_KEY=dotenv-app-key",
-                "BACKBLAZE_B2_BUCKET_ID=dotenv-bucket-id",
-                "BACKBLAZE_B2_BUCKET_NAME=dotenv-bucket-name",
-            ]
-        ),
+def test_backblaze_b2_reads_missing_env_vars_from_configured_env_file(tmp_path: Path):
+    configured_env_path = tmp_path / "b2.env"
+    configured_env_path.write_text(
+        "BACKBLAZE_B2_BUCKET_NAME=configured-bucket\n",
         encoding="utf-8",
     )
 
-    with (
-        patch.dict(video_staging.os.environ, {}, clear=True),
-        patch.object(video_staging, "_SKILL_ENV_PATH", env_path),
+    with patch.dict(
+        video_staging.os.environ,
+        {video_staging._B2_ENV_FILE_VAR: str(configured_env_path)},
+        clear=True,
     ):
-        assert video_staging._require_env("BACKBLAZE_B2_KEY_ID") == "dotenv-key-id"
         assert (
-            video_staging._require_env("BACKBLAZE_B2_APPLICATION_KEY")
-            == "dotenv-app-key"
+            video_staging._require_env("BACKBLAZE_B2_BUCKET_NAME")
+            == "configured-bucket"
         )
 
 
-def test_shell_env_overrides_skill_local_dotenv(tmp_path: Path):
-    env_path = tmp_path / ".env"
-    env_path.write_text("BACKBLAZE_B2_BUCKET_NAME=dotenv-bucket\n", encoding="utf-8")
+def test_shell_env_overrides_configured_b2_env_file(tmp_path: Path):
+    configured_env_path = tmp_path / "b2.env"
+    configured_env_path.write_text(
+        "BACKBLAZE_B2_BUCKET_NAME=configured-bucket\n",
+        encoding="utf-8",
+    )
+
+    with patch.dict(
+        video_staging.os.environ,
+        {
+            video_staging._B2_ENV_FILE_VAR: str(configured_env_path),
+            "BACKBLAZE_B2_BUCKET_NAME": "shell-bucket",
+        },
+        clear=True,
+    ):
+        assert video_staging._require_env("BACKBLAZE_B2_BUCKET_NAME") == "shell-bucket"
+
+
+def test_invalid_configured_b2_env_file_exits_cleanly(tmp_path: Path):
+    missing_path = tmp_path / "missing.env"
+    stderr = io.StringIO()
 
     with (
         patch.dict(
             video_staging.os.environ,
-            {"BACKBLAZE_B2_BUCKET_NAME": "shell-bucket"},
+            {video_staging._B2_ENV_FILE_VAR: str(missing_path)},
             clear=True,
         ),
-        patch.object(video_staging, "_SKILL_ENV_PATH", env_path),
+        contextlib.redirect_stderr(stderr),
     ):
-        assert video_staging._require_env("BACKBLAZE_B2_BUCKET_NAME") == "shell-bucket"
+        try:
+            video_staging._require_env("BACKBLAZE_B2_BUCKET_NAME")
+        except SystemExit as exc:
+            assert exc.code == 1
+        else:
+            raise AssertionError(
+                "Expected _require_env to exit when BACKBLAZE_B2_ENV_FILE is invalid"
+            )
+
+    assert video_staging._B2_ENV_FILE_VAR in stderr.getvalue()
