@@ -255,11 +255,11 @@ BUFFER_API_KEY=your-buffer-token   # Required for scheduling
 ### Optional post-scheduler Backblaze B2 setup
 
 Scheduled local video posts can stage through Backblaze B2. During
-`./install-abra.sh`, Abra can optionally scaffold the post-scheduler skill's B2
-env file inside the installed workspace:
+`./install-abra.sh`, Abra can optionally scaffold the post-scheduler B2 env
+file next to the OpenClaw config:
 
 ```bash
-~/.openclaw/workspace-abra/skills/post-scheduler/.env
+~/.openclaw/post-scheduler-backblaze.env
 ```
 
 That file uses plain dotenv syntax:
@@ -273,9 +273,32 @@ BACKBLAZE_B2_BUCKET_NAME=...
 
 Notes:
 - this installer step is optional
-- shell environment values still override the skill-local `.env`
+- `install-abra.sh` also writes `env.BACKBLAZE_B2_ENV_FILE` into `~/.openclaw/openclaw.json`
+- shell environment values still override any file-based B2 config
 - `BUFFER_API_KEY` is still read from the normal shell/container environment, not from the skill-local `.env`
 - for non-interactive installs, set `ABRA_CONFIGURE_POST_SCHEDULER_ENV=1` to force the scaffold step or `ABRA_CONFIGURE_POST_SCHEDULER_ENV=0` to skip it
+
+If your OpenClaw/OpenCode integration can only pass one env var, keep
+`BUFFER_API_KEY` as the primary gateway env and mount the B2 secrets as a plain
+dotenv file. The recommended OpenClaw config is:
+
+```json5
+{
+  env: {
+    BACKBLAZE_B2_ENV_FILE: "/home/node/.openclaw/post-scheduler-backblaze.env",
+  },
+}
+```
+
+Resolution order for Backblaze values is:
+
+1. direct `BACKBLAZE_B2_*` shell/container env vars
+2. `BACKBLAZE_B2_ENV_FILE`
+
+There is no runtime fallback to `skills/post-scheduler/.env` anymore. On
+reinstall, `install-abra.sh` will migrate any old workspace-local
+`skills/post-scheduler/.env` into `~/.openclaw/post-scheduler-backblaze.env`
+and remove the legacy copy.
 
 ---
 

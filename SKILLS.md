@@ -8,6 +8,12 @@ All skills follow the same conventions:
 - Input dir: `./input` (or override with `--input`)
 - Output dir: `./output` (or override with `--output`)
 
+`post-scheduler` has one extra secret-loading option for Backblaze B2 staging:
+it can read the four `BACKBLAZE_B2_*` values directly from the shell, from a
+dotenv file pointed to by `BACKBLAZE_B2_ENV_FILE`. The recommended OpenClaw
+setup is to store that dotenv file at `~/.openclaw/post-scheduler-backblaze.env` and set
+`env.BACKBLAZE_B2_ENV_FILE` in `~/.openclaw/openclaw.json`.
+
 ---
 
 ## GPU / CPU Compatibility
