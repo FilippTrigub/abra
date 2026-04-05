@@ -13,7 +13,9 @@ CONTAINER_OPENCLAW_DIR="/home/node/.openclaw"
 AGENT_WORKSPACE_HOST="${HOST_OPENCLAW_DIR}/workspace-${AGENT_NAME}"
 AGENT_WORKSPACE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/workspace-${AGENT_NAME}"
 SKILLS_DEST="${AGENT_WORKSPACE_HOST}/skills"
-POST_SCHEDULER_ENV_FILE="${SKILLS_DEST}/post-scheduler/.env"
+POST_SCHEDULER_ENV_FILE="${HOST_OPENCLAW_DIR}/post-scheduler-backblaze.env"
+POST_SCHEDULER_ENV_FILE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/post-scheduler-backblaze.env"
+LEGACY_POST_SCHEDULER_ENV_FILE="${AGENT_WORKSPACE_HOST}/skills/post-scheduler/.env"
 
 read_env_value() {
     local file="$1"
@@ -89,6 +91,19 @@ configure_post_scheduler_env() {
     existing_bucket_id="$(read_env_value "${POST_SCHEDULER_ENV_FILE}" "BACKBLAZE_B2_BUCKET_ID")"
     existing_bucket_name="$(read_env_value "${POST_SCHEDULER_ENV_FILE}" "BACKBLAZE_B2_BUCKET_NAME")"
 
+    if [ -z "${existing_key_id}" ]; then
+        existing_key_id="$(read_env_value "${LEGACY_POST_SCHEDULER_ENV_FILE}" "BACKBLAZE_B2_KEY_ID")"
+    fi
+    if [ -z "${existing_app_key}" ]; then
+        existing_app_key="$(read_env_value "${LEGACY_POST_SCHEDULER_ENV_FILE}" "BACKBLAZE_B2_APPLICATION_KEY")"
+    fi
+    if [ -z "${existing_bucket_id}" ]; then
+        existing_bucket_id="$(read_env_value "${LEGACY_POST_SCHEDULER_ENV_FILE}" "BACKBLAZE_B2_BUCKET_ID")"
+    fi
+    if [ -z "${existing_bucket_name}" ]; then
+        existing_bucket_name="$(read_env_value "${LEGACY_POST_SCHEDULER_ENV_FILE}" "BACKBLAZE_B2_BUCKET_NAME")"
+    fi
+
     local b2_key_id="${BACKBLAZE_B2_KEY_ID:-${existing_key_id}}"
     local b2_app_key="${BACKBLAZE_B2_APPLICATION_KEY:-${existing_app_key}}"
     local b2_bucket_id="${BACKBLAZE_B2_BUCKET_ID:-${existing_bucket_id}}"
@@ -111,6 +126,7 @@ configure_post_scheduler_env() {
 
     cat > "${POST_SCHEDULER_ENV_FILE}" <<EOF
 # Optional Backblaze B2 settings for the post-scheduler skill.
+# Stored next to openclaw.json and referenced via env.BACKBLAZE_B2_ENV_FILE.
 # BUFFER_API_KEY still belongs in the normal shell/container environment.
 BACKBLAZE_B2_KEY_ID="$(escape_env_value "${b2_key_id}")"
 BACKBLAZE_B2_APPLICATION_KEY="$(escape_env_value "${b2_app_key}")"
@@ -118,8 +134,11 @@ BACKBLAZE_B2_BUCKET_ID="$(escape_env_value "${b2_bucket_id}")"
 BACKBLAZE_B2_BUCKET_NAME="$(escape_env_value "${b2_bucket_name}")"
 EOF
 
+    rm -f "${LEGACY_POST_SCHEDULER_ENV_FILE}"
+
     echo "  ✓ post-scheduler Backblaze B2 env file: ${POST_SCHEDULER_ENV_FILE}"
-    echo "    Shell env still takes precedence over values in this file."
+    echo "    Legacy workspace fallback removed: ${LEGACY_POST_SCHEDULER_ENV_FILE}"
+    echo "    openclaw.json env.BACKBLAZE_B2_ENV_FILE -> ${POST_SCHEDULER_ENV_FILE_CONTAINER}"
 }
 
 echo "Installing Abra - Agent de Branding..."
@@ -171,6 +190,7 @@ CONFIG_FILE="${HOST_OPENCLAW_DIR}/openclaw.json"
 cp "${CONFIG_FILE}" "${CONFIG_FILE}.backup.$(date +%Y%m%d%H%M%S)"
 
 jq '.agents //= {"list": []}' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
+jq '.env //= {}' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
 
 # Upsert agent entry: update workspace if id already exists, add if not.
 # This is safe on re-runs and avoids the stale-entry problem caused by calling
@@ -197,6 +217,8 @@ if ! jq -e ".bindings[]? | select(.agentId == \"${AGENT_NAME}\")" "${CONFIG_FILE
     jq ".bindings += [${BINDING_JSON}]" "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
 fi
 
+jq --arg path "${POST_SCHEDULER_ENV_FILE_CONTAINER}" '.env.BACKBLAZE_B2_ENV_FILE = $path' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
+
 openclaw gateway restart || true
 
 echo
@@ -204,8 +226,9 @@ echo "Done! Agent '${AGENT_DISPLAY_NAME}' installed."
 echo "Workspace: ${AGENT_WORKSPACE_HOST}"
 echo "Workflows: ${WORKFLOWS_DEST}"
 echo "Skills: ${SKILLS_DEST}"
-echo "Post-scheduler env: ${POST_SCHEDULER_ENV_FILE}"
+echo "Post-scheduler Backblaze env: ${POST_SCHEDULER_ENV_FILE}"
 echo
 echo "To customize, edit: ${CONFIG_FILE}"
 echo "Reminder: BUFFER_API_KEY must still be provided in the shell/container environment."
+echo "Configured env pointer: env.BACKBLAZE_B2_ENV_FILE=${POST_SCHEDULER_ENV_FILE_CONTAINER}"
 echo "Restart gateway: openclaw gateway restart"

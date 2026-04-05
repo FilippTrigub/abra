@@ -6,6 +6,7 @@ pids
 
 # Directory based environment variables
 .env
+backblaze.backup.env
 
 # Coverage directory
 coverage/
