@@ -16,6 +16,7 @@ metadata:
             "env":
               [
                 "BUFFER_API_KEY",
+                "BACKBLAZE_B2_ENV_FILE",
                 "BACKBLAZE_B2_KEY_ID",
                 "BACKBLAZE_B2_APPLICATION_KEY",
                 "BACKBLAZE_B2_BUCKET_ID",
@@ -178,23 +179,49 @@ For local video files in `customScheduled`, `addToQueue`, `shareNext`, or
 - `BACKBLAZE_B2_APPLICATION_KEY`
 - `BACKBLAZE_B2_BUCKET_ID`
 - `BACKBLAZE_B2_BUCKET_NAME`
+- optional pointer env: `BACKBLAZE_B2_ENV_FILE`
 
-You can export those in your shell, or place them in:
+Recommended OpenClaw setup:
+
+1. store the Backblaze values in a plain dotenv file next to your OpenClaw config:
 
 ```bash
-skills/post-scheduler/.env
+~/.openclaw/post-scheduler-backblaze.env
 ```
 
-Shell environment variables take precedence over values in the skill-local `.env`.
+2. point OpenClaw at that file via the config `env` block:
+
+```json5
+{
+  env: {
+    BACKBLAZE_B2_ENV_FILE: "/home/node/.openclaw/post-scheduler-backblaze.env",
+  },
+}
+```
+
+The runtime supports two credential sources:
+
+1. export the four `BACKBLAZE_B2_*` vars in your shell
+2. set `BACKBLAZE_B2_ENV_FILE=/absolute/path/to/backblaze-b2.env`
+
+Resolution order is:
+
+1. direct shell environment variables
+2. `BACKBLAZE_B2_ENV_FILE`
+
+If `BACKBLAZE_B2_ENV_FILE` is set, it must point to a readable dotenv file.
 
 The scheduler uses the native B2 flow (`b2_authorize_account` →
 `b2_get_upload_url` → upload file) and then constructs the stable public URL as
 `https://.../file/<bucket-name>/<file-name>`. The bucket must already be public,
 and any lifecycle/deletion policy is your responsibility.
 
-The Backblaze credentials can be provided either via normal shell environment
-variables or via `skills/post-scheduler/.env`. The skill-local `.env` must use
-plain dotenv syntax (`KEY=value`), and shell variables take precedence.
+The Backblaze credentials can be provided via normal shell environment
+variables or a mounted dotenv file referenced by `BACKBLAZE_B2_ENV_FILE`.
+Dotenv files must use plain dotenv syntax (`KEY=value`). `install-abra.sh` now
+writes the recommended file beside `openclaw.json`, sets
+`env.BACKBLAZE_B2_ENV_FILE`, and removes any old workspace-local
+`skills/post-scheduler/.env` during reinstall.
 
 **Schedule a local video with staging:**
 
