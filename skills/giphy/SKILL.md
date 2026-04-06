@@ -58,6 +58,11 @@ The skill works fully with bundled assets. API keys are only needed for on-deman
 export GIPHY_API_KEY="your_api_key_here"
 ```
 
+Or run `./install-abra.sh` to persist `GIPHY_API_KEY` into
+`~/.openclaw/openclaw.json` under `env`. The installer uses shell env first,
+existing OpenClaw config second, and the repo root `.env` as a fallback default
+before interactive confirmation.
+
 Then install dependencies:
 ```bash
 cd "$SKILL_DIR" && uv sync

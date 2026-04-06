@@ -13,6 +13,7 @@ CONTAINER_OPENCLAW_DIR="/home/node/.openclaw"
 AGENT_WORKSPACE_HOST="${HOST_OPENCLAW_DIR}/workspace-${AGENT_NAME}"
 AGENT_WORKSPACE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/workspace-${AGENT_NAME}"
 SKILLS_DEST="${AGENT_WORKSPACE_HOST}/skills"
+CONFIG_FILE="${HOST_OPENCLAW_DIR}/openclaw.json"
 POST_SCHEDULER_ENV_FILE="${HOST_OPENCLAW_DIR}/post-scheduler-backblaze.env"
 POST_SCHEDULER_ENV_FILE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/post-scheduler-backblaze.env"
 LEGACY_POST_SCHEDULER_ENV_FILE="${AGENT_WORKSPACE_HOST}/skills/post-scheduler/.env"
@@ -44,11 +45,181 @@ for raw_line in path.read_text(encoding="utf-8").splitlines():
 PY
 }
 
+read_config_env_value() {
+    local file="$1"
+    local key="$2"
+    [ -f "${file}" ] || return 0
+
+    jq -r --arg key "${key}" '.env[$key] // empty' "${file}"
+}
+
 escape_env_value() {
     local value="$1"
     value="${value//\\/\\\\}"
     value="${value//\"/\\\"}"
     printf '%s' "${value}"
+}
+
+resolve_installer_env_value() {
+    local key="$1"
+    local value="${!key:-}"
+
+    if [ -n "${value}" ]; then
+        printf '%s' "${value}"
+        return 0
+    fi
+
+    value="$(read_config_env_value "${CONFIG_FILE}" "${key}")"
+    if [ -n "${value}" ]; then
+        printf '%s' "${value}"
+        return 0
+    fi
+
+    if [ -n "${ROOT_ENV_FILE:-}" ]; then
+        value="$(read_env_value "${ROOT_ENV_FILE}" "${key}")"
+    fi
+
+    printf '%s' "${value}"
+}
+
+prompt_secret_value() {
+    local label="$1"
+    local current_value="$2"
+    local response=""
+
+    if [ ! -t 0 ]; then
+        printf '%s' "${current_value}"
+        return 0
+    fi
+
+    if [ -n "${current_value}" ]; then
+        read -r -s -p "${label} [configured, press Enter to keep current]: " response
+    else
+        read -r -s -p "${label}: " response
+    fi
+    echo
+
+    if [ -n "${response}" ]; then
+        printf '%s' "${response}"
+        return 0
+    fi
+
+    printf '%s' "${current_value}"
+}
+
+copy_directory_clean() {
+    local source_dir="$1"
+    local destination_dir="$2"
+
+    python3 - "$source_dir" "$destination_dir" <<'PY'
+from pathlib import Path
+import os
+import shutil
+import sys
+
+source = Path(sys.argv[1])
+destination = Path(sys.argv[2])
+backup = destination.with_name(f".{destination.name}.install-backup-{os.getpid()}")
+
+ignored_names = {".venv", "__pycache__", ".claude", ".pytest_cache"}
+ignored_suffixes = (".pyc", ".pyo")
+
+if backup.exists():
+    shutil.rmtree(backup, ignore_errors=True)
+
+if destination.exists():
+    destination.rename(backup)
+
+def ignore(_current_dir: str, names: list[str]) -> list[str]:
+    skipped: list[str] = []
+    for name in names:
+        if name in ignored_names or name.endswith(ignored_suffixes):
+            skipped.append(name)
+    return skipped
+
+try:
+    shutil.copytree(source, destination, ignore=ignore)
+except Exception:
+    shutil.rmtree(destination, ignore_errors=True)
+    if backup.exists() and not destination.exists():
+        backup.rename(destination)
+    raise
+
+if backup.exists():
+    shutil.rmtree(backup, ignore_errors=True)
+PY
+}
+
+resolve_openclaw_owner() {
+    local owner=""
+
+    if [ "$(id -u)" -ne 0 ]; then
+        return 0
+    fi
+
+    if [ -n "${SUDO_UID:-}" ] && [ -n "${SUDO_GID:-}" ]; then
+        printf '%s:%s' "${SUDO_UID}" "${SUDO_GID}"
+        return 0
+    fi
+
+    if [ -e "${HOST_OPENCLAW_DIR}" ]; then
+        owner="$(stat -c '%u:%g' "${HOST_OPENCLAW_DIR}")"
+        if [ "${owner%%:*}" -ne 0 ]; then
+            printf '%s' "${owner}"
+            return 0
+        fi
+    fi
+
+    owner="$(stat -c '%u:%g' "$(dirname "${HOST_OPENCLAW_DIR}")")"
+    if [ "${owner%%:*}" -ne 0 ]; then
+        printf '%s' "${owner}"
+    fi
+}
+
+normalize_openclaw_ownership() {
+    local owner="$1"
+
+    if [ -z "${owner}" ] || [ ! -d "${HOST_OPENCLAW_DIR}" ]; then
+        return 0
+    fi
+
+    chown -R "${owner}" "${HOST_OPENCLAW_DIR}"
+}
+
+set_config_env_value() {
+    local key="$1"
+    local value="$2"
+
+    if [ -z "${value}" ]; then
+        echo "  • openclaw.json env.${key} not set (no value provided)"
+        return 0
+    fi
+
+    jq --arg key "${key}" --arg value "${value}" '.env[$key] = $value' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
+    echo "  ✓ openclaw.json env.${key}"
+}
+
+configure_skill_api_keys() {
+    local buffer_api_key giphy_api_key freesound_api_key pixabay_api_key
+
+    buffer_api_key="$(resolve_installer_env_value "BUFFER_API_KEY")"
+    giphy_api_key="$(resolve_installer_env_value "GIPHY_API_KEY")"
+    freesound_api_key="$(resolve_installer_env_value "FREESOUND_API_KEY")"
+    pixabay_api_key="$(resolve_installer_env_value "PIXABAY_API_KEY")"
+
+    if [ -t 0 ]; then
+        echo
+        echo "Skill API keys (shell env overrides openclaw.json env; repo .env is used only as a fallback default):"
+        buffer_api_key="$(prompt_secret_value "BUFFER_API_KEY (post-scheduler)" "${buffer_api_key}")"
+        giphy_api_key="$(prompt_secret_value "GIPHY_API_KEY (giphy search)" "${giphy_api_key}")"
+        freesound_api_key="$(prompt_secret_value "FREESOUND_API_KEY (freesound search)" "${freesound_api_key}")"
+        pixabay_api_key="$(prompt_secret_value "PIXABAY_API_KEY (pixabay search)" "${pixabay_api_key}")"
+    fi
+
+    INSTALL_BUFFER_API_KEY="${buffer_api_key}"
+    INSTALL_GIPHY_API_KEY="${giphy_api_key}"
+    INSTALL_FREESOUND_API_KEY="${freesound_api_key}"
+    INSTALL_PIXABAY_API_KEY="${pixabay_api_key}"
 }
 
 configure_post_scheduler_env() {
@@ -127,7 +298,7 @@ configure_post_scheduler_env() {
     cat > "${POST_SCHEDULER_ENV_FILE}" <<EOF
 # Optional Backblaze B2 settings for the post-scheduler skill.
 # Stored next to openclaw.json and referenced via env.BACKBLAZE_B2_ENV_FILE.
-# BUFFER_API_KEY still belongs in the normal shell/container environment.
+# BUFFER_API_KEY is stored separately in openclaw.json env.
 BACKBLAZE_B2_KEY_ID="$(escape_env_value "${b2_key_id}")"
 BACKBLAZE_B2_APPLICATION_KEY="$(escape_env_value "${b2_app_key}")"
 BACKBLAZE_B2_BUCKET_ID="$(escape_env_value "${b2_bucket_id}")"
@@ -150,11 +321,35 @@ command -v python3 >/dev/null 2>&1 || { echo "python3 required to scaffold post-
 mkdir -p "${AGENT_WORKSPACE_HOST}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="${SCRIPT_DIR}"
 
-cp "${REPO_ROOT}/AGENTS.md"   "${AGENT_WORKSPACE_HOST}/AGENTS.md"
-cp "${REPO_ROOT}/SOUL.md"     "${AGENT_WORKSPACE_HOST}/SOUL.md"
-cp "${REPO_ROOT}/WORKFLOW.md" "${AGENT_WORKSPACE_HOST}/WORKFLOW.md"
+REPO_ROOT=""
+if command -v git >/dev/null 2>&1; then
+    REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null || true)"
+fi
+
+if [ -z "${REPO_ROOT}" ]; then
+    REPO_ROOT="${SCRIPT_DIR}"
+fi
+
+ROOT_ENV_FILE="${REPO_ROOT}/.env"
+SOURCE_ROOT=""
+OPENCLAW_OWNER="$(resolve_openclaw_owner)"
+
+if [ -n "${OPENCLAW_OWNER}" ]; then
+    normalize_openclaw_ownership "${OPENCLAW_OWNER}"
+fi
+
+if [ -n "$(git -C "${REPO_ROOT}" rev-parse --show-toplevel 2>/dev/null || true)" ] && [ -d "${REPO_ROOT}/skills" ]; then
+    SOURCE_ROOT="${REPO_ROOT}"
+else
+    TEMP_CLONE=$(mktemp -d)
+    git clone --depth 1 -b "${REPO_BRANCH}" "${REPO_URL}" "${TEMP_CLONE}"
+    SOURCE_ROOT="${TEMP_CLONE}"
+fi
+
+cp "${SOURCE_ROOT}/AGENTS.md"   "${AGENT_WORKSPACE_HOST}/AGENTS.md"
+cp "${SOURCE_ROOT}/SOUL.md"     "${AGENT_WORKSPACE_HOST}/SOUL.md"
+cp "${SOURCE_ROOT}/WORKFLOW.md" "${AGENT_WORKSPACE_HOST}/WORKFLOW.md"
 echo "  ✓ AGENTS.md"
 echo "  ✓ SOUL.md"
 echo "  ✓ WORKFLOW.md"
@@ -162,31 +357,24 @@ echo "  ✓ WORKFLOW.md"
 WORKFLOWS_DEST="${AGENT_WORKSPACE_HOST}/workflows"
 mkdir -p "${WORKFLOWS_DEST}"
 rm -rf "${WORKFLOWS_DEST}"/*
-cp -r "${REPO_ROOT}/workflows"/* "${WORKFLOWS_DEST}/"
+cp -r "${SOURCE_ROOT}/workflows"/* "${WORKFLOWS_DEST}/"
 echo "  ✓ workflows"
 
-SKILL_SOURCE="${REPO_ROOT}/skills"
-
-if [ ! -d "${SKILL_SOURCE}" ]; then
-    TEMP_CLONE=$(mktemp -d)
-    git clone --depth 1 -b "${REPO_BRANCH}" "${REPO_URL}" "${TEMP_CLONE}"
-    SKILL_SOURCE="${TEMP_CLONE}/skills"
-fi
+SKILL_SOURCE="${SOURCE_ROOT}/skills"
 
 mkdir -p "${SKILLS_DEST}"
 for skill_dir in "${SKILL_SOURCE}"/*; do
     [ -d "${skill_dir}" ] || continue
     skill_name=$(basename "${skill_dir}")
     [[ "${skill_name}" == "input" || "${skill_name}" == "output" || "${skill_name}" == ".venv" ]] && continue
-    rm -rf "${SKILLS_DEST}/${skill_name}"
-    cp -r "${skill_dir}" "${SKILLS_DEST}/${skill_name}"
+    copy_directory_clean "${skill_dir}" "${SKILLS_DEST}/${skill_name}"
     echo "  + ${skill_name}"
 done
 [ -n "${TEMP_CLONE}" ] && rm -rf "${TEMP_CLONE}"
 
 configure_post_scheduler_env
+configure_skill_api_keys
 
-CONFIG_FILE="${HOST_OPENCLAW_DIR}/openclaw.json"
 cp "${CONFIG_FILE}" "${CONFIG_FILE}.backup.$(date +%Y%m%d%H%M%S)"
 
 jq '.agents //= {"list": []}' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
@@ -218,6 +406,10 @@ if ! jq -e ".bindings[]? | select(.agentId == \"${AGENT_NAME}\")" "${CONFIG_FILE
 fi
 
 jq --arg path "${POST_SCHEDULER_ENV_FILE_CONTAINER}" '.env.BACKBLAZE_B2_ENV_FILE = $path' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
+set_config_env_value "BUFFER_API_KEY" "${INSTALL_BUFFER_API_KEY}"
+set_config_env_value "GIPHY_API_KEY" "${INSTALL_GIPHY_API_KEY}"
+set_config_env_value "FREESOUND_API_KEY" "${INSTALL_FREESOUND_API_KEY}"
+set_config_env_value "PIXABAY_API_KEY" "${INSTALL_PIXABAY_API_KEY}"
 
 openclaw gateway restart || true
 
@@ -229,6 +421,6 @@ echo "Skills: ${SKILLS_DEST}"
 echo "Post-scheduler Backblaze env: ${POST_SCHEDULER_ENV_FILE}"
 echo
 echo "To customize, edit: ${CONFIG_FILE}"
-echo "Reminder: BUFFER_API_KEY must still be provided in the shell/container environment."
+echo "Skill API keys are persisted in openclaw.json env when provided during install."
 echo "Configured env pointer: env.BACKBLAZE_B2_ENV_FILE=${POST_SCHEDULER_ENV_FILE_CONTAINER}"
 echo "Restart gateway: openclaw gateway restart"

@@ -82,3 +82,6 @@ schedules/
 
 # HF HUB
 .model-cache/
+
+# Sisyphus
+.sisyphus/

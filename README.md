@@ -275,11 +275,12 @@ Notes:
 - this installer step is optional
 - `install-abra.sh` also writes `env.BACKBLAZE_B2_ENV_FILE` into `~/.openclaw/openclaw.json`
 - shell environment values still override any file-based B2 config
-- `BUFFER_API_KEY` is still read from the normal shell/container environment, not from the skill-local `.env`
+- `BUFFER_API_KEY`, `GIPHY_API_KEY`, `FREESOUND_API_KEY`, and `PIXABAY_API_KEY` can now be populated during install and persisted into `~/.openclaw/openclaw.json` under `env`
+- for those API keys, `install-abra.sh` resolves defaults in this order: shell env → existing `openclaw.json` env → repo root `.env`, then lets you override them interactively
 - for non-interactive installs, set `ABRA_CONFIGURE_POST_SCHEDULER_ENV=1` to force the scaffold step or `ABRA_CONFIGURE_POST_SCHEDULER_ENV=0` to skip it
 
-If your OpenClaw/OpenCode integration can only pass one env var, keep
-`BUFFER_API_KEY` as the primary gateway env and mount the B2 secrets as a plain
+If your OpenClaw/OpenCode integration can only pass one primary skill env var,
+persist `BUFFER_API_KEY` in `openclaw.json` and mount the B2 secrets as a plain
 dotenv file. The recommended OpenClaw config is:
 
 ```json5
@@ -299,6 +300,22 @@ There is no runtime fallback to `skills/post-scheduler/.env` anymore. On
 reinstall, `install-abra.sh` will migrate any old workspace-local
 `skills/post-scheduler/.env` into `~/.openclaw/post-scheduler-backblaze.env`
 and remove the legacy copy.
+
+The same installer run can also seed API-key-based skills into OpenClaw config:
+
+```json5
+{
+  env: {
+    BUFFER_API_KEY: "...",
+    GIPHY_API_KEY: "...",
+    FREESOUND_API_KEY: "...",
+    PIXABAY_API_KEY: "...",
+  },
+}
+```
+
+This is now the recommended install path for `post-scheduler`, `giphy`,
+`freesound`, and `pixabay`.
 
 ---
 

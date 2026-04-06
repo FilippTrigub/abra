@@ -14,6 +14,11 @@ dotenv file pointed to by `BACKBLAZE_B2_ENV_FILE`. The recommended OpenClaw
 setup is to store that dotenv file at `~/.openclaw/post-scheduler-backblaze.env` and set
 `env.BACKBLAZE_B2_ENV_FILE` in `~/.openclaw/openclaw.json`.
 
+`install-abra.sh` now also seeds `BUFFER_API_KEY`, `GIPHY_API_KEY`,
+`FREESOUND_API_KEY`, and `PIXABAY_API_KEY` into `~/.openclaw/openclaw.json`
+under `env`, using shell values first, existing OpenClaw config second, and the
+repo root `.env` as a fallback default before interactive confirmation.
+
 ---
 
 ## GPU / CPU Compatibility
@@ -488,10 +493,10 @@ uv run python scripts/cta.py --config config.json
 
 **Optional staged local video support:**
 - local `shareNow` video still uses `cloudflared`
-- scheduled/queued local video can stage through Backblaze B2 using a skill-local `.env`
-- installer support: `./install-abra.sh` can optionally scaffold `~/.openclaw/workspace-abra/skills/post-scheduler/.env`
+- scheduled/queued local video can stage through Backblaze B2 using `BACKBLAZE_B2_ENV_FILE`
+- installer support: `./install-abra.sh` scaffolds `~/.openclaw/post-scheduler-backblaze.env` and wires `env.BACKBLAZE_B2_ENV_FILE`
 - required B2 keys in that file: `BACKBLAZE_B2_KEY_ID`, `BACKBLAZE_B2_APPLICATION_KEY`, `BACKBLAZE_B2_BUCKET_ID`, `BACKBLAZE_B2_BUCKET_NAME`
-- `BUFFER_API_KEY` still belongs in the normal shell/container environment
+- `BUFFER_API_KEY` can be persisted in `~/.openclaw/openclaw.json` under `env`
 
 **Usage:**
 ```bash
