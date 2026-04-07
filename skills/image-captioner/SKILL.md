@@ -135,3 +135,41 @@ For each `photo.jpg` in `input_dir`, writes `photo.json` in `output_dir`:
 - `phi4` + `cpu` → rejected at config validation with a clear message
 - Model download failures → shown with HuggingFace error details
 - Individual image errors → logged; other images continue
+
+---
+
+## Remote Inference
+
+This skill supports **optional remote captioning** while preserving the same JSON sidecar output.
+
+- Default behavior is still **local**
+- Remote providers are **opt-in only**
+- Supported providers: `huggingface`, `replicate`
+
+### Config keys
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `provider` | `null` | `null`, `local`, or `none` keeps local mode |
+| `remote_model` | `null` | Optional provider-specific VLM model override |
+| `hf_token_env` | `HF_TOKEN` | HuggingFace auth env var name |
+| `replicate_api_key_env` | `REPLICATE_API_TOKEN` | Replicate auth env var name |
+| `remote_timeout_seconds` | `300` | Remote call timeout |
+
+### Examples
+
+```bash
+# HuggingFace remote image captioning
+export HF_TOKEN=hf_your_token
+uv run python scripts/describe.py --config config.json --provider huggingface
+
+# Replicate remote image captioning
+export REPLICATE_API_TOKEN=r8_your_token
+uv run python scripts/describe.py --config config.json --provider replicate --remote-model <replicate-model-slug>
+```
+
+### Notes
+
+- Remote mode still writes the same `description` / `caption` / `tags` JSON sidecar
+- Missing credentials fail fast; there is **no silent fallback** to local mode
+- Replicate requires an explicit model slug for remote captioning

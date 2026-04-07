@@ -214,3 +214,41 @@ Each config produces one JSON file (default: `<input_name>_transcription.json`) 
 - Unsupported language → error with supported codes
 - Device unavailable → fallback message if GPU requested but not available
 - Model not found → error with HuggingFace model ID suggestion
+
+---
+
+## Remote Inference
+
+This skill now supports **optional remote inference**.
+
+- Default behavior is still **local**
+- Remote providers are **opt-in only**
+- Supported providers: `huggingface`, `replicate`
+
+### Config keys
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `provider` | `null` | `null`, `local`, or `none` keeps local mode |
+| `remote_model` | `null` | Optional provider-specific model override |
+| `hf_token_env` | `HF_TOKEN` | HuggingFace auth env var name |
+| `replicate_api_key_env` | `REPLICATE_API_TOKEN` | Replicate auth env var name |
+| `remote_timeout_seconds` | `300` | Remote call timeout |
+
+### Examples
+
+```bash
+# HuggingFace remote ASR
+export HF_TOKEN=hf_your_token
+uv run python scripts/transcriber.py --config config.json --provider huggingface
+
+# Replicate remote ASR
+export REPLICATE_API_TOKEN=r8_your_token
+uv run python scripts/transcriber.py --config config.json --provider replicate --remote-model <replicate-model-slug>
+```
+
+### Notes
+
+- Remote mode still writes the same `*_transcription.json` artifact shape
+- Missing credentials fail fast; there is **no silent fallback** to local mode
+- Local mode remains the recommended default when GPU resources are available

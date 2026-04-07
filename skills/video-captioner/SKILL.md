@@ -87,3 +87,46 @@ Report back to the user:
 - If `uv` is not installed: direct to https://docs.astral.sh/uv/getting-started/installation/
 - If the input directory is empty: report clearly rather than silently exiting
 - The first run downloads the Whisper model (~140 MB for `tiny`, ~1.5 GB for `large`) — this is one-time only
+
+---
+
+## Remote Transcription
+
+This skill now supports **optional remote transcription** while keeping **pycaps rendering local**.
+
+- Default behavior is still fully local: Whisper transcription inside pycaps + local render
+- Remote mode only replaces the transcription step
+- Caption rendering, templates, and CSS handling stay local
+
+### Supported providers
+
+- `huggingface`
+- `replicate`
+
+### Config / CLI keys
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `transcription_provider` | `null` | `null` keeps local Whisper-in-pycaps flow |
+| `remote_model` | `null` | Optional provider-specific transcription model override |
+| `hf_token_env` | `HF_TOKEN` | HuggingFace auth env var name |
+| `replicate_api_key_env` | `REPLICATE_API_TOKEN` | Replicate auth env var name |
+| `remote_timeout_seconds` | `300` | Remote call timeout |
+
+### Examples
+
+```bash
+# HuggingFace remote transcription + local pycaps rendering
+export HF_TOKEN=hf_your_token
+uv run python scripts/caption_service.py --input ./input --output ./output --transcription-provider huggingface
+
+# Replicate remote transcription + local pycaps rendering
+export REPLICATE_API_TOKEN=r8_your_token
+uv run python scripts/caption_service.py --input ./input --output ./output --transcription-provider replicate --remote-model <replicate-model-slug>
+```
+
+### Notes
+
+- There is **no silent fallback** to local mode if remote auth/config is missing
+- Existing local CLI usage remains valid
+- If you do not set `--transcription-provider`, pycaps continues using its built-in Whisper flow

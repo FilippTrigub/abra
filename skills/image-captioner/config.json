@@ -3,6 +3,11 @@
   "output_dir": "./output",
   "device": "auto",
   "model": "smolvlm",
+  "provider": null,
+  "remote_model": null,
+  "hf_token_env": "HF_TOKEN",
+  "replicate_api_key_env": "REPLICATE_API_TOKEN",
+  "remote_timeout_seconds": 300,
   "prompt_description": "Describe this image in one sentence.",
   "prompt_caption": "Write an engaging Instagram caption for this image. Include 3-5 relevant hashtags."
 }

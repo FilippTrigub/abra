@@ -2,6 +2,11 @@
   "input_dir": "./input",
   "output_dir": "./output",
   "model": "distil-whisper/distil-large-v3",
+  "provider": null,
+  "remote_model": null,
+  "hf_token_env": "HF_TOKEN",
+  "replicate_api_key_env": "REPLICATE_API_TOKEN",
+  "remote_timeout_seconds": 300,
   "device": "auto",
   "language": "en",
   "output_format": "json"

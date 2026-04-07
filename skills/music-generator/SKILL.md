@@ -141,3 +141,37 @@ cd "$SKILL_DIR" && uv run python scripts/generate_music.py \
 - `model != small` + `device = cpu` → rejected at config validation
 - Video file not found → exits with clear message before generating music
 - ffmpeg not installed → shows install instructions
+
+---
+
+## Remote Inference
+
+This skill supports **optional remote music generation**.
+
+- Default behavior is still **local**
+- Remote mode is **opt-in only**
+- Supported remote provider in wave 1: `replicate`
+- `huggingface` is **not supported** for music generation in wave 1
+
+### Config keys
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `provider` | `null` | `null`, `local`, or `none` keeps local mode |
+| `remote_model` | `null` | Optional Replicate model override |
+| `hf_token_env` | `HF_TOKEN` | Present for schema consistency only |
+| `replicate_api_key_env` | `REPLICATE_API_TOKEN` | Replicate auth env var name |
+| `remote_timeout_seconds` | `300` | Remote call timeout |
+
+### Example
+
+```bash
+export REPLICATE_API_TOKEN=r8_your_token
+uv run python scripts/generate_music.py --config config.json --provider replicate --remote-model <replicate-model-slug>
+```
+
+### Notes
+
+- Remote mode still writes `music.wav` (or mixes under video when `video` is set)
+- HuggingFace music generation is rejected explicitly in wave 1
+- Missing credentials fail fast; there is **no silent fallback** to local mode

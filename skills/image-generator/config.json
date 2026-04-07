@@ -1,6 +1,11 @@
 {
   "model": "flux",
   "output_dir": "./output",
+  "provider": null,
+  "remote_model": null,
+  "hf_token_env": "HF_TOKEN",
+  "replicate_api_key_env": "REPLICATE_API_TOKEN",
+  "remote_timeout_seconds": 300,
   "prompt": "a serene landscape with mountains at sunset, golden hour lighting, highly detailed, cinematic",
   "negative_prompt": "worst quality, low quality, blurry, distorted, ugly, watermark, text",
   "width": 1024,

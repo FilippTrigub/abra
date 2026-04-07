@@ -182,3 +182,41 @@ uv run python scripts/txt2img.py \
 ```
 
 The script will attempt to auto-detect the model architecture.
+
+---
+
+## Remote Inference
+
+This skill supports **optional remote generation** while preserving the same PNG output pattern.
+
+- Default behavior is still **local**
+- Remote providers are **opt-in only**
+- Supported providers: `huggingface`, `replicate`
+
+### Config keys
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `provider` | `null` | `null`, `local`, or `none` keeps local mode |
+| `remote_model` | `null` | Optional provider-specific model override |
+| `hf_token_env` | `HF_TOKEN` | HuggingFace auth env var name |
+| `replicate_api_key_env` | `REPLICATE_API_TOKEN` | Replicate auth env var name |
+| `remote_timeout_seconds` | `300` | Remote call timeout |
+
+### Examples
+
+```bash
+# HuggingFace remote FLUX/SDXL generation
+export HF_TOKEN=hf_your_token
+uv run python scripts/txt2img.py --config config.json --provider huggingface
+
+# Replicate remote generation
+export REPLICATE_API_TOKEN=r8_your_token
+uv run python scripts/txt2img.py --config config.json --provider replicate --remote-model <replicate-model-slug>
+```
+
+### Notes
+
+- Remote mode still saves timestamped PNG files in `output_dir`
+- Missing credentials fail fast; there is **no silent fallback** to local mode
+- Local mode remains preferred when sufficient GPU VRAM is available

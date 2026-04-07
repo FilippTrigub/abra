@@ -93,6 +93,23 @@ uv run python scripts/transcribe.py --input ./input --output ./output
 
 ---
 
+### video-editor — Video Editing
+
+**What it does:** Edits and inpaints video regions via text prompts using local VLMs. Supports region-based editing, subject tracking, and controlled generation.
+
+**Model:** Local video editing with VLM guidance
+
+**Requires:** `uv`, NVIDIA GPU (8GB+ VRAM)
+
+**Usage:**
+```bash
+cd skills/video-editor && uv sync
+uv run python scripts/vace.py --input ./input --output ./output \
+  --prompt "remove the person on the left" --mode inpaint
+```
+
+---
+
 ### video-cutter — Video Cutting
 
 **What it does:** Cuts videos into segments, rearranges them, and produces an output video with a specific cuts-per-second rate. Uses MoviePy. Prioritizes audio transcription for timestamped cutting, falls back to adaptive scene detection.

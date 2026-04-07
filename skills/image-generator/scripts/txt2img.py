@@ -16,12 +16,27 @@ Usage:
 """
 
 import argparse
+import importlib
 import json
 import sys
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
+from typing import Protocol
 
-from PIL import Image
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+_providers_module = importlib.import_module("skills._providers")
+merge_remote_provider_overrides = _providers_module.merge_remote_provider_overrides
+remote_provider_from_config = _providers_module.remote_provider_from_config
+
+_hf_provider_module = importlib.import_module("skills._providers.huggingface")
+HuggingFaceProvider = _hf_provider_module.HuggingFaceProvider
+
+_replicate_provider_module = importlib.import_module("skills._providers.replicate")
+ReplicateProvider = _replicate_provider_module.ReplicateProvider
 
 # Supported predefined models with their configurations
 PREDEFINED_MODELS = {
@@ -62,8 +77,14 @@ PREDEFINED_MODELS = {
     },
 }
 
+DEFAULT_REMOTE_HF_MODEL = "black-forest-labs/FLUX.1-dev"
+
 DEFAULT_MODEL = "flux"
 MIN_VRAM_GB = 6.0
+
+
+class SaveableImage(Protocol):
+    def save(self, *args: object, **kwargs: object) -> object: ...
 
 
 # ---------------------------------------------------------------------------
@@ -72,7 +93,7 @@ MIN_VRAM_GB = 6.0
 
 
 def check_gpu(required_gb: float = MIN_VRAM_GB) -> None:
-    import torch
+    torch = importlib.import_module("torch")
 
     if not torch.cuda.is_available():
         print(
@@ -174,10 +195,15 @@ def load_pipeline(
     model_id: str, pipeline_type: str = "auto", torch_dtype: str = "bfloat16"
 ):
     """Load the diffusion pipeline."""
-    import torch
-    from diffusers import DiffusionPipeline
-    from diffusers.pipelines import StableDiffusionXLPipeline
-    from diffusers.pipelines import StableDiffusion3Pipeline
+    torch = importlib.import_module("torch")
+    diffusers = importlib.import_module("diffusers")
+    diffusion_pipeline = diffusers.DiffusionPipeline
+    sdxl_pipeline = importlib.import_module(
+        "diffusers.pipelines"
+    ).StableDiffusionXLPipeline
+    sd3_pipeline = importlib.import_module(
+        "diffusers.pipelines"
+    ).StableDiffusion3Pipeline
 
     print(f"Loading pipeline from '{model_id}'…")
     print("  (First run downloads model weights — this may take several minutes.)")
@@ -190,7 +216,7 @@ def load_pipeline(
 
     try:
         # Try to load as DiffusionPipeline (auto-detects architecture)
-        pipe = DiffusionPipeline.from_pretrained(
+        pipe = diffusion_pipeline.from_pretrained(
             model_id,
             torch_dtype=dtype_map.get(torch_dtype, torch.bfloat16),
         )
@@ -200,13 +226,13 @@ def load_pipeline(
 
         # Try SDXL
         try:
-            pipe = StableDiffusionXLPipeline.from_pretrained(
+            pipe = sdxl_pipeline.from_pretrained(
                 model_id,
                 torch_dtype=dtype_map.get(torch_dtype, torch.bfloat16),
             )
         except Exception:
             # Try SD3
-            pipe = StableDiffusion3Pipeline.from_pretrained(
+            pipe = sd3_pipeline.from_pretrained(
                 model_id,
                 torch_dtype=dtype_map.get(torch_dtype, torch.bfloat16),
             )
@@ -234,9 +260,9 @@ def generate(
     num_inference_steps: int,
     guidance_scale: float,
     seed: int | None = None,
-) -> Image.Image:
+) -> SaveableImage:
     """Generate an image from a prompt."""
-    import torch
+    torch = importlib.import_module("torch")
 
     generator = None
     if seed is not None:
@@ -255,6 +281,62 @@ def generate(
     return result.images[0]
 
 
+def generate_remote_image(
+    remote,
+    *,
+    prompt: str,
+    model_id: str,
+    negative_prompt: str,
+    width: int,
+    height: int,
+    num_inference_steps: int,
+    guidance_scale: float,
+    seed: int | None,
+) -> SaveableImage:
+    if remote.provider == "huggingface":
+        provider = HuggingFaceProvider(remote)
+        image = provider.text_to_image(
+            prompt,
+            model=remote.remote_model or model_id or DEFAULT_REMOTE_HF_MODEL,
+            negative_prompt=negative_prompt,
+            width=width,
+            height=height,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            seed=seed,
+        )
+        return image
+
+    if remote.provider == "replicate":
+        provider = ReplicateProvider(remote)
+        result = provider.text_to_image(
+            prompt,
+            model=remote.remote_model or model_id,
+            negative_prompt=negative_prompt,
+            width=width,
+            height=height,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            seed=seed,
+        )
+        if isinstance(result, str):
+            image_bytes = provider.download_bytes(result)
+            pil_image = _pil_image_module()
+            return pil_image.open(BytesIO(image_bytes)).convert("RGB")
+        raise ValueError("replicate text-to-image did not return an image URL")
+
+    raise ValueError(f"unsupported remote provider: {remote.provider}")
+
+
+def _pil_image_module():
+    try:
+        return importlib.import_module("PIL.Image")
+    except ImportError as exc:
+        raise ValueError(
+            "Pillow is not installed; image generation output handling requires pillow"
+        ) from exc
+
+
 # ---------------------------------------------------------------------------
 # Main processing
 # ---------------------------------------------------------------------------
@@ -262,12 +344,17 @@ def generate(
 
 def process(config_path: Path) -> None:
     cfg = validate_config(load_config(config_path))
+    remote = remote_provider_from_config(
+        cfg,
+        supported_providers={"huggingface", "replicate"},
+    )
 
     # Resolve model
     model_key = cfg.get("model", DEFAULT_MODEL)
     model_config = resolve_model(model_key)
 
-    check_gpu(model_config["min_vram_gb"])
+    if not remote.enabled:
+        check_gpu(model_config["min_vram_gb"])
 
     output_dir = Path(cfg.get("output_dir", "./output"))
     prompt = cfg["prompt"]
@@ -283,8 +370,9 @@ def process(config_path: Path) -> None:
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Load pipeline
-    pipe = load_pipeline(model_config["id"], model_config.get("pipeline", "auto"))
+    pipe = None
+    if not remote.enabled:
+        pipe = load_pipeline(model_config["id"], model_config.get("pipeline", "auto"))
 
     print(f"Generating {num_images} image(s): {width}x{height}")
     print(f"  Model: {model_config['id']}")
@@ -299,16 +387,29 @@ def process(config_path: Path) -> None:
         print(f"[{i + 1}/{num_images}]" + (f" seed={img_seed}" if img_seed else ""))
 
         try:
-            image = generate(
-                pipe,
-                prompt,
-                negative_prompt,
-                width,
-                height,
-                num_inference_steps,
-                guidance_scale,
-                img_seed,
-            )
+            if remote.enabled:
+                image = generate_remote_image(
+                    remote,
+                    prompt=prompt,
+                    model_id=model_config["id"],
+                    negative_prompt=negative_prompt,
+                    width=width,
+                    height=height,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=guidance_scale,
+                    seed=img_seed,
+                )
+            else:
+                image = generate(
+                    pipe,
+                    prompt,
+                    negative_prompt,
+                    width,
+                    height,
+                    num_inference_steps,
+                    guidance_scale,
+                    img_seed,
+                )
 
             out_path = output_dir / f"{timestamp}_{i + 1:03d}.png"
             image.save(out_path)
@@ -341,6 +442,28 @@ def main() -> None:
     parser.add_argument(
         "--num-images", type=int, default=1, help="Number of images to generate"
     )
+    parser.add_argument(
+        "--provider",
+        choices=["local", "none", "huggingface", "replicate"],
+        help="Optional remote provider; defaults to local generation",
+    )
+    parser.add_argument(
+        "--remote-model",
+        help="Optional remote provider model override",
+    )
+    parser.add_argument(
+        "--hf-token-env",
+        help="Environment variable name for HuggingFace auth token",
+    )
+    parser.add_argument(
+        "--replicate-api-key-env",
+        help="Environment variable name for Replicate auth token",
+    )
+    parser.add_argument(
+        "--remote-timeout-seconds",
+        type=int,
+        help="Optional timeout for remote provider calls",
+    )
     args = parser.parse_args()
 
     # Load and merge config
@@ -367,6 +490,15 @@ def main() -> None:
         cfg["seed"] = args.seed
     if args.num_images:
         cfg["num_images"] = args.num_images
+
+    cfg = merge_remote_provider_overrides(
+        cfg,
+        provider=args.provider,
+        remote_model=args.remote_model,
+        hf_token_env=args.hf_token_env,
+        replicate_api_key_env=args.replicate_api_key_env,
+        remote_timeout_seconds=args.remote_timeout_seconds,
+    )
 
     import tempfile as _tf, json as _json
 

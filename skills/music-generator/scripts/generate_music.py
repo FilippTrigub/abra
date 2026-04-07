@@ -23,14 +23,35 @@ Usage:
 """
 
 import argparse
+import importlib
 import json
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any, Protocol, cast
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+_providers_module = importlib.import_module("skills._providers")
+merge_remote_provider_overrides = _providers_module.merge_remote_provider_overrides
+remote_provider_from_config = _providers_module.remote_provider_from_config
+
+_hf_provider_module = importlib.import_module("skills._providers.huggingface")
+HuggingFaceProvider = _hf_provider_module.HuggingFaceProvider
+
+_replicate_provider_module = importlib.import_module("skills._providers.replicate")
+ReplicateProvider = _replicate_provider_module.ReplicateProvider
 
 VALID_MODELS = {"small", "medium", "melody", "large"}
 VALID_DEVICES = {"auto", "cpu", "cuda"}
+DEFAULT_REMOTE_REPLICATE_MODEL = "stability-ai/stable-audio-2.5"
+
+
+class NumpyConvertibleAudio(Protocol):
+    def numpy(self) -> object: ...
 
 
 # ---------------------------------------------------------------------------
@@ -77,8 +98,7 @@ def resolve_device(cfg: dict) -> str:
     if device != "auto":
         return device
     try:
-        import torch
-
+        torch = importlib.import_module("torch")
         return "cuda" if torch.cuda.is_available() else "cpu"
     except ImportError:
         return "cpu"
@@ -95,10 +115,12 @@ def generate_music(
     model_name: str,
     device: str,
     melody_path: Path | None = None,
-) -> tuple["torch.Tensor", int]:
+) -> tuple[object, int]:
     """Return (audio_tensor, sample_rate) via HuggingFace transformers MusicGen."""
-    import torch
-    from transformers import AutoProcessor, MusicgenForConditionalGeneration
+    torch = importlib.import_module("torch")
+    transformers = importlib.import_module("transformers")
+    auto_processor = transformers.AutoProcessor
+    musicgen_class = transformers.MusicgenForConditionalGeneration
 
     hf_model_id = f"facebook/musicgen-{model_name}"
     print(f"Loading MusicGen '{model_name}' on {device}…")
@@ -107,8 +129,8 @@ def generate_music(
             "  Note: CPU mode is very slow (~10× realtime). This may take several minutes."
         )
 
-    processor = AutoProcessor.from_pretrained(hf_model_id)
-    model = MusicgenForConditionalGeneration.from_pretrained(hf_model_id)
+    processor = auto_processor.from_pretrained(hf_model_id)
+    model = musicgen_class.from_pretrained(hf_model_id)
     model.to(device)
 
     # Compute token budget from desired duration and model frame rate.
@@ -128,15 +150,42 @@ def generate_music(
     return audio, sampling_rate
 
 
-def save_wav(audio: "torch.Tensor", path: Path, sample_rate: int = 32000) -> None:
-    import scipy.io.wavfile as wav_io
-    import numpy as np
+def generate_music_remote(prompt: str, duration: float, remote) -> tuple[bytes, int]:
+    if remote.provider == "huggingface":
+        provider = HuggingFaceProvider(remote)
+        provider.generate_music()
+        raise ValueError("unreachable")
 
-    data = audio.numpy()
+    if remote.provider != "replicate":
+        raise ValueError(f"unsupported remote provider: {remote.provider}")
+
+    provider = ReplicateProvider(remote)
+    result = provider.generate_music(
+        prompt,
+        model=remote.remote_model or DEFAULT_REMOTE_REPLICATE_MODEL,
+        duration=duration,
+    )
+    if not isinstance(result, str):
+        raise ValueError("replicate music generation did not return an audio URL")
+    return provider.download_bytes(result), 32000
+
+
+def save_wav(audio: object, path: Path, sample_rate: int = 32000) -> None:
+    wav_io = importlib.import_module("scipy.io.wavfile")
+    np = importlib.import_module("numpy")
+
+    if not hasattr(audio, "numpy"):
+        raise ValueError("audio tensor does not support numpy() conversion")
+    audio_tensor = cast(NumpyConvertibleAudio, audio)
+    data: Any = audio_tensor.numpy()
     if data.ndim == 2:
         data = data.T  # (samples, channels)
     data_int16 = (data * 32767).clip(-32768, 32767).astype(np.int16)
     wav_io.write(str(path), sample_rate, data_int16)
+
+
+def save_audio_bytes(audio_bytes: bytes, path: Path) -> None:
+    path.write_bytes(audio_bytes)
 
 
 def mix_music_under_video(
@@ -212,6 +261,13 @@ VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".m4v", ".webm"}
 
 def process(config_path: Path) -> None:
     cfg = validate_config(load_config(config_path))
+    remote = remote_provider_from_config(
+        cfg,
+        supported_providers={"huggingface", "replicate"},
+        unsupported_provider_reasons={
+            "huggingface": "music generation is not supported for HuggingFace in wave 1"
+        },
+    )
 
     input_dir = Path(cfg.get("input_dir", "./input"))
     output_dir = Path(cfg.get("output_dir", "./output"))
@@ -225,7 +281,12 @@ def process(config_path: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f'Generating {duration}s of music: "{prompt}"')
-    audio, sample_rate = generate_music(prompt, duration, model_name, device)
+    audio = None
+    audio_bytes: bytes | None = None
+    if remote.enabled:
+        audio_bytes, sample_rate = generate_music_remote(prompt, duration, remote)
+    else:
+        audio, sample_rate = generate_music(prompt, duration, model_name, device)
 
     if video:
         video_path = Path(video)
@@ -234,7 +295,10 @@ def process(config_path: Path) -> None:
             sys.exit(1)
         with tempfile.TemporaryDirectory(prefix="clawbeat_") as tmp_str:
             tmp_music = Path(tmp_str) / "music.wav"
-            save_wav(audio, tmp_music, sample_rate)
+            if audio_bytes is not None:
+                save_audio_bytes(audio_bytes, tmp_music)
+            else:
+                save_wav(audio, tmp_music, sample_rate)
             out_path = output_dir / video_path.name
             print(f"Mixing music under video at {music_volume_lufs} LUFS…")
             mix_music_under_video(video_path, tmp_music, out_path, music_volume_lufs)
@@ -253,7 +317,10 @@ def process(config_path: Path) -> None:
             succeeded, failed = 0, []
             with tempfile.TemporaryDirectory(prefix="clawbeat_") as tmp_str:
                 tmp_music = Path(tmp_str) / "music.wav"
-                save_wav(audio, tmp_music, sample_rate)
+                if audio_bytes is not None:
+                    save_audio_bytes(audio_bytes, tmp_music)
+                else:
+                    save_wav(audio, tmp_music, sample_rate)
                 for video_path in videos:
                     print(f"[{video_path.name}]")
                     try:
@@ -276,13 +343,19 @@ def process(config_path: Path) -> None:
                 print()
         else:
             out_path = output_dir / "music.wav"
-            save_wav(audio, out_path, sample_rate)
+            if audio_bytes is not None:
+                save_audio_bytes(audio_bytes, out_path)
+            else:
+                save_wav(audio, out_path, sample_rate)
             print(f"→ {out_path}")
             print()
             print("Done.")
     else:
         out_path = output_dir / "music.wav"
-        save_wav(audio, out_path, sample_rate)
+        if audio_bytes is not None:
+            save_audio_bytes(audio_bytes, out_path)
+        else:
+            save_wav(audio, out_path, sample_rate)
         print(f"→ {out_path}")
         print()
         print("Done.")
@@ -305,6 +378,28 @@ def main() -> None:
         "--input", help="Override input_dir (directory of videos to mix under)"
     )
     parser.add_argument("--output", help="Override output_dir")
+    parser.add_argument(
+        "--provider",
+        choices=["local", "none", "huggingface", "replicate"],
+        help="Optional remote provider; defaults to local generation",
+    )
+    parser.add_argument(
+        "--remote-model",
+        help="Optional remote provider model override",
+    )
+    parser.add_argument(
+        "--hf-token-env",
+        help="Environment variable name for HuggingFace auth token",
+    )
+    parser.add_argument(
+        "--replicate-api-key-env",
+        help="Environment variable name for Replicate auth token",
+    )
+    parser.add_argument(
+        "--remote-timeout-seconds",
+        type=int,
+        help="Optional timeout for remote provider calls",
+    )
     args = parser.parse_args()
 
     cfg = validate_config(load_config(Path(args.config)))
@@ -325,6 +420,15 @@ def main() -> None:
         cfg["input_dir"] = args.input
     if args.output:
         cfg["output_dir"] = args.output
+
+    cfg = merge_remote_provider_overrides(
+        cfg,
+        provider=args.provider,
+        remote_model=args.remote_model,
+        hf_token_env=args.hf_token_env,
+        replicate_api_key_env=args.replicate_api_key_env,
+        remote_timeout_seconds=args.remote_timeout_seconds,
+    )
 
     import tempfile as _tf, json as _json
 
