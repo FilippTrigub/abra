@@ -200,12 +200,14 @@ set_config_env_value() {
 }
 
 configure_skill_api_keys() {
-    local buffer_api_key giphy_api_key freesound_api_key pixabay_api_key
+    local buffer_api_key giphy_api_key freesound_api_key pixabay_api_key hf_token replicate_api_token
 
     buffer_api_key="$(resolve_installer_env_value "BUFFER_API_KEY")"
     giphy_api_key="$(resolve_installer_env_value "GIPHY_API_KEY")"
     freesound_api_key="$(resolve_installer_env_value "FREESOUND_API_KEY")"
     pixabay_api_key="$(resolve_installer_env_value "PIXABAY_API_KEY")"
+    hf_token="$(resolve_installer_env_value "HF_TOKEN")"
+    replicate_api_token="$(resolve_installer_env_value "REPLICATE_API_TOKEN")"
 
     if [ -t 0 ]; then
         echo
@@ -214,12 +216,16 @@ configure_skill_api_keys() {
         giphy_api_key="$(prompt_secret_value "GIPHY_API_KEY (giphy search)" "${giphy_api_key}")"
         freesound_api_key="$(prompt_secret_value "FREESOUND_API_KEY (freesound search)" "${freesound_api_key}")"
         pixabay_api_key="$(prompt_secret_value "PIXABAY_API_KEY (pixabay search)" "${pixabay_api_key}")"
+        hf_token="$(prompt_secret_value "HF_TOKEN (huggingface inference, optional)" "${hf_token}")"
+        replicate_api_token="$(prompt_secret_value "REPLICATE_API_TOKEN (replicate inference, optional)" "${replicate_api_token}")"
     fi
 
     INSTALL_BUFFER_API_KEY="${buffer_api_key}"
     INSTALL_GIPHY_API_KEY="${giphy_api_key}"
     INSTALL_FREESOUND_API_KEY="${freesound_api_key}"
     INSTALL_PIXABAY_API_KEY="${pixabay_api_key}"
+    INSTALL_HF_TOKEN="${hf_token}"
+    INSTALL_REPLICATE_API_TOKEN="${replicate_api_token}"
 }
 
 configure_post_scheduler_env() {
@@ -410,6 +416,8 @@ set_config_env_value "BUFFER_API_KEY" "${INSTALL_BUFFER_API_KEY}"
 set_config_env_value "GIPHY_API_KEY" "${INSTALL_GIPHY_API_KEY}"
 set_config_env_value "FREESOUND_API_KEY" "${INSTALL_FREESOUND_API_KEY}"
 set_config_env_value "PIXABAY_API_KEY" "${INSTALL_PIXABAY_API_KEY}"
+set_config_env_value "HF_TOKEN" "${INSTALL_HF_TOKEN}"
+set_config_env_value "REPLICATE_API_TOKEN" "${INSTALL_REPLICATE_API_TOKEN}"
 
 openclaw gateway restart || true
 
