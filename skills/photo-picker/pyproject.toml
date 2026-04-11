@@ -8,4 +8,7 @@ dependencies = [
     "transformers>=4.40",
     "pillow",
     "numpy",
+    "b2sdk",
+    "runpod",
+    "fal-client",
 ]

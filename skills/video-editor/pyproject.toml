@@ -14,4 +14,7 @@ dependencies = [
     "sentencepiece",
     "rembg[cpu]",
     "ftfy",
+    "b2sdk",
+    "runpod",
+    "fal-client",
 ]

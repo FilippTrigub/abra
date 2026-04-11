@@ -3,5 +3,12 @@
   "output_dir": "./output",
   "device": "auto",
   "model": "DPT_Large",
-  "blur_strength": 15
+  "blur_strength": 15,
+  "provider": "local",
+  "runpod_api_key_env": "RUNPOD_API_KEY",
+  "runpod_endpoint_id_env": "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT",
+  "runpod_gpu_type": "NVIDIA RTX 4090",
+  "fal_api_key_env": "FAL_KEY",
+  "fal_app_id_env": "FAL_APP_ID_BOKEH_EFFECT",
+  "remote_timeout_seconds": 300
 }

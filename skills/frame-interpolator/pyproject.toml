@@ -9,4 +9,7 @@ dependencies = [
     "ffmpeg-python",
     "pillow",
     "numpy",
+    "b2sdk",
+    "runpod",
+    "fal-client",
 ]

@@ -9,5 +9,12 @@
   "num_inference_steps": 30,
   "guidance_scale": 5.0,
   "batch_size": 8,
-  "max_proc_dim": 384
+  "max_proc_dim": 384,
+  "provider": "local",
+  "runpod_api_key_env": "RUNPOD_API_KEY",
+  "runpod_endpoint_id_env": "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR",
+  "runpod_gpu_type": "NVIDIA A100 80GB",
+  "fal_api_key_env": "FAL_KEY",
+  "fal_app_id_env": "FAL_APP_ID_VIDEO_EDITOR",
+  "remote_timeout_seconds": 600
 }

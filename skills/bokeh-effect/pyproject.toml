@@ -10,6 +10,9 @@ dependencies = [
     "pillow",
     "numpy",
     "opencv-python-headless",
+    "b2sdk",
+    "runpod",
+    "fal-client",
 ]
 
 [[tool.uv.index]]

@@ -7,4 +7,7 @@ dependencies = [
     "demucs>=4.0",
     "torchcodec",
     "ffmpeg-python",
+    "b2sdk",
+    "runpod",
+    "fal-client",
 ]

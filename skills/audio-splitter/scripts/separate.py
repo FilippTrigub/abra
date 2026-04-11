@@ -28,8 +28,13 @@ import json
 import shutil
 import subprocess
 import sys
+
 import tempfile
 from pathlib import Path
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".m4v", ".webm"}
 AUDIO_EXTENSIONS = {".mp3", ".wav", ".aac", ".flac", ".ogg", ".m4a"}
@@ -267,6 +272,21 @@ def main() -> None:
         cfg["model"] = args.model
     if args.device:
         cfg["device"] = args.device
+
+    _provider_name = cfg.get("provider")
+    if _provider_name in ("runpod", "fal"):
+        import importlib
+        _cfg_mod = importlib.import_module("skills._providers.config")
+        remote = _cfg_mod.remote_provider_from_config(cfg, supported_providers={"runpod", "fal"})
+        input_dir = Path(cfg.get("input_dir", "./input"))
+        output_dir = Path(cfg.get("output_dir", "./output"))
+        if _provider_name == "runpod":
+            _rp = importlib.import_module("skills._providers.runpod")
+            _rp.RunpodProvider(remote).run_skill(input_dir, output_dir, cfg)
+        else:
+            _fal = importlib.import_module("skills._providers.fal")
+            _fal.FalProvider(remote).run_skill(input_dir, output_dir, cfg)
+        return
 
     import tempfile as _tf, json as _json
     with _tf.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
