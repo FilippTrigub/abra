@@ -1,0 +1,14 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "domain": null,
+  "marketingskills_api_key": null,
+  "seo_api_key": null,
+  "output_format": "json",
+  "include_sitemaps": true,
+  "include_robots": true,
+  "include_historical_data": false,
+  "max_pages": 100,
+  "cluster_threshold": 0.7,
+  "competitor_count": 5
+}

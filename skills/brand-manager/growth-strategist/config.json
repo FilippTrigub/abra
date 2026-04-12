@@ -1,0 +1,13 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "task": "ideas",
+  "marketing_goal": "brand_awareness",
+  "target_audience": "small_business",
+  "tone": "professional",
+  "max_ideas": 10,
+  "include_examples": true,
+  "tools_categories": ["social_media", "analytics", "design", "automation"],
+  "output_format": "markdown",
+  "verbose": false
+}

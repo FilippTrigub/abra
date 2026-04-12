@@ -16,6 +16,8 @@ SKILLS_DEST="${AGENT_WORKSPACE_HOST}/skills"
 CONFIG_FILE="${HOST_OPENCLAW_DIR}/openclaw.json"
 POST_SCHEDULER_ENV_FILE="${HOST_OPENCLAW_DIR}/post-scheduler-backblaze.env"
 POST_SCHEDULER_ENV_FILE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/post-scheduler-backblaze.env"
+BACKBLAZE_B2_RUNPOD_ENV_FILE="${HOST_OPENCLAW_DIR}/runpod-backblaze.env"
+BACKBLAZE_B2_RUNPOD_ENV_FILE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/runpod-backblaze.env"
 LEGACY_POST_SCHEDULER_ENV_FILE="${AGENT_WORKSPACE_HOST}/skills/post-scheduler/.env"
 
 read_env_value() {
@@ -85,9 +87,15 @@ resolve_installer_env_value() {
 prompt_secret_value() {
     local label="$1"
     local current_value="$2"
+    local skip_if_in_env="${3:-false}"
     local response=""
 
     if [ ! -t 0 ]; then
+        printf '%s' "${current_value}"
+        return 0
+    fi
+
+    if [ "${skip_if_in_env}" = "true" ] && [ -n "${current_value}" ]; then
         printf '%s' "${current_value}"
         return 0
     fi
@@ -105,6 +113,31 @@ prompt_secret_value() {
     fi
 
     printf '%s' "${current_value}"
+}
+
+prompt_use_env_defaults() {
+    local response=""
+    local use_env_defaults=""
+
+    if [ ! -t 0 ]; then
+        USE_ENV_DEFAULTS="false"
+        return 0
+    fi
+
+    echo
+    echo "Would you like to use API keys from the .env file without manual overwrite?"
+    echo "  - If yes, keys already present in .env will be used automatically"
+    echo "  - If no, you will be prompted to enter each API key"
+    read -r -p "Use .env values automatically? [y/N]: " response
+
+    case "${response}" in
+        y|Y|yes|YES)
+            USE_ENV_DEFAULTS="true"
+            ;;
+        *)
+            USE_ENV_DEFAULTS="false"
+            ;;
+    esac
 }
 
 copy_directory_clean() {
@@ -200,7 +233,29 @@ set_config_env_value() {
 }
 
 configure_skill_api_keys() {
-    local buffer_api_key giphy_api_key freesound_api_key pixabay_api_key hf_token replicate_api_token
+    local use_env_defaults="false"
+
+    prompt_use_env_defaults
+
+    if [ "${USE_ENV_DEFAULTS}" = "true" ] && [ -n "${ROOT_ENV_FILE:-}" ] && [ -f "${ROOT_ENV_FILE}" ]; then
+        echo "  → Using API keys from .env file (will skip prompting for keys already configured)"
+    fi
+
+    local runpod_api_key
+    local runpod_endpoint_video_editor runpod_endpoint_video_matte runpod_endpoint_frame_interpolator
+    local runpod_endpoint_bokeh_effect runpod_endpoint_background_remover runpod_endpoint_audio_splitter runpod_endpoint_photo_picker
+    local ga4_access_token ga4_property_id
+    local google_ads_client_id google_ads_client_secret google_ads_refresh_token google_ads_developer_token
+    local gsc_client_id gsc_client_secret gsc_refresh_token
+    local resend_api_key mailchimp_api_key mailchimp_server_prefix sendgrid_api_key kit_api_key dub_api_key
+    local semrush_api_key ahrefs_api_key dataforseo_login dataforseo_password keywords_everywhere_api_key
+    local plausible_api_key plausible_site_id
+    local mixpanel_token mixpanel_secret amplitude_api_key amplitude_secret_key
+    local hotjar_site_id hotjar_api_token optimizely_sdk_key optimizely_access_token
+    local hubspot_access_token
+    local salesforce_client_id salesforce_client_secret salesforce_username salesforce_password salesforce_security_token
+    local close_api_key outreach_access_token outreach_refresh_token crossbeam_api_key
+    local apollo_api_key clearbit_api_key zoominfo_access_token clay_api_key segment_write_key
 
     buffer_api_key="$(resolve_installer_env_value "BUFFER_API_KEY")"
     giphy_api_key="$(resolve_installer_env_value "GIPHY_API_KEY")"
@@ -208,16 +263,132 @@ configure_skill_api_keys() {
     pixabay_api_key="$(resolve_installer_env_value "PIXABAY_API_KEY")"
     hf_token="$(resolve_installer_env_value "HF_TOKEN")"
     replicate_api_token="$(resolve_installer_env_value "REPLICATE_API_TOKEN")"
+    runpod_api_key="$(resolve_installer_env_value "RUNPOD_API_KEY")"
+    runpod_endpoint_video_editor="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR")"
+    runpod_endpoint_video_matte="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_VIDEO_MATTE")"
+    runpod_endpoint_frame_interpolator="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR")"
+    runpod_endpoint_bokeh_effect="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT")"
+    runpod_endpoint_background_remover="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER")"
+    runpod_endpoint_audio_splitter="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER")"
+    runpod_endpoint_photo_picker="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_PHOTO_PICKER")"
+
+    ga4_access_token="$(resolve_installer_env_value "GA4_ACCESS_TOKEN")"
+    ga4_property_id="$(resolve_installer_env_value "GA4_PROPERTY_ID")"
+    google_ads_client_id="$(resolve_installer_env_value "GOOGLE_ADS_CLIENT_ID")"
+    google_ads_client_secret="$(resolve_installer_env_value "GOOGLE_ADS_CLIENT_SECRET")"
+    google_ads_refresh_token="$(resolve_installer_env_value "GOOGLE_ADS_REFRESH_TOKEN")"
+    google_ads_developer_token="$(resolve_installer_env_value "GOOGLE_ADS_DEVELOPER_TOKEN")"
+    gsc_client_id="$(resolve_installer_env_value "GSC_CLIENT_ID")"
+    gsc_client_secret="$(resolve_installer_env_value "GSC_CLIENT_SECRET")"
+    gsc_refresh_token="$(resolve_installer_env_value "GSC_REFRESH_TOKEN")"
+    resend_api_key="$(resolve_installer_env_value "RESEND_API_KEY")"
+    mailchimp_api_key="$(resolve_installer_env_value "MAILCHIMP_API_KEY")"
+    mailchimp_server_prefix="$(resolve_installer_env_value "MAILCHIMP_SERVER_PREFIX")"
+    sendgrid_api_key="$(resolve_installer_env_value "SENDGRID_API_KEY")"
+    kit_api_key="$(resolve_installer_env_value "KIT_API_KEY")"
+    dub_api_key="$(resolve_installer_env_value "DUB_API_KEY")"
+    semrush_api_key="$(resolve_installer_env_value "SEMRUSH_API_KEY")"
+    ahrefs_api_key="$(resolve_installer_env_value "AHREFS_API_KEY")"
+    dataforseo_login="$(resolve_installer_env_value "DATAFORSEO_LOGIN")"
+    dataforseo_password="$(resolve_installer_env_value "DATAFORSEO_PASSWORD")"
+    keywords_everywhere_api_key="$(resolve_installer_env_value "KEYWORDS_EVERYWHERE_API_KEY")"
+    plausible_api_key="$(resolve_installer_env_value "PLAUSIBLE_API_KEY")"
+    plausible_site_id="$(resolve_installer_env_value "PLAUSIBLE_SITE_ID")"
+    mixpanel_token="$(resolve_installer_env_value "MIXPANEL_TOKEN")"
+    mixpanel_secret="$(resolve_installer_env_value "MIXPANEL_SECRET")"
+    amplitude_api_key="$(resolve_installer_env_value "AMPLITUDE_API_KEY")"
+    amplitude_secret_key="$(resolve_installer_env_value "AMPLITUDE_SECRET_KEY")"
+    hotjar_site_id="$(resolve_installer_env_value "HOTJAR_SITE_ID")"
+    hotjar_api_token="$(resolve_installer_env_value "HOTJAR_API_TOKEN")"
+    optimizely_sdk_key="$(resolve_installer_env_value "OPTIMIZELY_SDK_KEY")"
+    optimizely_access_token="$(resolve_installer_env_value "OPTIMIZELY_ACCESS_TOKEN")"
+    hubspot_access_token="$(resolve_installer_env_value "HUBSPOT_ACCESS_TOKEN")"
+    salesforce_client_id="$(resolve_installer_env_value "SALESFORCE_CLIENT_ID")"
+    salesforce_client_secret="$(resolve_installer_env_value "SALESFORCE_CLIENT_SECRET")"
+    salesforce_username="$(resolve_installer_env_value "SALESFORCE_USERNAME")"
+    salesforce_password="$(resolve_installer_env_value "SALESFORCE_PASSWORD")"
+    salesforce_security_token="$(resolve_installer_env_value "SALESFORCE_SECURITY_TOKEN")"
+    close_api_key="$(resolve_installer_env_value "CLOSE_API_KEY")"
+    outreach_access_token="$(resolve_installer_env_value "OUTREACH_ACCESS_TOKEN")"
+    outreach_refresh_token="$(resolve_installer_env_value "OUTREACH_REFRESH_TOKEN")"
+    crossbeam_api_key="$(resolve_installer_env_value "CROSSBEAM_API_KEY")"
+    apollo_api_key="$(resolve_installer_env_value "APOLLO_API_KEY")"
+    clearbit_api_key="$(resolve_installer_env_value "CLEARBIT_API_KEY")"
+    zoominfo_access_token="$(resolve_installer_env_value "ZOOMINFO_ACCESS_TOKEN")"
+    clay_api_key="$(resolve_installer_env_value "CLAY_API_KEY")"
+    segment_write_key="$(resolve_installer_env_value "SEGMENT_WRITE_KEY")"
 
     if [ -t 0 ]; then
         echo
         echo "Skill API keys (shell env overrides openclaw.json env; repo .env is used only as a fallback default):"
-        buffer_api_key="$(prompt_secret_value "BUFFER_API_KEY (post-scheduler)" "${buffer_api_key}")"
-        giphy_api_key="$(prompt_secret_value "GIPHY_API_KEY (giphy search)" "${giphy_api_key}")"
-        freesound_api_key="$(prompt_secret_value "FREESOUND_API_KEY (freesound search)" "${freesound_api_key}")"
-        pixabay_api_key="$(prompt_secret_value "PIXABAY_API_KEY (pixabay search)" "${pixabay_api_key}")"
-        hf_token="$(prompt_secret_value "HF_TOKEN (huggingface inference, optional)" "${hf_token}")"
-        replicate_api_token="$(prompt_secret_value "REPLICATE_API_TOKEN (replicate inference, optional)" "${replicate_api_token}")"
+        buffer_api_key="$(prompt_secret_value "BUFFER_API_KEY (post-scheduler)" "${buffer_api_key}" "${USE_ENV_DEFAULTS}")"
+        giphy_api_key="$(prompt_secret_value "GIPHY_API_KEY (giphy search)" "${giphy_api_key}" "${USE_ENV_DEFAULTS}")"
+        freesound_api_key="$(prompt_secret_value "FREESOUND_API_KEY (freesound search)" "${freesound_api_key}" "${USE_ENV_DEFAULTS}")"
+        pixabay_api_key="$(prompt_secret_value "PIXABAY_API_KEY (pixabay search)" "${pixabay_api_key}" "${USE_ENV_DEFAULTS}")"
+        hf_token="$(prompt_secret_value "HF_TOKEN (huggingface inference, optional)" "${hf_token}" "${USE_ENV_DEFAULTS}")"
+        replicate_api_token="$(prompt_secret_value "REPLICATE_API_TOKEN (replicate inference, optional)" "${replicate_api_token}" "${USE_ENV_DEFAULTS}")"
+        echo
+        echo "RunPod GPU inference (optional — skip to keep local-only mode):"
+        runpod_api_key="$(prompt_secret_value "RUNPOD_API_KEY (runpod serverless GPU, optional)" "${runpod_api_key}" "${USE_ENV_DEFAULTS}")"
+        runpod_endpoint_video_editor="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR (optional)" "${runpod_endpoint_video_editor}" "${USE_ENV_DEFAULTS}")"
+        runpod_endpoint_video_matte="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_VIDEO_MATTE (optional)" "${runpod_endpoint_video_matte}" "${USE_ENV_DEFAULTS}")"
+        runpod_endpoint_frame_interpolator="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR (optional)" "${runpod_endpoint_frame_interpolator}" "${USE_ENV_DEFAULTS}")"
+        runpod_endpoint_bokeh_effect="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT (optional)" "${runpod_endpoint_bokeh_effect}" "${USE_ENV_DEFAULTS}")"
+        runpod_endpoint_background_remover="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER (optional)" "${runpod_endpoint_background_remover}" "${USE_ENV_DEFAULTS}")"
+        runpod_endpoint_audio_splitter="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER (optional)" "${runpod_endpoint_audio_splitter}" "${USE_ENV_DEFAULTS}")"
+        runpod_endpoint_photo_picker="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_PHOTO_PICKER (optional)" "${runpod_endpoint_photo_picker}" "${USE_ENV_DEFAULTS}")"
+        echo
+        echo "Marketing skill API keys (optional — configure only what you need):"
+        echo "  GA4/Google Ads:"
+        ga4_access_token="$(prompt_secret_value "GA4_ACCESS_TOKEN" "${ga4_access_token}" "${USE_ENV_DEFAULTS}")"
+        ga4_property_id="$(prompt_secret_value "GA4_PROPERTY_ID" "${ga4_property_id}" "${USE_ENV_DEFAULTS}")"
+        google_ads_client_id="$(prompt_secret_value "GOOGLE_ADS_CLIENT_ID" "${google_ads_client_id}" "${USE_ENV_DEFAULTS}")"
+        google_ads_client_secret="$(prompt_secret_value "GOOGLE_ADS_CLIENT_SECRET" "${google_ads_client_secret}" "${USE_ENV_DEFAULTS}")"
+        google_ads_refresh_token="$(prompt_secret_value "GOOGLE_ADS_REFRESH_TOKEN" "${google_ads_refresh_token}" "${USE_ENV_DEFAULTS}")"
+        google_ads_developer_token="$(prompt_secret_value "GOOGLE_ADS_DEVELOPER_TOKEN" "${google_ads_developer_token}" "${USE_ENV_DEFAULTS}")"
+        echo "  SEO tools:"
+        gsc_client_id="$(prompt_secret_value "GSC_CLIENT_ID" "${gsc_client_id}" "${USE_ENV_DEFAULTS}")"
+        gsc_client_secret="$(prompt_secret_value "GSC_CLIENT_SECRET" "${gsc_client_secret}" "${USE_ENV_DEFAULTS}")"
+        gsc_refresh_token="$(prompt_secret_value "GSC_REFRESH_TOKEN" "${gsc_refresh_token}" "${USE_ENV_DEFAULTS}")"
+        semrush_api_key="$(prompt_secret_value "SEMRUSH_API_KEY" "${semrush_api_key}" "${USE_ENV_DEFAULTS}")"
+        ahrefs_api_key="$(prompt_secret_value "AHREFS_API_KEY" "${ahrefs_api_key}" "${USE_ENV_DEFAULTS}")"
+        dataforseo_login="$(prompt_secret_value "DATAFORSEO_LOGIN" "${dataforseo_login}" "${USE_ENV_DEFAULTS}")"
+        dataforseo_password="$(prompt_secret_value "DATAFORSEO_PASSWORD" "${dataforseo_password}" "${USE_ENV_DEFAULTS}")"
+        keywords_everywhere_api_key="$(prompt_secret_value "KEYWORDS_EVERYWHERE_API_KEY" "${keywords_everywhere_api_key}" "${USE_ENV_DEFAULTS}")"
+        plausible_api_key="$(prompt_secret_value "PLAUSIBLE_API_KEY" "${plausible_api_key}" "${USE_ENV_DEFAULTS}")"
+        plausible_site_id="$(prompt_secret_value "PLAUSIBLE_SITE_ID" "${plausible_site_id}" "${USE_ENV_DEFAULTS}")"
+        echo "  Email/CRM:"
+        resend_api_key="$(prompt_secret_value "RESEND_API_KEY" "${resend_api_key}" "${USE_ENV_DEFAULTS}")"
+        mailchimp_api_key="$(prompt_secret_value "MAILCHIMP_API_KEY" "${mailchimp_api_key}" "${USE_ENV_DEFAULTS}")"
+        mailchimp_server_prefix="$(prompt_secret_value "MAILCHIMP_SERVER_PREFIX" "${mailchimp_server_prefix}" "${USE_ENV_DEFAULTS}")"
+        sendgrid_api_key="$(prompt_secret_value "SENDGRID_API_KEY" "${sendgrid_api_key}" "${USE_ENV_DEFAULTS}")"
+        kit_api_key="$(prompt_secret_value "KIT_API_KEY" "${kit_api_key}" "${USE_ENV_DEFAULTS}")"
+        dub_api_key="$(prompt_secret_value "DUB_API_KEY" "${dub_api_key}" "${USE_ENV_DEFAULTS}")"
+        echo "  Analytics:"
+        mixpanel_token="$(prompt_secret_value "MIXPANEL_TOKEN" "${mixpanel_token}" "${USE_ENV_DEFAULTS}")"
+        mixpanel_secret="$(prompt_secret_value "MIXPANEL_SECRET" "${mixpanel_secret}" "${USE_ENV_DEFAULTS}")"
+        amplitude_api_key="$(prompt_secret_value "AMPLITUDE_API_KEY" "${amplitude_api_key}" "${USE_ENV_DEFAULTS}")"
+        amplitude_secret_key="$(prompt_secret_value "AMPLITUDE_SECRET_KEY" "${amplitude_secret_key}" "${USE_ENV_DEFAULTS}")"
+        hotjar_site_id="$(prompt_secret_value "HOTJAR_SITE_ID" "${hotjar_site_id}" "${USE_ENV_DEFAULTS}")"
+        hotjar_api_token="$(prompt_secret_value "HOTJAR_API_TOKEN" "${hotjar_api_token}" "${USE_ENV_DEFAULTS}")"
+        optimizely_sdk_key="$(prompt_secret_value "OPTIMIZELY_SDK_KEY" "${optimizely_sdk_key}" "${USE_ENV_DEFAULTS}")"
+        optimizely_access_token="$(prompt_secret_value "OPTIMIZELY_ACCESS_TOKEN" "${optimizely_access_token}" "${USE_ENV_DEFAULTS}")"
+        echo "  Revenue tools:"
+        hubspot_access_token="$(prompt_secret_value "HUBSPOT_ACCESS_TOKEN" "${hubspot_access_token}" "${USE_ENV_DEFAULTS}")"
+        salesforce_client_id="$(prompt_secret_value "SALESFORCE_CLIENT_ID" "${salesforce_client_id}" "${USE_ENV_DEFAULTS}")"
+        salesforce_client_secret="$(prompt_secret_value "SALESFORCE_CLIENT_SECRET" "${salesforce_client_secret}" "${USE_ENV_DEFAULTS}")"
+        salesforce_username="$(prompt_secret_value "SALESFORCE_USERNAME" "${salesforce_username}" "${USE_ENV_DEFAULTS}")"
+        salesforce_password="$(prompt_secret_value "SALESFORCE_PASSWORD" "${salesforce_password}" "${USE_ENV_DEFAULTS}")"
+        salesforce_security_token="$(prompt_secret_value "SALESFORCE_SECURITY_TOKEN" "${salesforce_security_token}" "${USE_ENV_DEFAULTS}")"
+        close_api_key="$(prompt_secret_value "CLOSE_API_KEY" "${close_api_key}" "${USE_ENV_DEFAULTS}")"
+        outreach_access_token="$(prompt_secret_value "OUTREACH_ACCESS_TOKEN" "${outreach_access_token}" "${USE_ENV_DEFAULTS}")"
+        outreach_refresh_token="$(prompt_secret_value "OUTREACH_REFRESH_TOKEN" "${outreach_refresh_token}" "${USE_ENV_DEFAULTS}")"
+        crossbeam_api_key="$(prompt_secret_value "CROSSBEAM_API_KEY" "${crossbeam_api_key}" "${USE_ENV_DEFAULTS}")"
+        apollo_api_key="$(prompt_secret_value "APOLLO_API_KEY" "${apollo_api_key}" "${USE_ENV_DEFAULTS}")"
+        clearbit_api_key="$(prompt_secret_value "CLEARBIT_API_KEY" "${clearbit_api_key}" "${USE_ENV_DEFAULTS}")"
+        zoominfo_access_token="$(prompt_secret_value "ZOOMINFO_ACCESS_TOKEN" "${zoominfo_access_token}" "${USE_ENV_DEFAULTS}")"
+        clay_api_key="$(prompt_secret_value "CLAY_API_KEY" "${clay_api_key}" "${USE_ENV_DEFAULTS}")"
+        segment_write_key="$(prompt_secret_value "SEGMENT_WRITE_KEY" "${segment_write_key}" "${USE_ENV_DEFAULTS}")"
     fi
 
     INSTALL_BUFFER_API_KEY="${buffer_api_key}"
@@ -226,6 +397,129 @@ configure_skill_api_keys() {
     INSTALL_PIXABAY_API_KEY="${pixabay_api_key}"
     INSTALL_HF_TOKEN="${hf_token}"
     INSTALL_REPLICATE_API_TOKEN="${replicate_api_token}"
+    INSTALL_RUNPOD_API_KEY="${runpod_api_key}"
+    INSTALL_RUNPOD_ENDPOINT_VIDEO_EDITOR="${runpod_endpoint_video_editor}"
+    INSTALL_RUNPOD_ENDPOINT_VIDEO_MATTE="${runpod_endpoint_video_matte}"
+    INSTALL_RUNPOD_ENDPOINT_FRAME_INTERPOLATOR="${runpod_endpoint_frame_interpolator}"
+    INSTALL_RUNPOD_ENDPOINT_BOKEH_EFFECT="${runpod_endpoint_bokeh_effect}"
+    INSTALL_RUNPOD_ENDPOINT_BACKGROUND_REMOVER="${runpod_endpoint_background_remover}"
+    INSTALL_RUNPOD_ENDPOINT_AUDIO_SPLITTER="${runpod_endpoint_audio_splitter}"
+    INSTALL_RUNPOD_ENDPOINT_PHOTO_PICKER="${runpod_endpoint_photo_picker}"
+
+    INSTALL_GA4_ACCESS_TOKEN="${ga4_access_token}"
+    INSTALL_GA4_PROPERTY_ID="${ga4_property_id}"
+    INSTALL_GOOGLE_ADS_CLIENT_ID="${google_ads_client_id}"
+    INSTALL_GOOGLE_ADS_CLIENT_SECRET="${google_ads_client_secret}"
+    INSTALL_GOOGLE_ADS_REFRESH_TOKEN="${google_ads_refresh_token}"
+    INSTALL_GOOGLE_ADS_DEVELOPER_TOKEN="${google_ads_developer_token}"
+    INSTALL_GSC_CLIENT_ID="${gsc_client_id}"
+    INSTALL_GSC_CLIENT_SECRET="${gsc_client_secret}"
+    INSTALL_GSC_REFRESH_TOKEN="${gsc_refresh_token}"
+    INSTALL_RESEND_API_KEY="${resend_api_key}"
+    INSTALL_MAILCHIMP_API_KEY="${mailchimp_api_key}"
+    INSTALL_MAILCHIMP_SERVER_PREFIX="${mailchimp_server_prefix}"
+    INSTALL_SENDGRID_API_KEY="${sendgrid_api_key}"
+    INSTALL_KIT_API_KEY="${kit_api_key}"
+    INSTALL_DUB_API_KEY="${dub_api_key}"
+    INSTALL_SEMRUSH_API_KEY="${semrush_api_key}"
+    INSTALL_AHREFS_API_KEY="${ahrefs_api_key}"
+    INSTALL_DATAFORSEO_LOGIN="${dataforseo_login}"
+    INSTALL_DATAFORSEO_PASSWORD="${dataforseo_password}"
+    INSTALL_KEYWORDS_EVERYWHERE_API_KEY="${keywords_everywhere_api_key}"
+    INSTALL_PLAUSIBLE_API_KEY="${plausible_api_key}"
+    INSTALL_PLAUSIBLE_SITE_ID="${plausible_site_id}"
+    INSTALL_MIXPANEL_TOKEN="${mixpanel_token}"
+    INSTALL_MIXPANEL_SECRET="${mixpanel_secret}"
+    INSTALL_AMPLITUDE_API_KEY="${amplitude_api_key}"
+    INSTALL_AMPLITUDE_SECRET_KEY="${amplitude_secret_key}"
+    INSTALL_HOTJAR_SITE_ID="${hotjar_site_id}"
+    INSTALL_HOTJAR_API_TOKEN="${hotjar_api_token}"
+    INSTALL_OPTIMIZELY_SDK_KEY="${optimizely_sdk_key}"
+    INSTALL_OPTIMIZELY_ACCESS_TOKEN="${optimizely_access_token}"
+    INSTALL_HUBSPOT_ACCESS_TOKEN="${hubspot_access_token}"
+    INSTALL_SALESFORCE_CLIENT_ID="${salesforce_client_id}"
+    INSTALL_SALESFORCE_CLIENT_SECRET="${salesforce_client_secret}"
+    INSTALL_SALESFORCE_USERNAME="${salesforce_username}"
+    INSTALL_SALESFORCE_PASSWORD="${salesforce_password}"
+    INSTALL_SALESFORCE_SECURITY_TOKEN="${salesforce_security_token}"
+    INSTALL_CLOSE_API_KEY="${close_api_key}"
+    INSTALL_OUTREACH_ACCESS_TOKEN="${outreach_access_token}"
+    INSTALL_OUTREACH_REFRESH_TOKEN="${outreach_refresh_token}"
+    INSTALL_CROSSBEAM_API_KEY="${crossbeam_api_key}"
+    INSTALL_APOLLO_API_KEY="${apollo_api_key}"
+    INSTALL_CLEARBIT_API_KEY="${clearbit_api_key}"
+    INSTALL_ZOOMINFO_ACCESS_TOKEN="${zoominfo_access_token}"
+    INSTALL_CLAY_API_KEY="${clay_api_key}"
+    INSTALL_SEGMENT_WRITE_KEY="${segment_write_key}"
+}
+
+configure_runpod_b2_staging_env() {
+    local configure_choice="${ABRA_CONFIGURE_BACKBLAZE_B2_RUNPOD_ENV:-}"
+    local should_configure=1
+
+    case "${configure_choice}" in
+        1|true|TRUE|yes|YES)
+            should_configure=0
+            ;;
+        0|false|FALSE|no|NO)
+            should_configure=1
+            ;;
+        *)
+            if [ -t 0 ]; then
+                echo
+                read -r -p "Configure optional Backblaze B2 staging bucket for RunPod GPU inference? [y/N] " reply
+                case "${reply}" in
+                    y|Y|yes|YES)
+                        should_configure=0
+                        ;;
+                    *)
+                        should_configure=1
+                        ;;
+                esac
+            fi
+            ;;
+    esac
+
+    if [ "${should_configure}" -ne 0 ]; then
+        echo "  • Skipping optional RunPod B2 staging env setup"
+        return 0
+    fi
+
+    mkdir -p "$(dirname "${BACKBLAZE_B2_RUNPOD_ENV_FILE}")"
+
+    local existing_key_id existing_app_key existing_bucket_name
+    existing_key_id="$(read_env_value "${BACKBLAZE_B2_RUNPOD_ENV_FILE}" "BACKBLAZE_B2_RUNPOD_KEY_ID")"
+    existing_app_key="$(read_env_value "${BACKBLAZE_B2_RUNPOD_ENV_FILE}" "BACKBLAZE_B2_RUNPOD_APPLICATION_KEY")"
+    existing_bucket_name="$(read_env_value "${BACKBLAZE_B2_RUNPOD_ENV_FILE}" "BACKBLAZE_B2_RUNPOD_BUCKET_NAME")"
+
+    local b2_key_id="${BACKBLAZE_B2_RUNPOD_KEY_ID:-${existing_key_id}}"
+    local b2_app_key="${BACKBLAZE_B2_RUNPOD_APPLICATION_KEY:-${existing_app_key}}"
+    local b2_bucket_name="${BACKBLAZE_B2_RUNPOD_BUCKET_NAME:-${existing_bucket_name}}"
+
+    if [ -t 0 ]; then
+        echo
+        echo "Backblaze B2 staging bucket for RunPod GPU inference:"
+        echo "  File: ${BACKBLAZE_B2_RUNPOD_ENV_FILE}"
+        echo "  Create bucket first: b2 create-bucket runpod-staging allPrivate"
+        read -r -p "BACKBLAZE_B2_RUNPOD_KEY_ID [${b2_key_id}]: " reply
+        b2_key_id="${reply:-${b2_key_id}}"
+        read -r -p "BACKBLAZE_B2_RUNPOD_APPLICATION_KEY [${b2_app_key}]: " reply
+        b2_app_key="${reply:-${b2_app_key}}"
+        read -r -p "BACKBLAZE_B2_RUNPOD_BUCKET_NAME [${b2_bucket_name:-runpod-staging}]: " reply
+        b2_bucket_name="${reply:-${b2_bucket_name}}"
+    fi
+
+    cat > "${BACKBLAZE_B2_RUNPOD_ENV_FILE}" <<EOF
+# Backblaze B2 staging bucket for RunPod GPU inference file transfer.
+# Stored next to openclaw.json and referenced via env.BACKBLAZE_B2_RUNPOD_ENV_FILE.
+# Create bucket: b2 create-bucket runpod-staging allPrivate
+BACKBLAZE_B2_RUNPOD_KEY_ID="$(escape_env_value "${b2_key_id}")"
+BACKBLAZE_B2_RUNPOD_APPLICATION_KEY="$(escape_env_value "${b2_app_key}")"
+BACKBLAZE_B2_RUNPOD_BUCKET_NAME="$(escape_env_value "${b2_bucket_name}")"
+EOF
+
+    echo "  ✓ RunPod B2 staging env file: ${BACKBLAZE_B2_RUNPOD_ENV_FILE}"
+    echo "    openclaw.json env.BACKBLAZE_B2_RUNPOD_ENV_FILE -> ${BACKBLAZE_B2_RUNPOD_ENV_FILE_CONTAINER}"
 }
 
 configure_post_scheduler_env() {
@@ -379,6 +673,7 @@ done
 [ -n "${TEMP_CLONE}" ] && rm -rf "${TEMP_CLONE}"
 
 configure_post_scheduler_env
+configure_runpod_b2_staging_env
 configure_skill_api_keys
 
 cp "${CONFIG_FILE}" "${CONFIG_FILE}.backup.$(date +%Y%m%d%H%M%S)"
@@ -412,12 +707,67 @@ if ! jq -e ".bindings[]? | select(.agentId == \"${AGENT_NAME}\")" "${CONFIG_FILE
 fi
 
 jq --arg path "${POST_SCHEDULER_ENV_FILE_CONTAINER}" '.env.BACKBLAZE_B2_ENV_FILE = $path' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
+jq --arg path "${BACKBLAZE_B2_RUNPOD_ENV_FILE_CONTAINER}" '.env.BACKBLAZE_B2_RUNPOD_ENV_FILE = $path' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
 set_config_env_value "BUFFER_API_KEY" "${INSTALL_BUFFER_API_KEY}"
 set_config_env_value "GIPHY_API_KEY" "${INSTALL_GIPHY_API_KEY}"
 set_config_env_value "FREESOUND_API_KEY" "${INSTALL_FREESOUND_API_KEY}"
 set_config_env_value "PIXABAY_API_KEY" "${INSTALL_PIXABAY_API_KEY}"
 set_config_env_value "HF_TOKEN" "${INSTALL_HF_TOKEN}"
 set_config_env_value "REPLICATE_API_TOKEN" "${INSTALL_REPLICATE_API_TOKEN}"
+set_config_env_value "RUNPOD_API_KEY" "${INSTALL_RUNPOD_API_KEY}"
+set_config_env_value "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR" "${INSTALL_RUNPOD_ENDPOINT_VIDEO_EDITOR}"
+set_config_env_value "RUNPOD_ENDPOINT_ID_VIDEO_MATTE" "${INSTALL_RUNPOD_ENDPOINT_VIDEO_MATTE}"
+set_config_env_value "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR" "${INSTALL_RUNPOD_ENDPOINT_FRAME_INTERPOLATOR}"
+set_config_env_value "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT" "${INSTALL_RUNPOD_ENDPOINT_BOKEH_EFFECT}"
+set_config_env_value "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER" "${INSTALL_RUNPOD_ENDPOINT_BACKGROUND_REMOVER}"
+set_config_env_value "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER" "${INSTALL_RUNPOD_ENDPOINT_AUDIO_SPLITTER}"
+set_config_env_value "RUNPOD_ENDPOINT_ID_PHOTO_PICKER" "${INSTALL_RUNPOD_ENDPOINT_PHOTO_PICKER}"
+
+set_config_env_value "GA4_ACCESS_TOKEN" "${INSTALL_GA4_ACCESS_TOKEN}"
+set_config_env_value "GA4_PROPERTY_ID" "${INSTALL_GA4_PROPERTY_ID}"
+set_config_env_value "GOOGLE_ADS_CLIENT_ID" "${INSTALL_GOOGLE_ADS_CLIENT_ID}"
+set_config_env_value "GOOGLE_ADS_CLIENT_SECRET" "${INSTALL_GOOGLE_ADS_CLIENT_SECRET}"
+set_config_env_value "GOOGLE_ADS_REFRESH_TOKEN" "${INSTALL_GOOGLE_ADS_REFRESH_TOKEN}"
+set_config_env_value "GOOGLE_ADS_DEVELOPER_TOKEN" "${INSTALL_GOOGLE_ADS_DEVELOPER_TOKEN}"
+set_config_env_value "GSC_CLIENT_ID" "${INSTALL_GSC_CLIENT_ID}"
+set_config_env_value "GSC_CLIENT_SECRET" "${INSTALL_GSC_CLIENT_SECRET}"
+set_config_env_value "GSC_REFRESH_TOKEN" "${INSTALL_GSC_REFRESH_TOKEN}"
+set_config_env_value "RESEND_API_KEY" "${INSTALL_RESEND_API_KEY}"
+set_config_env_value "MAILCHIMP_API_KEY" "${INSTALL_MAILCHIMP_API_KEY}"
+set_config_env_value "MAILCHIMP_SERVER_PREFIX" "${INSTALL_MAILCHIMP_SERVER_PREFIX}"
+set_config_env_value "SENDGRID_API_KEY" "${INSTALL_SENDGRID_API_KEY}"
+set_config_env_value "KIT_API_KEY" "${INSTALL_KIT_API_KEY}"
+set_config_env_value "DUB_API_KEY" "${INSTALL_DUB_API_KEY}"
+set_config_env_value "SEMRUSH_API_KEY" "${INSTALL_SEMRUSH_API_KEY}"
+set_config_env_value "AHREFS_API_KEY" "${INSTALL_AHREFS_API_KEY}"
+set_config_env_value "DATAFORSEO_LOGIN" "${INSTALL_DATAFORSEO_LOGIN}"
+set_config_env_value "DATAFORSEO_PASSWORD" "${INSTALL_DATAFORSEO_PASSWORD}"
+set_config_env_value "KEYWORDS_EVERYWHERE_API_KEY" "${INSTALL_KEYWORDS_EVERYWHERE_API_KEY}"
+set_config_env_value "PLAUSIBLE_API_KEY" "${INSTALL_PLAUSIBLE_API_KEY}"
+set_config_env_value "PLAUSIBLE_SITE_ID" "${INSTALL_PLAUSIBLE_SITE_ID}"
+set_config_env_value "MIXPANEL_TOKEN" "${INSTALL_MIXPANEL_TOKEN}"
+set_config_env_value "MIXPANEL_SECRET" "${INSTALL_MIXPANEL_SECRET}"
+set_config_env_value "AMPLITUDE_API_KEY" "${INSTALL_AMPLITUDE_API_KEY}"
+set_config_env_value "AMPLITUDE_SECRET_KEY" "${INSTALL_AMPLITUDE_SECRET_KEY}"
+set_config_env_value "HOTJAR_SITE_ID" "${INSTALL_HOTJAR_SITE_ID}"
+set_config_env_value "HOTJAR_API_TOKEN" "${INSTALL_HOTJAR_API_TOKEN}"
+set_config_env_value "OPTIMIZELY_SDK_KEY" "${INSTALL_OPTIMIZELY_SDK_KEY}"
+set_config_env_value "OPTIMIZELY_ACCESS_TOKEN" "${INSTALL_OPTIMIZELY_ACCESS_TOKEN}"
+set_config_env_value "HUBSPOT_ACCESS_TOKEN" "${INSTALL_HUBSPOT_ACCESS_TOKEN}"
+set_config_env_value "SALESFORCE_CLIENT_ID" "${INSTALL_SALESFORCE_CLIENT_ID}"
+set_config_env_value "SALESFORCE_CLIENT_SECRET" "${INSTALL_SALESFORCE_CLIENT_SECRET}"
+set_config_env_value "SALESFORCE_USERNAME" "${INSTALL_SALESFORCE_USERNAME}"
+set_config_env_value "SALESFORCE_PASSWORD" "${INSTALL_SALESFORCE_PASSWORD}"
+set_config_env_value "SALESFORCE_SECURITY_TOKEN" "${INSTALL_SALESFORCE_SECURITY_TOKEN}"
+set_config_env_value "CLOSE_API_KEY" "${INSTALL_CLOSE_API_KEY}"
+set_config_env_value "OUTREACH_ACCESS_TOKEN" "${INSTALL_OUTREACH_ACCESS_TOKEN}"
+set_config_env_value "OUTREACH_REFRESH_TOKEN" "${INSTALL_OUTREACH_REFRESH_TOKEN}"
+set_config_env_value "CROSSBEAM_API_KEY" "${INSTALL_CROSSBEAM_API_KEY}"
+set_config_env_value "APOLLO_API_KEY" "${INSTALL_APOLLO_API_KEY}"
+set_config_env_value "CLEARBIT_API_KEY" "${INSTALL_CLEARBIT_API_KEY}"
+set_config_env_value "ZOOMINFO_ACCESS_TOKEN" "${INSTALL_ZOOMINFO_ACCESS_TOKEN}"
+set_config_env_value "CLAY_API_KEY" "${INSTALL_CLAY_API_KEY}"
+set_config_env_value "SEGMENT_WRITE_KEY" "${INSTALL_SEGMENT_WRITE_KEY}"
 
 openclaw gateway restart || true
 

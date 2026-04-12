@@ -1,0 +1,8 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "default_task": "position",
+  "output_format": "markdown",
+  "context_sources": ["BRAND.md", ".agents/product-marketing-context.md"],
+  "enabled_tasks": ["position", "research", "psychology", "pricing"]
+}

@@ -1,0 +1,9 @@
+[project]
+name = "growth-strategist"
+version = "1.0.0"
+description = "Marketing strategy ideation bundle - ideas and free tools discovery"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+dev-dependencies = []

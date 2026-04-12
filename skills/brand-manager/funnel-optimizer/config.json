@@ -1,0 +1,38 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "device": "auto",
+  "verbose": false,
+  "default_task": "cro",
+  "max_workers": 4,
+  "tasks": {
+    "cro": {
+      "enabled": true,
+      "page_types": ["homepage", "landing_page", "pricing", "feature_page", "blog_post"]
+    },
+    "signup": {
+      "enabled": true,
+      "flow_types": ["free_trial", "freemium", "paid", "waitlist", "b2b", "b2c"]
+    },
+    "onboarding": {
+      "enabled": true,
+      "activation_focus": true,
+      "email_coordination": true
+    },
+    "form": {
+      "enabled": true,
+      "form_types": ["lead_capture", "contact", "demo_request", "application", "survey", "checkout"]
+    },
+    "experiment": {
+      "enabled": true,
+      "test_types": ["ab_test", "abn_test", "multivariate_test", "split_url"],
+      "statistical_threshold": 0.95
+    },
+    "retention": {
+      "enabled": true,
+      "churn_types": ["voluntary", "involuntary"],
+      "dunning_enabled": true,
+      "save_offers": ["discount", "pause", "downgrade", "feature_unlock", "personal_outreach"]
+    }
+  }
+}

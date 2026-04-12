@@ -1,0 +1,13 @@
+[project]
+name = "ads-manager"
+version = "1.0.0"
+description = "Marketing paid acquisition bundle for ads planning, creative generation, and analytics tracking"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+dev-dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

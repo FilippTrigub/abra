@@ -1,0 +1,56 @@
+{
+  "version": "1.0.0",
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "ads_plan": {
+    "platforms": ["google-ads"],
+    "default_budget": 1000,
+    "default_duration_days": 30,
+    "target_audience": {
+      "age_range": [25, 45],
+      "interests": ["marketing", "business", "technology"],
+      "locations": ["US", "CA", "UK", "DE"]
+    }
+  },
+  "creative": {
+    "formats": ["square", "portrait", "landscape", "story"],
+    "dimensions": {
+      "square": [1080, 1080],
+      "portrait": [1080, 1350],
+      "landscape": [1200, 628],
+      "story": [1080, 1920]
+    },
+    "ai_enhance": true,
+    "brand_guidelines": "./input/brand.json",
+    "templates": ["product", "testimonial", "announcement", "offer"]
+  },
+  "tracking": {
+    "ga4": {
+      "enabled": true,
+      "measurement_id": null,
+      "events": ["view_item", "add_to_cart", "purchase", "lead"]
+    },
+    "google_ads": {
+      "enabled": true,
+      "conversion_id": null,
+      "conversion_label": null
+    },
+    "meta": {
+      "enabled": true,
+      "pixel_id": null,
+      "events": ["ViewContent", "AddToCart", "Purchase", "Lead"]
+    },
+    "linkedin": {
+      "enabled": true,
+      "tag_id": null,
+      "events": ["page_visit", "lead_form_submit", "website_conversion"]
+    },
+    "consent_mode": true,
+    "cookieless_mode": true
+  },
+  "global": {
+    "device": "auto",
+    "log_level": "info",
+    "dry_run": false
+  }
+}

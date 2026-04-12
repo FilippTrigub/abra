@@ -1,0 +1,7 @@
+{
+  "default_task": "email",
+  "output_format": "markdown",
+  "enabled_tasks": ["email"],
+  "input_dir": "./input",
+  "output_dir": "./output"
+}
