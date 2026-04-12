@@ -20,7 +20,69 @@ Transform articles, notes, ideas, and meeting recordings into ready-to-publish c
 
 ---
 
-## 🚀 Workflows
+## 🎨 Skills & Tools
+
+Abra includes 29 specialized skills for personal brand management:
+
+### Creative & Media Skills
+
+| Skill | Input | What it does | Min VRAM |
+|-------|-------|--------------|----------|
+| **photo-picker** | images | Score and pick the best photos | ~1 GB |
+| **bokeh-effect** | images | Synthetic bokeh / portrait mode | ~1.5 GB |
+| **background-remover** | images | Remove background, replace with colour/image | ~0.5 GB |
+| **image-captioner** | images | Auto-describe and suggest captions | ~4 GB |
+| **frame-interpolator** | videos | Frame interpolation (60fps / slow motion) | ~2 GB |
+| **video-matte** | videos | Remove video background, composite backdrop | ~3 GB |
+| **audio-splitter** | video/audio | Separate vocals from music | ~2 GB |
+| **music-generator** | prompt / video | Generate brand background music | ~3 GB |
+| **animate-image** | images | Image → animated video clip | ~8 GB |
+| **video-editor** | video | Edit / inpaint video regions via prompt | ~8 GB |
+| **giphy** | videos | Overlay animated GIF stickers from GIPHY with optional SFX | 0 GB |
+| **freesound** | videos | Mix Freesound sound effects into videos with optional GIF overlays | 0 GB |
+| **pixabay** | videos | Overlay royalty-free Pixabay images and video clips | 0 GB |
+| **video-enhancer** | videos | Sharpen, colour grade, normalise audio | 0 GB |
+| **video-captioner** | videos | Whisper transcription + animated caption burn-in | 0 GB |
+
+### Marketing & Growth Skills
+
+| Skill | Location | What it does |
+|-------|----------|---------------|
+| **brand-strategist** | brand-manager/ | Brand foundation, positioning, and identity development |
+| **growth-strategist** | brand-manager/ | Growth strategy, competitive analysis, and market positioning |
+| **seo-researcher** | brand-manager/ | SEO research, keyword analysis, and search optimization |
+| **funnel-optimizer** | brand-manager/ | Funnel analysis, conversion optimization, and user journey mapping |
+| **email-campaigner** | root | Email marketing campaigns with Resend, Mailchimp, SendGrid, Kit |
+| **ads-manager** | root | Paid advertising management for Google Ads campaigns |
+| **revenue-manager** | root | CRM integration and revenue operations with HubSpot, Salesforce, Close |
+
+**Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, social-resizer, post-scheduler, canva-connector
+
+**Social Media Skills** *(each requires one API key)*: giphy (`GIPHY_API_KEY`), freesound (`FREESOUND_API_KEY`), pixabay (`PIXABAY_API_KEY`)
+
+**Marketing Skills** *(require API keys, see [docs/SETUP.md](./docs/SETUP.md))*:
+- brand-strategist, growth-strategist, seo-researcher, funnel-optimizer (no providers)
+- email-campaigner: RESEND_API_KEY, MAILCHIMP_API_KEY, SENDGRID_API_KEY, KIT_API_KEY, DUB_API_KEY
+- ads-manager: GA4_ACCESS_TOKEN, GA4_PROPERTY_ID, GOOGLE_ADS_* keys
+- revenue-manager: HUBSPOT_ACCESS_TOKEN, SALESFORCE_*, CLOSE_API_KEY, and more
+
+**Usage:** Each skill follows the same conventions (`uv sync`, `--input`, `--output`, `--device cpu` fallback).
+
+---
+
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [🏷️ SOUL.md](./SOUL.md) | Agent identity, persona, and behavior specs |
+| [📖 WORKFLOW.md](./WORKFLOW.md) | Complete processing workflow and best practices |
+| [🔧 Skills](./skills/) | Individual skill documentation |
+| [📋 SKILLS.md](./SKILLS.md) | Detailed skill documentation and use cases |
+| [📝 SETUP.md](./docs/SETUP.md) | Marketing skills API key setup and provider configuration |
+
+---
+
+## 🚀 Quickstart
 
 ### Install Abra
 
@@ -47,6 +109,8 @@ The installer copies Abra into `~/.openclaw/workspace-abra/`, registers it with 
 - Docker
 - An OpenClaw-compatible base image built from this repo's `Dockerfile`
 - Git (for submodule management)
+
+---
 
 ### Run a Workflow
 
@@ -344,68 +408,6 @@ The same installer run can also seed API-key-based skills into OpenClaw config:
 
 This is now the recommended install path for `post-scheduler`, `giphy`,
 `freesound`, and `pixabay`.
-
----
-
-## 🎨 Skills & Tools
-
-Abra includes 29 specialized skills for personal brand management:
-
-### Creative & Media Skills
-
-| Skill | Input | What it does | Min VRAM |
-|-------|-------|--------------|----------|
-| **photo-picker** | images | Score and pick the best photos | ~1 GB |
-| **bokeh-effect** | images | Synthetic bokeh / portrait mode | ~1.5 GB |
-| **background-remover** | images | Remove background, replace with colour/image | ~0.5 GB |
-| **image-captioner** | images | Auto-describe and suggest captions | ~4 GB |
-| **frame-interpolator** | videos | Frame interpolation (60fps / slow motion) | ~2 GB |
-| **video-matte** | videos | Remove video background, composite backdrop | ~3 GB |
-| **audio-splitter** | video/audio | Separate vocals from music | ~2 GB |
-| **music-generator** | prompt / video | Generate brand background music | ~3 GB |
-| **animate-image** | images | Image → animated video clip | ~8 GB |
-| **video-editor** | video | Edit / inpaint video regions via prompt | ~8 GB |
-| **giphy** | videos | Overlay animated GIF stickers from GIPHY with optional SFX | 0 GB |
-| **freesound** | videos | Mix Freesound sound effects into videos with optional GIF overlays | 0 GB |
-| **pixabay** | videos | Overlay royalty-free Pixabay images and video clips | 0 GB |
-| **video-enhancer** | videos | Sharpen, colour grade, normalise audio | 0 GB |
-| **video-captioner** | videos | Whisper transcription + animated caption burn-in | 0 GB |
-
-### Marketing & Growth Skills
-
-| Skill | Location | What it does |
-|-------|----------|---------------|
-| **brand-strategist** | brand-manager/ | Brand foundation, positioning, and identity development |
-| **growth-strategist** | brand-manager/ | Growth strategy, competitive analysis, and market positioning |
-| **seo-researcher** | brand-manager/ | SEO research, keyword analysis, and search optimization |
-| **funnel-optimizer** | brand-manager/ | Funnel analysis, conversion optimization, and user journey mapping |
-| **email-campaigner** | root | Email marketing campaigns with Resend, Mailchimp, SendGrid, Kit |
-| **ads-manager** | root | Paid advertising management for Google Ads campaigns |
-| **revenue-manager** | root | CRM integration and revenue operations with HubSpot, Salesforce, Close |
-
-**Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, social-resizer, post-scheduler, canva-connector
-
-**Social Media Skills** *(each requires one API key)*: giphy (`GIPHY_API_KEY`), freesound (`FREESOUND_API_KEY`), pixabay (`PIXABAY_API_KEY`)
-
-**Marketing Skills** *(require API keys, see [docs/SETUP.md](./docs/SETUP.md))*:
-- brand-strategist, growth-strategist, seo-researcher, funnel-optimizer (no providers)
-- email-campaigner: RESEND_API_KEY, MAILCHIMP_API_KEY, SENDGRID_API_KEY, KIT_API_KEY, DUB_API_KEY
-- ads-manager: GA4_ACCESS_TOKEN, GA4_PROPERTY_ID, GOOGLE_ADS_* keys
-- revenue-manager: HUBSPOT_ACCESS_TOKEN, SALESFORCE_*, CLOSE_API_KEY, and more
-
-**Usage:** Each skill follows the same conventions (`uv sync`, `--input`, `--output`, `--device cpu` fallback).
-
----
-
-## 📚 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [🏷️ SOUL.md](./SOUL.md) | Agent identity, persona, and behavior specs |
-| [📖 WORKFLOW.md](./WORKFLOW.md) | Complete processing workflow and best practices |
-| [🔧 Skills](./skills/) | Individual skill documentation |
-| [📋 SKILLS.md](./SKILLS.md) | Detailed skill documentation and use cases |
-| [📝 SETUP.md](./docs/SETUP.md) | Marketing skills API key setup and provider configuration |
 
 ---
 
