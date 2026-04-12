@@ -20,13 +20,33 @@ Transform articles, notes, ideas, and meeting recordings into ready-to-publish c
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Workflows
+
+### Install Abra
+
+Abra runs on top of OpenClaw. First build and run the OpenClaw-based Docker image from this repo, then install Abra into that OpenClaw instance with `install-abra.sh`.
+
+Before running the installer, it's best to set your API keys in the repo root `.env` file first. `install-abra.sh` uses those values as defaults and writes the final configuration into `~/.openclaw/openclaw.json`.
+
+```bash
+# 1. Build the OpenClaw-based image from this repo
+docker build -t abra:latest .
+
+# 2. Start the OpenClaw services
+docker compose up -d openclaw-gateway
+
+# 3. Optional but recommended: set your API keys in ./.env first
+# 4. Install Abra into your OpenClaw workspace
+bash ./install-abra.sh
+```
+
+The installer copies Abra into `~/.openclaw/workspace-abra/`, registers it with OpenClaw, and can scaffold optional env files such as `~/.openclaw/post-scheduler-backblaze.env`.
 
 ### Prerequisites
 
+- Docker
+- An OpenClaw-compatible base image built from this repo's `Dockerfile`
 - Git (for submodule management)
-- Docker (for containerized deployment)
-- Python with `uv` (for AI enhancement tools)
 
 ### Run a Workflow
 
