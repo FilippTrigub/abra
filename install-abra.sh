@@ -19,6 +19,58 @@ POST_SCHEDULER_ENV_FILE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/post-scheduler-back
 BACKBLAZE_B2_RUNPOD_ENV_FILE="${HOST_OPENCLAW_DIR}/runpod-backblaze.env"
 BACKBLAZE_B2_RUNPOD_ENV_FILE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/runpod-backblaze.env"
 LEGACY_POST_SCHEDULER_ENV_FILE="${AGENT_WORKSPACE_HOST}/skills/post-scheduler/.env"
+ENV_FILE_OVERRIDE=""
+
+usage() {
+    cat <<EOF
+Usage: $0 [--env-file PATH]
+
+Options:
+  -e, --env-file PATH   Use PATH as the source .env file for installer env values
+  -h, --help            Show this help message
+EOF
+}
+
+parse_args() {
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            -e|--env-file)
+                if [ "$#" -lt 2 ]; then
+                    echo "Error: $1 requires a path" >&2
+                    usage >&2
+                    exit 1
+                fi
+                ENV_FILE_OVERRIDE="$2"
+                shift 2
+                ;;
+            --env-file=*)
+                ENV_FILE_OVERRIDE="${1#*=}"
+                shift
+                ;;
+            -h|--help)
+                usage
+                exit 0
+                ;;
+            *)
+                echo "Error: unknown argument: $1" >&2
+                usage >&2
+                exit 1
+                ;;
+        esac
+    done
+}
+
+resolve_path() {
+    local path="$1"
+    [ -n "${path}" ] || return 0
+
+    python3 - "$path" <<'PY'
+from pathlib import Path
+import sys
+
+print(Path(sys.argv[1]).expanduser().resolve(strict=False))
+PY
+}
 
 read_env_value() {
     local file="$1"
@@ -55,6 +107,39 @@ read_config_env_value() {
     jq -r --arg key "${key}" '.env[$key] // empty' "${file}"
 }
 
+read_env_state() {
+    local file="$1"
+    local key="$2"
+    [ -f "${file}" ] || {
+        printf 'missing'
+        return 0
+    }
+
+    python3 - "$file" "$key" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+key = sys.argv[2]
+
+for raw_line in path.read_text(encoding="utf-8").splitlines():
+    line = raw_line.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    current_key, raw_value = line.split("=", 1)
+    if current_key.strip() != key:
+        continue
+    value = raw_value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        value = value[1:-1]
+    value = value.strip()
+    print("set" if value else "empty")
+    break
+else:
+    print("missing")
+PY
+}
+
 escape_env_value() {
     local value="$1"
     value="${value//\\/\\\\}"
@@ -71,73 +156,134 @@ resolve_installer_env_value() {
         return 0
     fi
 
+    if [ -n "${ROOT_ENV_FILE:-}" ] && [ -f "${ROOT_ENV_FILE}" ]; then
+        value="$(read_env_value "${ROOT_ENV_FILE}" "${key}")"
+        if [ -n "${value}" ]; then
+            printf '%s' "${value}"
+            return 0
+        fi
+    fi
+
     value="$(read_config_env_value "${CONFIG_FILE}" "${key}")"
     if [ -n "${value}" ]; then
         printf '%s' "${value}"
         return 0
     fi
 
-    if [ -n "${ROOT_ENV_FILE:-}" ]; then
-        value="$(read_env_value "${ROOT_ENV_FILE}" "${key}")"
-    fi
-
     printf '%s' "${value}"
 }
 
-prompt_secret_value() {
-    local label="$1"
-    local current_value="$2"
-    local skip_if_in_env="${3:-false}"
-    local response=""
-
-    if [ ! -t 0 ]; then
-        printf '%s' "${current_value}"
-        return 0
-    fi
-
-    if [ "${skip_if_in_env}" = "true" ] && [ -n "${current_value}" ]; then
-        printf '%s' "${current_value}"
-        return 0
-    fi
-
-    if [ -n "${current_value}" ]; then
-        read -r -s -p "${label} [configured, press Enter to keep current]: " response
-    else
-        read -r -s -p "${label}: " response
-    fi
-    echo
-
-    if [ -n "${response}" ]; then
-        printf '%s' "${response}"
-        return 0
-    fi
-
-    printf '%s' "${current_value}"
+expected_skill_env_keys() {
+    cat <<'EOF'
+BUFFER_API_KEY
+GIPHY_API_KEY
+FREESOUND_API_KEY
+PIXABAY_API_KEY
+HF_TOKEN
+REPLICATE_API_TOKEN
+RUNPOD_API_KEY
+RUNPOD_ENDPOINT_ID_VIDEO_EDITOR
+RUNPOD_ENDPOINT_ID_VIDEO_MATTE
+RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR
+RUNPOD_ENDPOINT_ID_BOKEH_EFFECT
+RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER
+RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER
+RUNPOD_ENDPOINT_ID_PHOTO_PICKER
+GA4_ACCESS_TOKEN
+GA4_PROPERTY_ID
+GOOGLE_ADS_CLIENT_ID
+GOOGLE_ADS_CLIENT_SECRET
+GOOGLE_ADS_REFRESH_TOKEN
+GOOGLE_ADS_DEVELOPER_TOKEN
+GSC_CLIENT_ID
+GSC_CLIENT_SECRET
+GSC_REFRESH_TOKEN
+RESEND_API_KEY
+MAILCHIMP_API_KEY
+MAILCHIMP_SERVER_PREFIX
+SENDGRID_API_KEY
+KIT_API_KEY
+DUB_API_KEY
+SEMRUSH_API_KEY
+AHREFS_API_KEY
+DATAFORSEO_LOGIN
+DATAFORSEO_PASSWORD
+KEYWORDS_EVERYWHERE_API_KEY
+PLAUSIBLE_API_KEY
+PLAUSIBLE_SITE_ID
+MIXPANEL_TOKEN
+MIXPANEL_SECRET
+AMPLITUDE_API_KEY
+AMPLITUDE_SECRET_KEY
+HOTJAR_SITE_ID
+HOTJAR_API_TOKEN
+OPTIMIZELY_SDK_KEY
+OPTIMIZELY_ACCESS_TOKEN
+HUBSPOT_ACCESS_TOKEN
+SALESFORCE_CLIENT_ID
+SALESFORCE_CLIENT_SECRET
+SALESFORCE_USERNAME
+SALESFORCE_PASSWORD
+SALESFORCE_SECURITY_TOKEN
+CLOSE_API_KEY
+OUTREACH_ACCESS_TOKEN
+OUTREACH_REFRESH_TOKEN
+CROSSBEAM_API_KEY
+APOLLO_API_KEY
+CLEARBIT_API_KEY
+ZOOMINFO_ACCESS_TOKEN
+CLAY_API_KEY
+SEGMENT_WRITE_KEY
+EOF
 }
 
-prompt_use_env_defaults() {
-    local response=""
-    local use_env_defaults=""
+warn_unset_skill_env_values() {
+    local missing_keys=()
+    local empty_keys=()
+    local key=""
+    local state=""
 
-    if [ ! -t 0 ]; then
-        USE_ENV_DEFAULTS="false"
+    echo
+
+    if [ -z "${ROOT_ENV_FILE:-}" ]; then
+        echo "  • No source .env file configured; skipping env import"
         return 0
     fi
 
-    echo
-    echo "Would you like to use API keys from the .env file without manual overwrite?"
-    echo "  - If yes, keys already present in .env will be used automatically"
-    echo "  - If no, you will be prompted to enter each API key"
-    read -r -p "Use .env values automatically? [y/N]: " response
+    if [ ! -f "${ROOT_ENV_FILE}" ]; then
+        echo "  • Source .env file not found: ${ROOT_ENV_FILE}"
+        echo "    Continuing with shell env and existing openclaw.json env values"
+        return 0
+    fi
 
-    case "${response}" in
-        y|Y|yes|YES)
-            USE_ENV_DEFAULTS="true"
-            ;;
-        *)
-            USE_ENV_DEFAULTS="false"
-            ;;
-    esac
+    echo "  → Loading installer env values from: ${ROOT_ENV_FILE}"
+
+    while IFS= read -r key; do
+        [ -n "${key}" ] || continue
+        state="$(read_env_state "${ROOT_ENV_FILE}" "${key}")"
+        case "${state}" in
+            missing)
+                missing_keys+=("${key}")
+                ;;
+            empty)
+                empty_keys+=("${key}")
+                ;;
+        esac
+    done < <(expected_skill_env_keys)
+
+    if [ "${#missing_keys[@]}" -eq 0 ] && [ "${#empty_keys[@]}" -eq 0 ]; then
+        echo "  ✓ All expected skill env vars are set in the selected .env file"
+        return 0
+    fi
+
+    echo "  • Warning: some expected skill env vars are unset in ${ROOT_ENV_FILE}"
+    if [ "${#missing_keys[@]}" -gt 0 ]; then
+        echo "    Missing keys: ${missing_keys[*]}"
+    fi
+    if [ "${#empty_keys[@]}" -gt 0 ]; then
+        echo "    Empty keys: ${empty_keys[*]}"
+    fi
+    echo "    Missing values will fall back to shell env or existing openclaw.json env when available"
 }
 
 copy_directory_clean() {
@@ -233,13 +379,7 @@ set_config_env_value() {
 }
 
 configure_skill_api_keys() {
-    local use_env_defaults="false"
-
-    prompt_use_env_defaults
-
-    if [ "${USE_ENV_DEFAULTS}" = "true" ] && [ -n "${ROOT_ENV_FILE:-}" ] && [ -f "${ROOT_ENV_FILE}" ]; then
-        echo "  → Using API keys from .env file (will skip prompting for keys already configured)"
-    fi
+    warn_unset_skill_env_values
 
     local runpod_api_key
     local runpod_endpoint_video_editor runpod_endpoint_video_matte runpod_endpoint_frame_interpolator
@@ -317,79 +457,6 @@ configure_skill_api_keys() {
     zoominfo_access_token="$(resolve_installer_env_value "ZOOMINFO_ACCESS_TOKEN")"
     clay_api_key="$(resolve_installer_env_value "CLAY_API_KEY")"
     segment_write_key="$(resolve_installer_env_value "SEGMENT_WRITE_KEY")"
-
-    if [ -t 0 ]; then
-        echo
-        echo "Skill API keys (shell env overrides openclaw.json env; repo .env is used only as a fallback default):"
-        buffer_api_key="$(prompt_secret_value "BUFFER_API_KEY (post-scheduler)" "${buffer_api_key}" "${USE_ENV_DEFAULTS}")"
-        giphy_api_key="$(prompt_secret_value "GIPHY_API_KEY (giphy search)" "${giphy_api_key}" "${USE_ENV_DEFAULTS}")"
-        freesound_api_key="$(prompt_secret_value "FREESOUND_API_KEY (freesound search)" "${freesound_api_key}" "${USE_ENV_DEFAULTS}")"
-        pixabay_api_key="$(prompt_secret_value "PIXABAY_API_KEY (pixabay search)" "${pixabay_api_key}" "${USE_ENV_DEFAULTS}")"
-        hf_token="$(prompt_secret_value "HF_TOKEN (huggingface inference, optional)" "${hf_token}" "${USE_ENV_DEFAULTS}")"
-        replicate_api_token="$(prompt_secret_value "REPLICATE_API_TOKEN (replicate inference, optional)" "${replicate_api_token}" "${USE_ENV_DEFAULTS}")"
-        echo
-        echo "RunPod GPU inference (optional — skip to keep local-only mode):"
-        runpod_api_key="$(prompt_secret_value "RUNPOD_API_KEY (runpod serverless GPU, optional)" "${runpod_api_key}" "${USE_ENV_DEFAULTS}")"
-        runpod_endpoint_video_editor="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR (optional)" "${runpod_endpoint_video_editor}" "${USE_ENV_DEFAULTS}")"
-        runpod_endpoint_video_matte="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_VIDEO_MATTE (optional)" "${runpod_endpoint_video_matte}" "${USE_ENV_DEFAULTS}")"
-        runpod_endpoint_frame_interpolator="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR (optional)" "${runpod_endpoint_frame_interpolator}" "${USE_ENV_DEFAULTS}")"
-        runpod_endpoint_bokeh_effect="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT (optional)" "${runpod_endpoint_bokeh_effect}" "${USE_ENV_DEFAULTS}")"
-        runpod_endpoint_background_remover="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER (optional)" "${runpod_endpoint_background_remover}" "${USE_ENV_DEFAULTS}")"
-        runpod_endpoint_audio_splitter="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER (optional)" "${runpod_endpoint_audio_splitter}" "${USE_ENV_DEFAULTS}")"
-        runpod_endpoint_photo_picker="$(prompt_secret_value "RUNPOD_ENDPOINT_ID_PHOTO_PICKER (optional)" "${runpod_endpoint_photo_picker}" "${USE_ENV_DEFAULTS}")"
-        echo
-        echo "Marketing skill API keys (optional — configure only what you need):"
-        echo "  GA4/Google Ads:"
-        ga4_access_token="$(prompt_secret_value "GA4_ACCESS_TOKEN" "${ga4_access_token}" "${USE_ENV_DEFAULTS}")"
-        ga4_property_id="$(prompt_secret_value "GA4_PROPERTY_ID" "${ga4_property_id}" "${USE_ENV_DEFAULTS}")"
-        google_ads_client_id="$(prompt_secret_value "GOOGLE_ADS_CLIENT_ID" "${google_ads_client_id}" "${USE_ENV_DEFAULTS}")"
-        google_ads_client_secret="$(prompt_secret_value "GOOGLE_ADS_CLIENT_SECRET" "${google_ads_client_secret}" "${USE_ENV_DEFAULTS}")"
-        google_ads_refresh_token="$(prompt_secret_value "GOOGLE_ADS_REFRESH_TOKEN" "${google_ads_refresh_token}" "${USE_ENV_DEFAULTS}")"
-        google_ads_developer_token="$(prompt_secret_value "GOOGLE_ADS_DEVELOPER_TOKEN" "${google_ads_developer_token}" "${USE_ENV_DEFAULTS}")"
-        echo "  SEO tools:"
-        gsc_client_id="$(prompt_secret_value "GSC_CLIENT_ID" "${gsc_client_id}" "${USE_ENV_DEFAULTS}")"
-        gsc_client_secret="$(prompt_secret_value "GSC_CLIENT_SECRET" "${gsc_client_secret}" "${USE_ENV_DEFAULTS}")"
-        gsc_refresh_token="$(prompt_secret_value "GSC_REFRESH_TOKEN" "${gsc_refresh_token}" "${USE_ENV_DEFAULTS}")"
-        semrush_api_key="$(prompt_secret_value "SEMRUSH_API_KEY" "${semrush_api_key}" "${USE_ENV_DEFAULTS}")"
-        ahrefs_api_key="$(prompt_secret_value "AHREFS_API_KEY" "${ahrefs_api_key}" "${USE_ENV_DEFAULTS}")"
-        dataforseo_login="$(prompt_secret_value "DATAFORSEO_LOGIN" "${dataforseo_login}" "${USE_ENV_DEFAULTS}")"
-        dataforseo_password="$(prompt_secret_value "DATAFORSEO_PASSWORD" "${dataforseo_password}" "${USE_ENV_DEFAULTS}")"
-        keywords_everywhere_api_key="$(prompt_secret_value "KEYWORDS_EVERYWHERE_API_KEY" "${keywords_everywhere_api_key}" "${USE_ENV_DEFAULTS}")"
-        plausible_api_key="$(prompt_secret_value "PLAUSIBLE_API_KEY" "${plausible_api_key}" "${USE_ENV_DEFAULTS}")"
-        plausible_site_id="$(prompt_secret_value "PLAUSIBLE_SITE_ID" "${plausible_site_id}" "${USE_ENV_DEFAULTS}")"
-        echo "  Email/CRM:"
-        resend_api_key="$(prompt_secret_value "RESEND_API_KEY" "${resend_api_key}" "${USE_ENV_DEFAULTS}")"
-        mailchimp_api_key="$(prompt_secret_value "MAILCHIMP_API_KEY" "${mailchimp_api_key}" "${USE_ENV_DEFAULTS}")"
-        mailchimp_server_prefix="$(prompt_secret_value "MAILCHIMP_SERVER_PREFIX" "${mailchimp_server_prefix}" "${USE_ENV_DEFAULTS}")"
-        sendgrid_api_key="$(prompt_secret_value "SENDGRID_API_KEY" "${sendgrid_api_key}" "${USE_ENV_DEFAULTS}")"
-        kit_api_key="$(prompt_secret_value "KIT_API_KEY" "${kit_api_key}" "${USE_ENV_DEFAULTS}")"
-        dub_api_key="$(prompt_secret_value "DUB_API_KEY" "${dub_api_key}" "${USE_ENV_DEFAULTS}")"
-        echo "  Analytics:"
-        mixpanel_token="$(prompt_secret_value "MIXPANEL_TOKEN" "${mixpanel_token}" "${USE_ENV_DEFAULTS}")"
-        mixpanel_secret="$(prompt_secret_value "MIXPANEL_SECRET" "${mixpanel_secret}" "${USE_ENV_DEFAULTS}")"
-        amplitude_api_key="$(prompt_secret_value "AMPLITUDE_API_KEY" "${amplitude_api_key}" "${USE_ENV_DEFAULTS}")"
-        amplitude_secret_key="$(prompt_secret_value "AMPLITUDE_SECRET_KEY" "${amplitude_secret_key}" "${USE_ENV_DEFAULTS}")"
-        hotjar_site_id="$(prompt_secret_value "HOTJAR_SITE_ID" "${hotjar_site_id}" "${USE_ENV_DEFAULTS}")"
-        hotjar_api_token="$(prompt_secret_value "HOTJAR_API_TOKEN" "${hotjar_api_token}" "${USE_ENV_DEFAULTS}")"
-        optimizely_sdk_key="$(prompt_secret_value "OPTIMIZELY_SDK_KEY" "${optimizely_sdk_key}" "${USE_ENV_DEFAULTS}")"
-        optimizely_access_token="$(prompt_secret_value "OPTIMIZELY_ACCESS_TOKEN" "${optimizely_access_token}" "${USE_ENV_DEFAULTS}")"
-        echo "  Revenue tools:"
-        hubspot_access_token="$(prompt_secret_value "HUBSPOT_ACCESS_TOKEN" "${hubspot_access_token}" "${USE_ENV_DEFAULTS}")"
-        salesforce_client_id="$(prompt_secret_value "SALESFORCE_CLIENT_ID" "${salesforce_client_id}" "${USE_ENV_DEFAULTS}")"
-        salesforce_client_secret="$(prompt_secret_value "SALESFORCE_CLIENT_SECRET" "${salesforce_client_secret}" "${USE_ENV_DEFAULTS}")"
-        salesforce_username="$(prompt_secret_value "SALESFORCE_USERNAME" "${salesforce_username}" "${USE_ENV_DEFAULTS}")"
-        salesforce_password="$(prompt_secret_value "SALESFORCE_PASSWORD" "${salesforce_password}" "${USE_ENV_DEFAULTS}")"
-        salesforce_security_token="$(prompt_secret_value "SALESFORCE_SECURITY_TOKEN" "${salesforce_security_token}" "${USE_ENV_DEFAULTS}")"
-        close_api_key="$(prompt_secret_value "CLOSE_API_KEY" "${close_api_key}" "${USE_ENV_DEFAULTS}")"
-        outreach_access_token="$(prompt_secret_value "OUTREACH_ACCESS_TOKEN" "${outreach_access_token}" "${USE_ENV_DEFAULTS}")"
-        outreach_refresh_token="$(prompt_secret_value "OUTREACH_REFRESH_TOKEN" "${outreach_refresh_token}" "${USE_ENV_DEFAULTS}")"
-        crossbeam_api_key="$(prompt_secret_value "CROSSBEAM_API_KEY" "${crossbeam_api_key}" "${USE_ENV_DEFAULTS}")"
-        apollo_api_key="$(prompt_secret_value "APOLLO_API_KEY" "${apollo_api_key}" "${USE_ENV_DEFAULTS}")"
-        clearbit_api_key="$(prompt_secret_value "CLEARBIT_API_KEY" "${clearbit_api_key}" "${USE_ENV_DEFAULTS}")"
-        zoominfo_access_token="$(prompt_secret_value "ZOOMINFO_ACCESS_TOKEN" "${zoominfo_access_token}" "${USE_ENV_DEFAULTS}")"
-        clay_api_key="$(prompt_secret_value "CLAY_API_KEY" "${clay_api_key}" "${USE_ENV_DEFAULTS}")"
-        segment_write_key="$(prompt_secret_value "SEGMENT_WRITE_KEY" "${segment_write_key}" "${USE_ENV_DEFAULTS}")"
-    fi
 
     INSTALL_BUFFER_API_KEY="${buffer_api_key}"
     INSTALL_GIPHY_API_KEY="${giphy_api_key}"
@@ -615,6 +682,8 @@ EOF
 echo "Installing Abra - Agent de Branding..."
 echo
 
+parse_args "$@"
+
 command -v jq >/dev/null 2>&1 || { echo "jq required: brew install jq"; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 required to scaffold post-scheduler env values"; exit 1; }
 
@@ -631,7 +700,16 @@ if [ -z "${REPO_ROOT}" ]; then
     REPO_ROOT="${SCRIPT_DIR}"
 fi
 
-ROOT_ENV_FILE="${REPO_ROOT}/.env"
+if [ -n "${ENV_FILE_OVERRIDE}" ]; then
+    ROOT_ENV_FILE="$(resolve_path "${ENV_FILE_OVERRIDE}")"
+    if [ ! -f "${ROOT_ENV_FILE}" ]; then
+        echo "Error: .env file not found: ${ROOT_ENV_FILE}" >&2
+        exit 1
+    fi
+else
+    ROOT_ENV_FILE="${REPO_ROOT}/.env"
+fi
+
 SOURCE_ROOT=""
 OPENCLAW_OWNER="$(resolve_openclaw_owner)"
 

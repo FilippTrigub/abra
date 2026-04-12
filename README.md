@@ -88,7 +88,7 @@ Abra includes 29 specialized skills for personal brand management:
 
 Abra runs on top of OpenClaw. First build and run the OpenClaw-based Docker image from this repo, then install Abra into that OpenClaw instance with `install-abra.sh`.
 
-Before running the installer, it's best to set your API keys in the repo root `.env` file first. `install-abra.sh` uses those values as defaults and writes the final configuration into `~/.openclaw/openclaw.json`.
+Before running the installer, it's best to set your API keys in a `.env` file first. By default, `install-abra.sh` reads `./.env`, but you can point it at a different file with `--env-file`. The installer imports values from that file, warns if expected keys are missing or empty, and writes the resolved configuration into `~/.openclaw/openclaw.json`.
 
 ```bash
 # 1. Build the OpenClaw-based image from this repo
@@ -100,6 +100,9 @@ docker compose up -d openclaw-gateway
 # 3. Optional but recommended: set your API keys in ./.env first
 # 4. Install Abra into your OpenClaw workspace
 bash ./install-abra.sh
+
+# Or use a different dotenv file
+bash ./install-abra.sh --env-file ./.env.production
 ```
 
 The installer copies Abra into `~/.openclaw/workspace-abra/`, registers it with OpenClaw, and can scaffold optional env files such as `~/.openclaw/post-scheduler-backblaze.env`.
@@ -367,8 +370,10 @@ Notes:
 - this installer step is optional
 - `install-abra.sh` also writes `env.BACKBLAZE_B2_ENV_FILE` into `~/.openclaw/openclaw.json`
 - shell environment values still override any file-based B2 config
-- `BUFFER_API_KEY`, `GIPHY_API_KEY`, `FREESOUND_API_KEY`, and `PIXABAY_API_KEY` can now be populated during install and persisted into `~/.openclaw/openclaw.json` under `env`
-- for those API keys, `install-abra.sh` resolves defaults in this order: shell env → existing `openclaw.json` env → repo root `.env`, then lets you override them interactively
+- installer-managed skill env vars can be sourced from a dotenv file and persisted into `~/.openclaw/openclaw.json` under `env`
+- the installer reads `./.env` by default, or a custom file passed via `--env-file PATH`
+- for installer-managed env vars, `install-abra.sh` resolves values in this order: shell env → selected `.env` file → existing `openclaw.json` env
+- instead of prompting for every env var, the installer now warns when expected keys are missing or empty in the selected dotenv file and continues with available fallback values
 - for non-interactive installs, set `ABRA_CONFIGURE_POST_SCHEDULER_ENV=1` to force the scaffold step or `ABRA_CONFIGURE_POST_SCHEDULER_ENV=0` to skip it
 
 If your OpenClaw/OpenCode integration can only pass one primary skill env var,
