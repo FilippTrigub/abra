@@ -14,10 +14,11 @@ dotenv file pointed to by `BACKBLAZE_B2_ENV_FILE`. The recommended OpenClaw
 setup is to store that dotenv file at `~/.openclaw/post-scheduler-backblaze.env` and set
 `env.BACKBLAZE_B2_ENV_FILE` in `~/.openclaw/openclaw.json`.
 
-`install-abra.sh` now also seeds `BUFFER_API_KEY`, `GIPHY_API_KEY`,
-`FREESOUND_API_KEY`, and `PIXABAY_API_KEY` into `~/.openclaw/openclaw.json`
-under `env`, using shell values first, existing OpenClaw config second, and the
-repo root `.env` as a fallback default before interactive confirmation.
+`install-abra.sh` seeds all skill API keys into `~/.openclaw/openclaw.json` under `env`. This includes:
+- Core skills: `BUFFER_API_KEY`, `GIPHY_API_KEY`, `FREESOUND_API_KEY`, `PIXABAY_API_KEY`
+- Marketing skills: all keys documented in [docs/SETUP.md](./docs/SETUP.md)
+
+Resolution order for each key: shell env → existing `openclaw.json` env → repo root `.env`, then interactive confirmation. Use `--use-env-defaults` or answer "yes" to auto-use values already in `.env`.
 
 ---
 
@@ -64,6 +65,16 @@ Every tool accepts `--device cpu` to fall back to CPU/RAM:
 - Voice and tone guidelines
 - Visual identity specifications
 - Content adaptation to brand standards
+- **Strategy sub-skills** (see below): brand-strategist, growth-strategist, seo-researcher, funnel-optimizer
+
+**Strategy Sub-Skills:**
+
+The brand-manager skill contains four strategy skills for brand development and marketing analysis:
+
+- **brand-strategist** — Brand foundation, positioning, and identity development
+- **growth-strategist** — Growth strategy, competitive analysis, and market positioning
+- **seo-researcher** — SEO research, keyword analysis, and search optimization
+- **funnel-optimizer** — Funnel analysis, conversion optimization, and user journey mapping
 
 **Usage:**
 ```bash
@@ -73,6 +84,10 @@ python skills/brand-manager/scripts/brand_assets.py store-image \
 
 # List all assets
 python skills/brand-manager/scripts/brand_assets.py list
+
+# Run strategy sub-skills
+cd skills/brand-manager/brand-strategist && uv sync
+uv run python scripts/strategy.py --input ./input --output ./output
 ```
 
 ---
@@ -536,7 +551,167 @@ uv run python scripts/posts.py create \
 
 ---
 
+### brand-strategist — Brand Strategy (in brand-manager)
+
+**What it does:** Develops comprehensive brand foundation, positioning, and identity. Analyzes market context and establishes core brand pillars.
+
+**Features:**
+- Brand positioning and differentiation
+- Voice and tone guidelines
+- Visual identity specifications
+- Target audience definition
+
+**Location:** `skills/brand-manager/brand-strategist/`
+
+**Usage:**
+```bash
+cd skills/brand-manager/brand-strategist && uv sync
+uv run python scripts/strategy.py --input ./input --output ./output
+```
+
+---
+
+### growth-strategist — Growth Strategy (in brand-manager)
+
+**What it does:** Provides growth strategy, competitive analysis, and market positioning recommendations. Helps identify growth opportunities and optimize reach.
+
+**Features:**
+- Competitive landscape analysis
+- Growth opportunity identification
+- Market positioning strategies
+- Channel optimization recommendations
+
+**Location:** `skills/brand-manager/growth-strategist/`
+
+**Usage:**
+```bash
+cd skills/brand-manager/growth-strategist && uv sync
+uv run python scripts/strategy.py --input ./input --output ./output
+```
+
+---
+
+### seo-researcher — SEO Research (in brand-manager)
+
+**What it does:** Conducts comprehensive SEO research including keyword analysis, search volume data, and optimization recommendations.
+
+**Providers:** Uses multiple SEO tools (GSC, SEMRUSH, Ahrefs, DataForSEO, Keywords Everywhere, Plausible) — at least one required.
+
+**Required Keys (at least one):**
+- Google Search Console: `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`, `GSC_REFRESH_TOKEN`
+- SEMRUSH: `SEMRUSH_API_KEY`
+- Ahrefs: `AHREFS_API_KEY`
+- DataForSEO: `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`
+- Keywords Everywhere: `KEYWORDS_EVERYWHERE_API_KEY`
+- Plausible: `PLAUSIBLE_API_KEY`, `PLAUSIBLE_SITE_ID`
+
+**Location:** `skills/brand-manager/seo-researcher/`
+
+**Usage:**
+```bash
+cd skills/brand-manager/seo-researcher && uv sync
+uv run python scripts/seo.py --input ./input --output ./output
+```
+
+---
+
+### funnel-optimizer — Funnel Optimization (in brand-manager)
+
+**What it does:** Analyzes conversion funnels, identifies optimization opportunities, and provides user journey mapping for improved conversions.
+
+**Providers:** Uses analytics platforms (GA4, Mixpanel, Amplitude, Hotjar, Optimizely) — at least one required.
+
+**Required Keys (at least one):**
+- Google Analytics 4: `GA4_ACCESS_TOKEN`, `GA4_PROPERTY_ID`
+- Mixpanel: `MIXPANEL_TOKEN`, `MIXPANEL_SECRET`
+- Amplitude: `AMPLITUDE_API_KEY`, `AMPLITUDE_SECRET_KEY`
+- Hotjar: `HOTJAR_SITE_ID`, `HOTJAR_API_TOKEN`
+- Optimizely: `OPTIMIZELY_SDK_KEY`, `OPTIMIZELY_ACCESS_TOKEN`
+
+**Location:** `skills/brand-manager/funnel-optimizer/`
+
+**Usage:**
+```bash
+cd skills/brand-manager/funnel-optimizer && uv sync
+uv run python scripts/funnel.py --input ./input --output ./output
+```
+
+---
+
+### email-campaigner — Email Marketing
+
+**What it does:** Creates and manages email marketing campaigns using multiple email service providers. Supports Resend, Mailchimp, SendGrid, Kit (ConvertKit), and Dub.
+
+**Providers:** Email services — at least one required.
+
+**Required Keys (at least one):**
+- Resend: `RESEND_API_KEY`
+- Mailchimp: `MAILCHIMP_API_KEY`, `MAILCHIMP_SERVER_PREFIX`
+- SendGrid: `SENDGRID_API_KEY`
+- Kit: `KIT_API_KEY`
+- Dub: `DUB_API_KEY`
+
+**Location:** `skills/email-campaigner/`
+
+**Usage:**
+```bash
+cd skills/email-campaigner && uv sync
+uv run python scripts/campaign.py --input ./input --output ./output
+```
+
+---
+
+### ads-manager — Paid Advertising
+
+**What it does:** Manages Google Ads campaigns including account setup, campaign creation, keyword management, and performance tracking.
+
+**Providers:** Google Analytics 4 and Google Ads.
+
+**Required Keys:**
+- GA4: `GA4_ACCESS_TOKEN`, `GA4_PROPERTY_ID`
+- Google Ads: `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN`, `GOOGLE_ADS_DEVELOPER_TOKEN`
+
+**Location:** `skills/ads-manager/`
+
+**Usage:**
+```bash
+cd skills/ads-manager && uv sync
+uv run python scripts/ads.py --input ./input --output ./output
+```
+
+---
+
+### revenue-manager — Revenue Operations
+
+**What it does:** Provides CRM integration and revenue operations including contact management, pipeline tracking, and enrichment from multiple data providers.
+
+**Providers:** CRM platforms — at least one required.
+
+**Required Keys (at least one):**
+- HubSpot: `HUBSPOT_ACCESS_TOKEN`
+- Salesforce: `SALESFORCE_CLIENT_ID`, `SALESFORCE_CLIENT_SECRET`, `SALESFORCE_USERNAME`, `SALESFORCE_PASSWORD`, `SALESFORCE_SECURITY_TOKEN`
+- Close: `CLOSE_API_KEY`
+- Outreach: `OUTREACH_ACCESS_TOKEN`, `OUTREACH_REFRESH_TOKEN`
+- Crossbeam: `CROSSBEAM_API_KEY`
+- Apollo: `APOLLO_API_KEY`
+- Clearbit: `CLEARBIT_API_KEY`
+- ZoomInfo: `ZOOMINFO_ACCESS_TOKEN`
+- Clay: `CLAY_API_KEY`
+- Segment: `SEGMENT_WRITE_KEY`
+
+**Location:** `skills/revenue-manager/`
+
+**Usage:**
+```bash
+cd skills/revenue-manager && uv sync
+uv run python scripts/revenue.py --input ./input --output ./output
+```
+
+---
+
 ## Quick Reference
+
+### Creative & Media Skills
 
 | Skill | Input | What it does | Min VRAM | CPU ok? |
 |-------|-------|-------------|----------|---------|
@@ -558,4 +733,16 @@ uv run python scripts/posts.py create \
 | visual-hook | images/videos | Bold hook text overlays for Instagram-safe zones | 0 GB | ✅ instant |
 | end-cta | images/videos | Brand CTA overlays and appended CTA cards/videos | 0 GB | ✅ instant |
 
-Core: brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, social-resizer, post-scheduler, canva-connector
+### Marketing & Growth Skills
+
+| Skill | Location | What it does | Required Keys |
+|-------|----------|-------------|---------------|
+| brand-strategist | brand-manager/ | Brand foundation and identity | none |
+| growth-strategist | brand-manager/ | Growth strategy and competitive analysis | none |
+| seo-researcher | brand-manager/ | SEO research and keyword analysis | GSC, SEMRUSH, Ahrefs, DataForSEO, Keywords Everywhere, or Plausible |
+| funnel-optimizer | brand-manager/ | Funnel analysis and conversion optimization | GA4, Mixpanel, Amplitude, Hotjar, or Optimizely |
+| email-campaigner | root | Email marketing campaigns | Resend, Mailchimp, SendGrid, Kit, or Dub |
+| ads-manager | root | Google Ads campaign management | GA4 + Google Ads keys |
+| revenue-manager | root | CRM and revenue operations | HubSpot, Salesforce, Close, or other CRM |
+
+**Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, social-resizer, post-scheduler, canva-connector

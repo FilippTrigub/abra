@@ -208,10 +208,18 @@ claw-parade/
 │   └── run.py           # Workflow runner
 ├── skills/              # Modular skill definitions
 │   ├── brand-manager/    # Brand identity + asset management
+│   │   ├── brand-strategist/    # Brand foundation and positioning
+│   │   ├── growth-strategist/   # Growth strategy and analysis
+│   │   ├── seo-researcher/      # SEO research and keyword analysis
+│   │   └── funnel-optimizer/    # Funnel optimization and analytics
+│   ├── email-campaigner/  # Email marketing campaigns
+│   ├── ads-manager/      # Google Ads management
+│   ├── revenue-manager/  # CRM and revenue operations
 │   ├── video-enhancer/   # Video sharpening, colour grading, audio normalisation
 │   ├── video-captioner/  # Whisper transcription + animated caption burn-in
 │   ├── social-resizer/   # Image resize and filtering
 │   ├── post-scheduler/   # Schedule and publish posts
+│   ├── _providers/      # Marketing CLI wrappers
 │   └── + 17 more skills        # AI enhancement + social media tools
 ├── input/               # Raw input files (staging for processing)
 │   └── staging/         # Temporary staging area
@@ -321,7 +329,9 @@ This is now the recommended install path for `post-scheduler`, `giphy`,
 
 ## 🎨 Skills & Tools
 
-Abra includes 22 specialized skills for personal brand management:
+Abra includes 29 specialized skills for personal brand management:
+
+### Creative & Media Skills
 
 | Skill | Input | What it does | Min VRAM |
 |-------|-------|--------------|----------|
@@ -341,9 +351,27 @@ Abra includes 22 specialized skills for personal brand management:
 | **video-enhancer** | videos | Sharpen, colour grade, normalise audio | 0 GB |
 | **video-captioner** | videos | Whisper transcription + animated caption burn-in | 0 GB |
 
+### Marketing & Growth Skills
+
+| Skill | Location | What it does |
+|-------|----------|---------------|
+| **brand-strategist** | brand-manager/ | Brand foundation, positioning, and identity development |
+| **growth-strategist** | brand-manager/ | Growth strategy, competitive analysis, and market positioning |
+| **seo-researcher** | brand-manager/ | SEO research, keyword analysis, and search optimization |
+| **funnel-optimizer** | brand-manager/ | Funnel analysis, conversion optimization, and user journey mapping |
+| **email-campaigner** | root | Email marketing campaigns with Resend, Mailchimp, SendGrid, Kit |
+| **ads-manager** | root | Paid advertising management for Google Ads campaigns |
+| **revenue-manager** | root | CRM integration and revenue operations with HubSpot, Salesforce, Close |
+
 **Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, social-resizer, post-scheduler, canva-connector
 
 **Social Media Skills** *(each requires one API key)*: giphy (`GIPHY_API_KEY`), freesound (`FREESOUND_API_KEY`), pixabay (`PIXABAY_API_KEY`)
+
+**Marketing Skills** *(require API keys, see [docs/SETUP.md](./docs/SETUP.md))*:
+- brand-strategist, growth-strategist, seo-researcher, funnel-optimizer (no providers)
+- email-campaigner: RESEND_API_KEY, MAILCHIMP_API_KEY, SENDGRID_API_KEY, KIT_API_KEY, DUB_API_KEY
+- ads-manager: GA4_ACCESS_TOKEN, GA4_PROPERTY_ID, GOOGLE_ADS_* keys
+- revenue-manager: HUBSPOT_ACCESS_TOKEN, SALESFORCE_*, CLOSE_API_KEY, and more
 
 **Usage:** Each skill follows the same conventions (`uv sync`, `--input`, `--output`, `--device cpu` fallback).
 
@@ -357,6 +385,7 @@ Abra includes 22 specialized skills for personal brand management:
 | [📖 WORKFLOW.md](./WORKFLOW.md) | Complete processing workflow and best practices |
 | [🔧 Skills](./skills/) | Individual skill documentation |
 | [📋 SKILLS.md](./SKILLS.md) | Detailed skill documentation and use cases |
+| [📝 SETUP.md](./docs/SETUP.md) | Marketing skills API key setup and provider configuration |
 
 ---
 
