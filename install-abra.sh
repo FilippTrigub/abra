@@ -237,11 +237,89 @@ SEGMENT_WRITE_KEY
 EOF
 }
 
+env_key_skill_labels() {
+    local key="$1"
+
+    case "${key}" in
+        BUFFER_API_KEY)
+            printf '%s\n' "post-scheduler"
+            ;;
+        GIPHY_API_KEY)
+            printf '%s\n' "giphy"
+            ;;
+        FREESOUND_API_KEY)
+            printf '%s\n' "freesound"
+            ;;
+        PIXABAY_API_KEY)
+            printf '%s\n' "pixabay"
+            ;;
+        RESEND_API_KEY|MAILCHIMP_API_KEY|MAILCHIMP_SERVER_PREFIX|SENDGRID_API_KEY|KIT_API_KEY|DUB_API_KEY)
+            printf '%s\n' "email-campaigner"
+            ;;
+        GSC_CLIENT_ID|GSC_CLIENT_SECRET|GSC_REFRESH_TOKEN|SEMRUSH_API_KEY|AHREFS_API_KEY|DATAFORSEO_LOGIN|DATAFORSEO_PASSWORD|KEYWORDS_EVERYWHERE_API_KEY|PLAUSIBLE_API_KEY|PLAUSIBLE_SITE_ID)
+            printf '%s\n' "seo-researcher"
+            ;;
+        GA4_ACCESS_TOKEN|GA4_PROPERTY_ID)
+            printf '%s\n' "ads-manager" "funnel-optimizer"
+            ;;
+        GOOGLE_ADS_CLIENT_ID|GOOGLE_ADS_CLIENT_SECRET|GOOGLE_ADS_REFRESH_TOKEN|GOOGLE_ADS_DEVELOPER_TOKEN)
+            printf '%s\n' "ads-manager"
+            ;;
+        MIXPANEL_TOKEN|MIXPANEL_SECRET|AMPLITUDE_API_KEY|AMPLITUDE_SECRET_KEY|HOTJAR_SITE_ID|HOTJAR_API_TOKEN|OPTIMIZELY_SDK_KEY|OPTIMIZELY_ACCESS_TOKEN)
+            printf '%s\n' "funnel-optimizer"
+            ;;
+        HUBSPOT_ACCESS_TOKEN|SALESFORCE_CLIENT_ID|SALESFORCE_CLIENT_SECRET|SALESFORCE_USERNAME|SALESFORCE_PASSWORD|SALESFORCE_SECURITY_TOKEN|CLOSE_API_KEY|OUTREACH_ACCESS_TOKEN|OUTREACH_REFRESH_TOKEN|CROSSBEAM_API_KEY|APOLLO_API_KEY|CLEARBIT_API_KEY|ZOOMINFO_ACCESS_TOKEN|CLAY_API_KEY|SEGMENT_WRITE_KEY)
+            printf '%s\n' "revenue-manager"
+            ;;
+        *)
+            printf '%s\n' "unmapped"
+            ;;
+    esac
+}
+
 warn_unset_skill_env_values() {
     local missing_keys=()
     local empty_keys=()
     local key=""
     local state=""
+    local reply=""
+    local skill=""
+
+    declare -A missing_keys_by_skill=()
+    declare -A empty_keys_by_skill=()
+    declare -A missing_skill_seen=()
+    declare -A empty_skill_seen=()
+    local missing_skill_order=()
+    local empty_skill_order=()
+
+    add_key_to_skill_group() {
+        local group_type="$1"
+        local group_skill="$2"
+        local group_key="$3"
+
+        case "${group_type}" in
+            missing)
+                if [ -z "${missing_skill_seen[${group_skill}]:-}" ]; then
+                    missing_skill_seen[${group_skill}]=1
+                    missing_skill_order+=("${group_skill}")
+                fi
+                if [ -n "${missing_keys_by_skill[${group_skill}]:-}" ]; then
+                    missing_keys_by_skill[${group_skill}]+=$'\n'
+                fi
+                missing_keys_by_skill[${group_skill}]+="${group_key}"
+                ;;
+            empty)
+                if [ -z "${empty_skill_seen[${group_skill}]:-}" ]; then
+                    empty_skill_seen[${group_skill}]=1
+                    empty_skill_order+=("${group_skill}")
+                fi
+                if [ -n "${empty_keys_by_skill[${group_skill}]:-}" ]; then
+                    empty_keys_by_skill[${group_skill}]+=$'\n'
+                fi
+                empty_keys_by_skill[${group_skill}]+="${group_key}"
+                ;;
+        esac
+    }
 
     echo
 
@@ -264,9 +342,17 @@ warn_unset_skill_env_values() {
         case "${state}" in
             missing)
                 missing_keys+=("${key}")
+                while IFS= read -r skill; do
+                    [ -n "${skill}" ] || continue
+                    add_key_to_skill_group missing "${skill}" "${key}"
+                done < <(env_key_skill_labels "${key}")
                 ;;
             empty)
                 empty_keys+=("${key}")
+                while IFS= read -r skill; do
+                    [ -n "${skill}" ] || continue
+                    add_key_to_skill_group empty "${skill}" "${key}"
+                done < <(env_key_skill_labels "${key}")
                 ;;
         esac
     done < <(expected_skill_env_keys)
@@ -278,12 +364,46 @@ warn_unset_skill_env_values() {
 
     echo "  • Warning: some expected skill env vars are unset in ${ROOT_ENV_FILE}"
     if [ "${#missing_keys[@]}" -gt 0 ]; then
-        echo "    Missing keys: ${missing_keys[*]}"
+        echo "    Missing keys by skill:"
+        for skill in "${missing_skill_order[@]}"; do
+            [ -n "${missing_keys_by_skill[${skill}]:-}" ] || continue
+            echo "      ${skill}:"
+            while IFS= read -r missing_key; do
+                [ -n "${missing_key}" ] || continue
+                echo "        - ${missing_key}"
+            done <<< "${missing_keys_by_skill[${skill}]}"
+        done
     fi
     if [ "${#empty_keys[@]}" -gt 0 ]; then
-        echo "    Empty keys: ${empty_keys[*]}"
+        echo "    Empty keys by skill:"
+        for skill in "${empty_skill_order[@]}"; do
+            [ -n "${empty_keys_by_skill[${skill}]:-}" ] || continue
+            echo "      ${skill}:"
+            while IFS= read -r empty_key; do
+                [ -n "${empty_key}" ] || continue
+                echo "        - ${empty_key}"
+            done <<< "${empty_keys_by_skill[${skill}]}"
+        done
     fi
     echo "    Missing values will fall back to shell env or existing openclaw.json env when available"
+
+    if [ "${#missing_keys[@]}" -gt 0 ]; then
+        echo
+        if [ -t 0 ]; then
+            read -r -p "Continue installation with missing keys? [y/N] " reply
+            case "${reply}" in
+                y|Y|yes|YES)
+                    ;;
+                *)
+                    echo "Installation cancelled. Add the missing keys and rerun the installer."
+                    exit 1
+                    ;;
+            esac
+        else
+            echo "Installation cancelled: missing keys require explicit confirmation in an interactive shell."
+            exit 1
+        fi
+    fi
 }
 
 copy_directory_clean() {
