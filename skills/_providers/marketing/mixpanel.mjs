@@ -1,40 +1,20 @@
 // Mixpanel CLI wrapper
 // Wraps marketingskills/tools/clis/mixpanel.js functionality
 
-const TOKEN = process.env.MIXPANEL_TOKEN
-const API_KEY = process.env.MIXPANEL_API_KEY
+const SA_USERNAME = process.env.MIXPANEL_SA_USERNAME
 const SECRET = process.env.MIXPANEL_SECRET
-const INGESTION_URL = 'https://api.mixpanel.com'
 const QUERY_URL = 'https://mixpanel.com/api/2.0'
 const EXPORT_URL = 'https://data.mixpanel.com/api/2.0'
 
 function checkKeys() {
-  if (!TOKEN && !API_KEY) {
-    throw new Error('MIXPANEL_TOKEN (for ingestion) or MIXPANEL_API_KEY + MIXPANEL_SECRET (for query/export) environment variables required')
-  }
-}
-
-async function ingestApi(method, path, body) {
-  checkKeys()
-  const headers = { 'Content-Type': 'application/json' }
-  const res = await fetch(`${INGESTION_URL}${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  const text = await res.text()
-  try {
-    return JSON.parse(text)
-  } catch {
-    return { status: res.status, body: text }
+  if (!SA_USERNAME || !SECRET) {
+    throw new Error('MIXPANEL_SA_USERNAME and MIXPANEL_SECRET (service account credentials) environment variables required')
   }
 }
 
 async function queryApi(method, baseUrl, path, params) {
-  if (!API_KEY || !SECRET) {
-    throw new Error('MIXPANEL_API_KEY and MIXPANEL_SECRET required for query/export operations')
-  }
-  const auth = Buffer.from(`${API_KEY}:${SECRET}`).toString('base64')
+  checkKeys()
+  const auth = Buffer.from(`${SA_USERNAME}:${SECRET}`).toString('base64')
   const url = params ? `${baseUrl}${path}?${params}` : `${baseUrl}${path}`
   const headers = {
     'Authorization': `Basic ${auth}`,
@@ -53,10 +33,8 @@ async function queryApi(method, baseUrl, path, params) {
 }
 
 async function queryApiPost(path, body) {
-  if (!API_KEY || !SECRET) {
-    throw new Error('MIXPANEL_API_KEY and MIXPANEL_SECRET required for query/export operations')
-  }
-  const auth = Buffer.from(`${API_KEY}:${SECRET}`).toString('base64')
+  checkKeys()
+  const auth = Buffer.from(`${SA_USERNAME}:${SECRET}`).toString('base64')
   const headers = {
     'Authorization': `Basic ${auth}`,
     'Content-Type': 'application/json',
@@ -75,36 +53,6 @@ async function queryApiPost(path, body) {
 }
 
 export const Mixpanel = {
-  /**
-   * Track an event
-   * @param {string} event - Event name
-   * @param {string} distinctId - User distinct ID
-   * @param {object} properties - Event properties
-   * @param {object} options - Additional options (dryRun)
-   */
-  async trackEvent(event, distinctId, properties = {}, options = {}) {
-    checkKeys()
-    if (!TOKEN) throw new Error('MIXPANEL_TOKEN required for tracking')
-    const props = { ...properties, token: TOKEN, distinct_id: distinctId }
-    return ingestApi('POST', '/track', [{ event, properties: props }])
-  },
-
-  /**
-   * Set user profile properties
-   * @param {string} distinctId - User distinct ID
-   * @param {object} properties - Profile properties to set
-   * @param {object} options - Additional options (dryRun)
-   */
-  async setProfile(distinctId, properties = {}, options = {}) {
-    checkKeys()
-    if (!TOKEN) throw new Error('MIXPANEL_TOKEN required for profiles')
-    return ingestApi('POST', '/engage', [{
-      $token: TOKEN,
-      $distinct_id: distinctId,
-      $set: properties,
-    }])
-  },
-
   /**
    * Query event insights
    * @param {string} projectId - Mixpanel project ID

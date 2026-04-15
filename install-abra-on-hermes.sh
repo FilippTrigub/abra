@@ -292,7 +292,7 @@ write_env_file() {
     local resend_api_key mailchimp_api_key mailchimp_server_prefix sendgrid_api_key kit_api_key dub_api_key
     local semrush_api_key ahrefs_api_key dataforseo_login dataforseo_password keywords_everywhere_api_key
     local plausible_api_key plausible_site_id
-    local mixpanel_token mixpanel_secret amplitude_api_key amplitude_secret_key
+    local mixpanel_sa_username mixpanel_secret amplitude_api_key amplitude_secret_key
     local hotjar_site_id hotjar_api_token optimizely_sdk_key optimizely_access_token
     local hubspot_access_token
     local salesforce_client_id salesforce_client_secret salesforce_username salesforce_password salesforce_security_token
@@ -342,7 +342,7 @@ write_env_file() {
     keywords_everywhere_api_key="$(resolve_installer_env_value "KEYWORDS_EVERYWHERE_API_KEY")"
     plausible_api_key="$(resolve_installer_env_value "PLAUSIBLE_API_KEY")"
     plausible_site_id="$(resolve_installer_env_value "PLAUSIBLE_SITE_ID")"
-    mixpanel_token="$(resolve_installer_env_value "MIXPANEL_TOKEN")"
+    mixpanel_sa_username="$(resolve_installer_env_value "MIXPANEL_SA_USERNAME")"
     mixpanel_secret="$(resolve_installer_env_value "MIXPANEL_SECRET")"
     amplitude_api_key="$(resolve_installer_env_value "AMPLITUDE_API_KEY")"
     amplitude_secret_key="$(resolve_installer_env_value "AMPLITUDE_SECRET_KEY")"
@@ -451,7 +451,7 @@ PLAUSIBLE_SITE_ID="$(escape_env_value "${plausible_site_id}")"
 # =============================================================================
 # PRODUCT ANALYTICS
 # =============================================================================
-MIXPANEL_TOKEN="$(escape_env_value "${mixpanel_token}")"
+MIXPANEL_SA_USERNAME="$(escape_env_value "${mixpanel_sa_username}")"
 MIXPANEL_SECRET="$(escape_env_value "${mixpanel_secret}")"
 AMPLITUDE_API_KEY="$(escape_env_value "${amplitude_api_key}")"
 AMPLITUDE_SECRET_KEY="$(escape_env_value "${amplitude_secret_key}")"

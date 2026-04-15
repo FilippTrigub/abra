@@ -623,7 +623,7 @@ uv run python scripts/seo.py --input ./input --output ./output
 
 **Required Keys (at least one):**
 - Google Analytics 4: `GA4_ACCESS_TOKEN`, `GA4_PROPERTY_ID`
-- Mixpanel: `MIXPANEL_TOKEN`, `MIXPANEL_SECRET`
+- Mixpanel: `MIXPANEL_SA_USERNAME`, `MIXPANEL_SECRET`
 - Amplitude: `AMPLITUDE_API_KEY`, `AMPLITUDE_SECRET_KEY`
 - Hotjar: `HOTJAR_SITE_ID`, `HOTJAR_API_TOKEN`
 - Optimizely: `OPTIMIZELY_SDK_KEY`, `OPTIMIZELY_ACCESS_TOKEN`

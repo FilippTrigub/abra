@@ -158,7 +158,7 @@ This document lists all API keys required by the marketing skills and where to o
 | `KEYWORDS_EVERYWHERE_API_KEY` | Keywords Everywhere API key |
 
 **How to get:**
-1. Sign up at [keywords.ai](https://keywords.ai)
+1. Sign up at [keywrds.ai](https://keywrds.ai)
 2. Go to Settings > API
 3. Create API key
 
@@ -178,13 +178,13 @@ This document lists all API keys required by the marketing skills and where to o
 
 | Key | Description |
 |-----|-------------|
-| `MIXPANEL_TOKEN` | Mixpanel project token |
+| `MIXPANEL_SA_USERNAME` | Mixpanel service account username |
 | `MIXPANEL_SECRET` | Mixpanel service account secret |
 
 **How to get:**
 1. Sign up at [mixpanel.com](https://mixpanel.com)
 2. Go to Project Settings > Service Accounts
-3. Create service account
+3. Create service account — copy the username and secret
 
 ### Amplitude (amplitude)
 
@@ -360,7 +360,7 @@ After obtaining your API keys, you can configure them in `~/.openclaw/openclaw.j
     "DUB_API_KEY": "your-dub-key",
     "SEMRUSH_API_KEY": "your-semrush-key",
     "AHREFS_API_KEY": "your-ahrefs-key",
-    "MIXPANEL_TOKEN": "your-mixpanel-token",
+    "MIXPANEL_SA_USERNAME": "your-mixpanel-sa-username",
     "AMPLITUDE_API_KEY": "your-amplitude-key",
     "HOTJAR_SITE_ID": "your-hotjar-site-id",
     "HUBSPOT_ACCESS_TOKEN": "your-hubspot-token",

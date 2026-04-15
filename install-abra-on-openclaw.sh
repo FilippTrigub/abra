@@ -211,7 +211,7 @@ DATAFORSEO_PASSWORD
 KEYWORDS_EVERYWHERE_API_KEY
 PLAUSIBLE_API_KEY
 PLAUSIBLE_SITE_ID
-MIXPANEL_TOKEN
+MIXPANEL_SA_USERNAME
 MIXPANEL_SECRET
 AMPLITUDE_API_KEY
 AMPLITUDE_SECRET_KEY
@@ -265,7 +265,7 @@ env_key_skill_labels() {
         GOOGLE_ADS_CLIENT_ID|GOOGLE_ADS_CLIENT_SECRET|GOOGLE_ADS_REFRESH_TOKEN|GOOGLE_ADS_DEVELOPER_TOKEN)
             printf '%s\n' "ads-manager"
             ;;
-        MIXPANEL_TOKEN|MIXPANEL_SECRET|AMPLITUDE_API_KEY|AMPLITUDE_SECRET_KEY|HOTJAR_SITE_ID|HOTJAR_API_TOKEN|OPTIMIZELY_SDK_KEY|OPTIMIZELY_ACCESS_TOKEN)
+        MIXPANEL_SA_USERNAME|MIXPANEL_SECRET|AMPLITUDE_API_KEY|AMPLITUDE_SECRET_KEY|HOTJAR_SITE_ID|HOTJAR_API_TOKEN|OPTIMIZELY_SDK_KEY|OPTIMIZELY_ACCESS_TOKEN)
             printf '%s\n' "funnel-optimizer"
             ;;
         HUBSPOT_ACCESS_TOKEN|SALESFORCE_CLIENT_ID|SALESFORCE_CLIENT_SECRET|SALESFORCE_USERNAME|SALESFORCE_PASSWORD|SALESFORCE_SECURITY_TOKEN|CLOSE_API_KEY|OUTREACH_ACCESS_TOKEN|OUTREACH_REFRESH_TOKEN|CROSSBEAM_API_KEY|APOLLO_API_KEY|CLEARBIT_API_KEY|ZOOMINFO_ACCESS_TOKEN|CLAY_API_KEY|SEGMENT_WRITE_KEY)
@@ -510,7 +510,7 @@ configure_skill_api_keys() {
     local resend_api_key mailchimp_api_key mailchimp_server_prefix sendgrid_api_key kit_api_key dub_api_key
     local semrush_api_key ahrefs_api_key dataforseo_login dataforseo_password keywords_everywhere_api_key
     local plausible_api_key plausible_site_id
-    local mixpanel_token mixpanel_secret amplitude_api_key amplitude_secret_key
+    local mixpanel_sa_username mixpanel_secret amplitude_api_key amplitude_secret_key
     local hotjar_site_id hotjar_api_token optimizely_sdk_key optimizely_access_token
     local hubspot_access_token
     local salesforce_client_id salesforce_client_secret salesforce_username salesforce_password salesforce_security_token
@@ -554,7 +554,7 @@ configure_skill_api_keys() {
     keywords_everywhere_api_key="$(resolve_installer_env_value "KEYWORDS_EVERYWHERE_API_KEY")"
     plausible_api_key="$(resolve_installer_env_value "PLAUSIBLE_API_KEY")"
     plausible_site_id="$(resolve_installer_env_value "PLAUSIBLE_SITE_ID")"
-    mixpanel_token="$(resolve_installer_env_value "MIXPANEL_TOKEN")"
+    mixpanel_sa_username="$(resolve_installer_env_value "MIXPANEL_SA_USERNAME")"
     mixpanel_secret="$(resolve_installer_env_value "MIXPANEL_SECRET")"
     amplitude_api_key="$(resolve_installer_env_value "AMPLITUDE_API_KEY")"
     amplitude_secret_key="$(resolve_installer_env_value "AMPLITUDE_SECRET_KEY")"
@@ -615,7 +615,7 @@ configure_skill_api_keys() {
     INSTALL_KEYWORDS_EVERYWHERE_API_KEY="${keywords_everywhere_api_key}"
     INSTALL_PLAUSIBLE_API_KEY="${plausible_api_key}"
     INSTALL_PLAUSIBLE_SITE_ID="${plausible_site_id}"
-    INSTALL_MIXPANEL_TOKEN="${mixpanel_token}"
+    INSTALL_MIXPANEL_SA_USERNAME="${mixpanel_sa_username}"
     INSTALL_MIXPANEL_SECRET="${mixpanel_secret}"
     INSTALL_AMPLITUDE_API_KEY="${amplitude_api_key}"
     INSTALL_AMPLITUDE_SECRET_KEY="${amplitude_secret_key}"
@@ -943,7 +943,7 @@ set_config_env_value "DATAFORSEO_PASSWORD" "${INSTALL_DATAFORSEO_PASSWORD}"
 set_config_env_value "KEYWORDS_EVERYWHERE_API_KEY" "${INSTALL_KEYWORDS_EVERYWHERE_API_KEY}"
 set_config_env_value "PLAUSIBLE_API_KEY" "${INSTALL_PLAUSIBLE_API_KEY}"
 set_config_env_value "PLAUSIBLE_SITE_ID" "${INSTALL_PLAUSIBLE_SITE_ID}"
-set_config_env_value "MIXPANEL_TOKEN" "${INSTALL_MIXPANEL_TOKEN}"
+set_config_env_value "MIXPANEL_SA_USERNAME" "${INSTALL_MIXPANEL_SA_USERNAME}"
 set_config_env_value "MIXPANEL_SECRET" "${INSTALL_MIXPANEL_SECRET}"
 set_config_env_value "AMPLITUDE_API_KEY" "${INSTALL_AMPLITUDE_API_KEY}"
 set_config_env_value "AMPLITUDE_SECRET_KEY" "${INSTALL_AMPLITUDE_SECRET_KEY}"
