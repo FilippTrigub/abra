@@ -195,6 +195,8 @@ GOOGLE_ADS_CLIENT_ID
 GOOGLE_ADS_CLIENT_SECRET
 GOOGLE_ADS_REFRESH_TOKEN
 GOOGLE_ADS_DEVELOPER_TOKEN
+GOOGLE_ADS_CUSTOMER_ID
+GOOGLE_ADS_LOGIN_CUSTOMER_ID
 GSC_CLIENT_ID
 GSC_CLIENT_SECRET
 GSC_REFRESH_TOKEN
@@ -262,7 +264,7 @@ env_key_skill_labels() {
         GA4_ACCESS_TOKEN|GA4_PROPERTY_ID)
             printf '%s\n' "ads-manager" "funnel-optimizer"
             ;;
-        GOOGLE_ADS_CLIENT_ID|GOOGLE_ADS_CLIENT_SECRET|GOOGLE_ADS_REFRESH_TOKEN|GOOGLE_ADS_DEVELOPER_TOKEN)
+        GOOGLE_ADS_CLIENT_ID|GOOGLE_ADS_CLIENT_SECRET|GOOGLE_ADS_REFRESH_TOKEN|GOOGLE_ADS_DEVELOPER_TOKEN|GOOGLE_ADS_CUSTOMER_ID|GOOGLE_ADS_LOGIN_CUSTOMER_ID)
             printf '%s\n' "ads-manager"
             ;;
         MIXPANEL_SA_USERNAME|MIXPANEL_SECRET|AMPLITUDE_API_KEY|AMPLITUDE_SECRET_KEY|HOTJAR_SITE_ID|HOTJAR_API_TOKEN|OPTIMIZELY_SDK_KEY|OPTIMIZELY_ACCESS_TOKEN)
@@ -538,6 +540,8 @@ configure_skill_api_keys() {
     google_ads_client_secret="$(resolve_installer_env_value "GOOGLE_ADS_CLIENT_SECRET")"
     google_ads_refresh_token="$(resolve_installer_env_value "GOOGLE_ADS_REFRESH_TOKEN")"
     google_ads_developer_token="$(resolve_installer_env_value "GOOGLE_ADS_DEVELOPER_TOKEN")"
+    google_ads_customer_id="$(resolve_installer_env_value "GOOGLE_ADS_CUSTOMER_ID")"
+    google_ads_login_customer_id="$(resolve_installer_env_value "GOOGLE_ADS_LOGIN_CUSTOMER_ID")"
     gsc_client_id="$(resolve_installer_env_value "GSC_CLIENT_ID")"
     gsc_client_secret="$(resolve_installer_env_value "GSC_CLIENT_SECRET")"
     gsc_refresh_token="$(resolve_installer_env_value "GSC_REFRESH_TOKEN")"
@@ -599,6 +603,8 @@ configure_skill_api_keys() {
     INSTALL_GOOGLE_ADS_CLIENT_SECRET="${google_ads_client_secret}"
     INSTALL_GOOGLE_ADS_REFRESH_TOKEN="${google_ads_refresh_token}"
     INSTALL_GOOGLE_ADS_DEVELOPER_TOKEN="${google_ads_developer_token}"
+    INSTALL_GOOGLE_ADS_CUSTOMER_ID="${google_ads_customer_id}"
+    INSTALL_GOOGLE_ADS_LOGIN_CUSTOMER_ID="${google_ads_login_customer_id}"
     INSTALL_GSC_CLIENT_ID="${gsc_client_id}"
     INSTALL_GSC_CLIENT_SECRET="${gsc_client_secret}"
     INSTALL_GSC_REFRESH_TOKEN="${gsc_refresh_token}"
@@ -927,6 +933,8 @@ set_config_env_value "GOOGLE_ADS_CLIENT_ID" "${INSTALL_GOOGLE_ADS_CLIENT_ID}"
 set_config_env_value "GOOGLE_ADS_CLIENT_SECRET" "${INSTALL_GOOGLE_ADS_CLIENT_SECRET}"
 set_config_env_value "GOOGLE_ADS_REFRESH_TOKEN" "${INSTALL_GOOGLE_ADS_REFRESH_TOKEN}"
 set_config_env_value "GOOGLE_ADS_DEVELOPER_TOKEN" "${INSTALL_GOOGLE_ADS_DEVELOPER_TOKEN}"
+set_config_env_value "GOOGLE_ADS_CUSTOMER_ID" "${INSTALL_GOOGLE_ADS_CUSTOMER_ID}"
+set_config_env_value "GOOGLE_ADS_LOGIN_CUSTOMER_ID" "${INSTALL_GOOGLE_ADS_LOGIN_CUSTOMER_ID}"
 set_config_env_value "GSC_CLIENT_ID" "${INSTALL_GSC_CLIENT_ID}"
 set_config_env_value "GSC_CLIENT_SECRET" "${INSTALL_GSC_CLIENT_SECRET}"
 set_config_env_value "GSC_REFRESH_TOKEN" "${INSTALL_GSC_REFRESH_TOKEN}"
