@@ -1,0 +1,11 @@
+FROM nousresearch/hermes-agent:latest
+
+USER root
+
+# jq is not included in the base debian:13.4 (trixie) install
+# needed by several abra skills for JSON processing
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends jq && \
+    rm -rf /var/lib/apt/lists/*
+
+USER hermes
