@@ -1,7 +1,6 @@
 // HubSpot CLI wrapper
 
 const ACCESS_TOKEN = process.env.HUBSPOT_ACCESS_TOKEN
-const PORTAL_ID = process.env.HUBSPOT_PORTAL_ID
 
 function checkKey() {
   if (!ACCESS_TOKEN) {

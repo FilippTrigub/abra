@@ -1,12 +1,12 @@
 // Optimizely CLI wrapper
 // Wraps marketingskills/tools/clis/optimizely.js functionality
 
-const API_KEY = process.env.OPTIMIZELY_API_KEY
+const ACCESS_TOKEN = process.env.OPTIMIZELY_ACCESS_TOKEN
 const BASE_URL = 'https://api.optimizely.com/v2'
 
 function checkKey() {
-  if (!API_KEY) {
-    throw new Error('OPTIMIZELY_API_KEY environment variable required')
+  if (!ACCESS_TOKEN) {
+    throw new Error('OPTIMIZELY_ACCESS_TOKEN environment variable required')
   }
 }
 
@@ -15,7 +15,7 @@ async function api(method, path, body) {
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     headers: {
-      'Authorization': `Bearer ${API_KEY}`,
+      'Authorization': `Bearer ${ACCESS_TOKEN}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },

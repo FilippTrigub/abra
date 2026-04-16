@@ -1,28 +1,52 @@
-// Salesforce CLI wrapper
+// Salesforce provider
+// Uses OAuth2 password grant to obtain access token + instance URL at request time
 
-const ACCESS_TOKEN = process.env.SALESFORCE_ACCESS_TOKEN
-const INSTANCE_URL = process.env.SALESFORCE_INSTANCE_URL
+const CLIENT_ID = process.env.SALESFORCE_CLIENT_ID
+const CLIENT_SECRET = process.env.SALESFORCE_CLIENT_SECRET
+const USERNAME = process.env.SALESFORCE_USERNAME
+const PASSWORD = process.env.SALESFORCE_PASSWORD
+const SECURITY_TOKEN = process.env.SALESFORCE_SECURITY_TOKEN || ''
 
-function checkKey() {
-  if (!ACCESS_TOKEN) {
-    throw new Error('SALESFORCE_ACCESS_TOKEN environment variable required')
+const TOKEN_URL = 'https://login.salesforce.com/services/oauth2/token'
+const API_VERSION = 'v58.0'
+
+function checkKeys() {
+  if (!CLIENT_ID || !CLIENT_SECRET || !USERNAME || !PASSWORD) {
+    throw new Error('SALESFORCE_CLIENT_ID, SALESFORCE_CLIENT_SECRET, SALESFORCE_USERNAME, and SALESFORCE_PASSWORD environment variables required')
   }
 }
 
+async function getAuth() {
+  checkKeys()
+  const res = await fetch(TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'password',
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      username: USERNAME,
+      // Salesforce password grant requires password + security token concatenated
+      password: PASSWORD + SECURITY_TOKEN,
+    }),
+  })
+  const data = await res.json()
+  if (!data.access_token) {
+    throw new Error(`Failed to obtain Salesforce access token: ${data.error_description || data.error || 'unknown error'}`)
+  }
+  return { accessToken: data.access_token, instanceUrl: data.instance_url }
+}
+
 async function apiCall(endpoint, method = 'GET', body = null) {
-  checkKey()
-  const baseUrl = INSTANCE_URL || 'https://na1.salesforce.com'
-  const url = `${baseUrl}/services/data/v58.0${endpoint}`
-  
-  const res = await fetch(url, {
+  const { accessToken, instanceUrl } = await getAuth()
+  const res = await fetch(`${instanceUrl}/services/data/${API_VERSION}${endpoint}`, {
     method,
     headers: {
-      'Authorization': `Bearer ${ACCESS_TOKEN}`,
+      'Authorization': `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
     },
     body: body ? JSON.stringify(body) : null,
   })
-  
   const text = await res.text()
   try {
     return JSON.parse(text)
@@ -33,28 +57,27 @@ async function apiCall(endpoint, method = 'GET', body = null) {
 
 export const Salesforce = {
   async query(soql) {
-    const encoded = encodeURIComponent(soql)
-    return apiCall(`/query?q=${encoded}`)
+    return apiCall(`/query?q=${encodeURIComponent(soql)}`)
   },
 
   async getContacts(options = {}) {
     const limit = options.limit || 100
-    return apiQuery(`SELECT Id, Name, Email, Phone, Title, Account.Name FROM Contact LIMIT ${limit}`)
+    return this.query(`SELECT Id, Name, Email, Phone, Title, Account.Name FROM Contact LIMIT ${limit}`)
   },
 
   async getLeads(options = {}) {
     const limit = options.limit || 100
-    return apiQuery(`SELECT Id, Name, Email, Phone, Title, Company, Status FROM Lead LIMIT ${limit}`)
+    return this.query(`SELECT Id, Name, Email, Phone, Title, Company, Status FROM Lead LIMIT ${limit}`)
   },
 
   async getOpportunities(options = {}) {
     const limit = options.limit || 100
-    return apiQuery(`SELECT Id, Name, Amount, StageName, CloseDate, Account.Name FROM Opportunity LIMIT ${limit}`)
+    return this.query(`SELECT Id, Name, Amount, StageName, CloseDate, Account.Name FROM Opportunity LIMIT ${limit}`)
   },
 
   async getAccounts(options = {}) {
     const limit = options.limit || 100
-    return apiQuery(`SELECT Id, Name, Type, Industry, AnnualRevenue FROM Account LIMIT ${limit}`)
+    return this.query(`SELECT Id, Name, Type, Industry, AnnualRevenue FROM Account LIMIT ${limit}`)
   },
 
   async createRecord(objectType, fields) {
@@ -72,8 +95,4 @@ export const Salesforce = {
   async getDescribe(objectType) {
     return apiCall(`/sobjects/${objectType}/describe`)
   },
-}
-
-async function apiQuery(soql) {
-  return Salesforce.query(soql)
 }

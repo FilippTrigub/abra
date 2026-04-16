@@ -8,8 +8,8 @@ This document lists all API keys required by the marketing skills and where to o
 |-------|-----------|---------------|
 | `seo-researcher` | gsc, semrush, ahrefs, dataforseo, keywords-everywhere, plausible | At least one of: GSC, SEMRUSH_API_KEY, AHREFS_API_KEY, DATAFORSEO_*, KEYWORDS_EVERYWHERE_*, PLAUSIBLE_* |
 | `funnel-optimizer` | ga4, mixpanel, amplitude, hotjar, optimizely | At least one of: GA4_*, MIXPANEL_*, AMPLITUDE_*, HOTJAR_*, OPTIMIZELY_* |
-| `email-campaigner` | resend, mailchimp, sendgrid, kit, dub | At least one of: RESEND_API_KEY, MAILCHIMP_API_KEY, SENDGRID_API_KEY, KIT_API_KEY, DUB_API_KEY |
-| `ads-manager` | ga4, google-ads | GA4_ACCESS_TOKEN + GA4_PROPERTY_ID, GOOGLE_ADS_* |
+| `email-campaigner` | resend, mailchimp, sendgrid, kit, dub | At least one of: RESEND_API_KEY, MAILCHIMP_API_KEY, SENDGRID_API_KEY, KIT_API_KEY/KIT_API_SECRET, DUB_API_KEY |
+| `ads-manager` | ga4, google-ads | GA4_CLIENT_ID + GA4_CLIENT_SECRET + GA4_REFRESH_TOKEN + GA4_PROPERTY_ID, GOOGLE_ADS_* |
 | `revenue-manager` | hubspot, salesforce, close, outreach, crossbeam, apollo, clearbit, zoominfo, clay, segment | At least one of: HUBSPOT_*, SALESFORCE_*, CLOSE_API_KEY, OUTREACH_*, CROSSBEAM_*, APOLLO_*, CLEARBIT_*, ZOOMINFO_*, CLAY_API_KEY, SEGMENT_WRITE_KEY |
 
 ---
@@ -20,30 +20,34 @@ This document lists all API keys required by the marketing skills and where to o
 
 | Key | Description |
 |-----|-------------|
-| `GA4_ACCESS_TOKEN` | OAuth2 Bearer token for the Google Analytics Data API |
+| `GA4_CLIENT_ID` | OAuth2 client ID |
+| `GA4_CLIENT_SECRET` | OAuth2 client secret |
+| `GA4_REFRESH_TOKEN` | OAuth2 refresh token (long-lived) |
 | `GA4_PROPERTY_ID` | GA4 numeric property ID (e.g., `123456789`) |
 
 **How to get:**
 
-**Step 1 — Create a service account and get credentials (`GA4_ACCESS_TOKEN`)**
+**Step 1 — Create OAuth credentials**
 1. Go to [console.cloud.google.com](https://console.cloud.google.com) and create or select a project
 2. Go to **APIs & Services → Library**, search for "Google Analytics Data API", and click **Enable**
-3. Go to **APIs & Services → Credentials → Create Credentials → Service account**
-4. Give it a name, click **Done**
-5. Click the service account → **Keys** tab → **Add Key → Create new key → JSON** — download the file
-6. Generate a short-lived access token from the key file:
-   ```bash
-   gcloud auth activate-service-account --key-file=/path/to/key.json
-   gcloud auth print-access-token
-   ```
-   Copy the token output as `GA4_ACCESS_TOKEN`. Note: these tokens expire in 1 hour — regenerate with `gcloud auth print-access-token` when needed.
+3. Go to **APIs & Services → Credentials → Create Credentials → OAuth client ID**
+4. Application type: **Web application**; add `https://developers.google.com/oauthplayground` as an authorized redirect URI
+5. Copy the **Client ID** → `GA4_CLIENT_ID` and **Client Secret** → `GA4_CLIENT_SECRET`
 
-**Step 2 — Grant the service account access to your GA4 property**
+**Step 2 — Get a refresh token via OAuth Playground**
+1. Go to [developers.google.com/oauthplayground](https://developers.google.com/oauthplayground)
+2. Click the gear icon (top-right) → check **Use your own OAuth credentials** → enter your Client ID and Secret
+3. In Step 1, find **Google Analytics Data API v1** and select `https://www.googleapis.com/auth/analytics.readonly`; click **Authorize APIs**
+4. Sign in and grant access
+5. In Step 2, click **Exchange authorization code for tokens**
+6. Copy the **Refresh token** → `GA4_REFRESH_TOKEN` (does not expire unless revoked)
+
+**Step 3 — Grant access to your GA4 property**
 1. In Google Analytics, go to **Admin → Property → Property Access Management**
-2. Click **+** → **Add users**, enter the service account email (looks like `name@project.iam.gserviceaccount.com`)
-3. Assign **Viewer** role
+2. Click **+** → **Add users**, enter the Google account used in OAuth Playground
+3. Assign **Viewer** role (or higher if writes are needed)
 
-**Step 3 — Find your property ID (`GA4_PROPERTY_ID`)**
+**Step 4 — Find your property ID (`GA4_PROPERTY_ID`)**
 1. In Google Analytics, go to **Admin → Property Settings**
 2. The property ID is shown at the top — a plain number like `123456789` (not the `G-XXXXXXXX` measurement ID)
 
@@ -186,13 +190,14 @@ Use the [Google OAuth2 Playground](https://developers.google.com/oauthplayground
 
 | Key | Description |
 |-----|-------------|
-| `KIT_API_KEY` | Kit (formerly ConvertKit) API key |
+| `KIT_API_KEY` | Public API key — required for form/sequence/tag subscribe endpoints |
+| `KIT_API_SECRET` | Private API secret — required for subscriber read/update, broadcasts, and unsubscribe endpoints |
 
 **How to get:**
 1. Sign in at [app.kit.com](https://app.kit.com) (formerly convertkit.com)
 2. Click your profile icon → **Settings → Developer**
-3. Under **API**, copy your **API Key** — this is a read/write key tied to your account
-4. The v4 API also supports personal access tokens (scoped); the API Key works for all v3 endpoints
+3. Under **API**, copy both your **API Key** (`KIT_API_KEY`) and **API Secret** (`KIT_API_SECRET`)
+4. The API Key is sufficient for public actions (subscribing to forms, sequences, tags); the API Secret is required for reading subscriber data, updating subscribers, and creating broadcasts
 
 ---
 
@@ -442,20 +447,21 @@ Use the [Google OAuth2 Playground](https://developers.google.com/oauthplayground
 
 | Key | Description |
 |-----|-------------|
-| `OUTREACH_ACCESS_TOKEN` | Outreach OAuth2 access token |
-| `OUTREACH_REFRESH_TOKEN` | Outreach OAuth2 refresh token |
+| `OUTREACH_CLIENT_ID` | Outreach OAuth2 application ID |
+| `OUTREACH_CLIENT_SECRET` | Outreach OAuth2 application secret |
+| `OUTREACH_REFRESH_TOKEN` | Outreach OAuth2 refresh token (long-lived) |
 
 **How to get:**
 
-Outreach uses OAuth2. Access tokens expire in **24 hours** — the refresh token is used to obtain a new access token.
+Outreach uses OAuth2 with refresh tokens. The provider exchanges the refresh token for a short-lived access token automatically on each call.
 
 **Step 1 — Create an OAuth app**
 1. Sign in at [outreach.io](https://outreach.io) as an admin
 2. Go to **Settings → Integrations → API** → click **Create OAuth Application**
 3. Set the redirect URI to `https://localhost` (for manual token generation)
-4. Copy the **Application ID** (client ID) and **Secret** (client secret)
+4. Copy the **Application ID** → `OUTREACH_CLIENT_ID` and **Secret** → `OUTREACH_CLIENT_SECRET`
 
-**Step 2 — Authorize and get tokens**
+**Step 2 — Authorize and get a refresh token**
 1. Build the authorization URL:
    ```
    https://api.outreach.io/oauth/authorize?client_id=YOUR_APP_ID&redirect_uri=https://localhost&response_type=code&scope=prospects.read+sequences.read+opportunities.read
@@ -467,13 +473,7 @@ Outreach uses OAuth2. Access tokens expire in **24 hours** — the refresh token
    curl -X POST https://api.outreach.io/oauth/token \
      -d "client_id=YOUR_APP_ID&client_secret=YOUR_SECRET&redirect_uri=https://localhost&grant_type=authorization_code&code=AUTH_CODE"
    ```
-5. Copy `access_token` → `OUTREACH_ACCESS_TOKEN` and `refresh_token` → `OUTREACH_REFRESH_TOKEN`
-
-**Note:** Access tokens expire after 24 hours. Refresh using:
-```bash
-curl -X POST https://api.outreach.io/oauth/token \
-  -d "client_id=YOUR_APP_ID&client_secret=YOUR_SECRET&grant_type=refresh_token&refresh_token=YOUR_REFRESH_TOKEN"
-```
+5. Copy `refresh_token` → `OUTREACH_REFRESH_TOKEN` (the access token is short-lived; store only the refresh token)
 
 ---
 
@@ -524,22 +524,17 @@ curl -X POST https://api.outreach.io/oauth/token \
 
 | Key | Description |
 |-----|-------------|
-| `ZOOMINFO_ACCESS_TOKEN` | ZoomInfo JWT access token |
+| `ZOOMINFO_USERNAME` | ZoomInfo account email address |
+| `ZOOMINFO_PASSWORD` | ZoomInfo account password |
 
 **How to get:**
 
-ZoomInfo uses a username/password flow to generate a JWT access token. Tokens expire — you must regenerate them periodically.
+ZoomInfo uses username/password authentication to generate a short-lived JWT on each call. The provider handles token generation automatically — you only need to store your credentials.
 
 1. Sign in at [app.zoominfo.com](https://app.zoominfo.com) — API access requires an **Advanced** or **Elite** plan
-2. Generate a token via the authentication endpoint:
-   ```bash
-   curl -X POST https://api.zoominfo.com/authenticate \
-     -H "Content-Type: application/json" \
-     -d '{"username": "your@email.com", "password": "yourpassword"}'
-   ```
-3. Copy the `jwt` field from the response as `ZOOMINFO_ACCESS_TOKEN`
-4. Tokens are valid for **1 hour** — regenerate using the same command when expired
-5. Store your ZoomInfo email and password securely for re-authentication
+2. Your `ZOOMINFO_USERNAME` is the email address you use to sign in
+3. Your `ZOOMINFO_PASSWORD` is your account password
+4. The provider calls `https://api.zoominfo.com/authenticate` automatically before each API request to obtain a fresh JWT (valid for 1 hour)
 
 ---
 
@@ -583,7 +578,9 @@ After obtaining your API keys, you can configure them in `~/.openclaw/openclaw.j
 ```json
 {
   "env": {
-    "GA4_ACCESS_TOKEN": "your-ga4-token",
+    "GA4_CLIENT_ID": "your-ga4-client-id",
+    "GA4_CLIENT_SECRET": "your-ga4-client-secret",
+    "GA4_REFRESH_TOKEN": "your-ga4-refresh-token",
     "GA4_PROPERTY_ID": "123456789",
     "GOOGLE_ADS_CLIENT_ID": "your-client-id",
     "GOOGLE_ADS_CLIENT_SECRET": "your-client-secret",
@@ -595,6 +592,7 @@ After obtaining your API keys, you can configure them in `~/.openclaw/openclaw.j
     "MAILCHIMP_SERVER_PREFIX": "us1",
     "SENDGRID_API_KEY": "your-sendgrid-key",
     "KIT_API_KEY": "your-kit-key",
+    "KIT_API_SECRET": "your-kit-secret",
     "DUB_API_KEY": "your-dub-key",
     "SEMRUSH_API_KEY": "your-semrush-key",
     "AHREFS_API_KEY": "your-ahrefs-key",
@@ -606,8 +604,13 @@ After obtaining your API keys, you can configure them in `~/.openclaw/openclaw.j
     "HOTJAR_API_TOKEN": "your-hotjar-token",
     "HUBSPOT_ACCESS_TOKEN": "your-hubspot-token",
     "CLOSE_API_KEY": "your-close-key",
+    "OUTREACH_CLIENT_ID": "your-outreach-client-id",
+    "OUTREACH_CLIENT_SECRET": "your-outreach-client-secret",
+    "OUTREACH_REFRESH_TOKEN": "your-outreach-refresh-token",
     "APOLLO_API_KEY": "your-apollo-key",
     "CLEARBIT_API_KEY": "your-clearbit-key",
+    "ZOOMINFO_USERNAME": "your@email.com",
+    "ZOOMINFO_PASSWORD": "your-zoominfo-password",
     "CLAY_API_KEY": "your-clay-key",
     "SEGMENT_WRITE_KEY": "your-segment-key"
   }

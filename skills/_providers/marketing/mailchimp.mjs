@@ -2,6 +2,7 @@
 // Wraps marketingskills/tools/clis/mailchimp.js functionality
 
 const API_KEY = process.env.MAILCHIMP_API_KEY
+const SERVER_PREFIX = process.env.MAILCHIMP_SERVER_PREFIX
 
 function checkKey() {
   if (!API_KEY) {
@@ -10,10 +11,11 @@ function checkKey() {
 }
 
 function getDC() {
-  // Extract datacenter from key (format: key-dc)
+  if (SERVER_PREFIX) return SERVER_PREFIX
+  // Fall back to parsing from key format (key-dc) if prefix not explicitly set
   const parts = API_KEY.split('-')
   if (parts.length < 2) {
-    throw new Error('Invalid MAILCHIMP_API_KEY format (expected: key-datacenter)')
+    throw new Error('Cannot determine data center: set MAILCHIMP_SERVER_PREFIX or use a key in key-dc format')
   }
   return parts[parts.length - 1]
 }

@@ -1,98 +1,48 @@
-// Segment CLI wrapper
+// Segment provider
 
-const ACCESS_TOKEN = process.env.SEGMENT_WRITE_KEY
+const WRITE_KEY = process.env.SEGMENT_WRITE_KEY
 
 function checkKey() {
-  if (!ACCESS_TOKEN) {
+  if (!WRITE_KEY) {
     throw new Error('SEGMENT_WRITE_KEY environment variable required')
   }
 }
 
+function authHeader() {
+  return `Basic ${Buffer.from(`${WRITE_KEY}:`).toString('base64')}`
+}
+
+async function send(endpoint, payload) {
+  checkKey()
+  const res = await fetch(`https://api.segment.io/v1${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': authHeader(),
+    },
+    body: JSON.stringify({ ...payload, timestamp: new Date().toISOString() }),
+  })
+  return { status: res.status, success: res.ok }
+}
+
 export const Segment = {
   async identify(userId, traits = {}) {
-    return this.track(userId, 'identify', traits)
+    return send('/identify', { type: 'identify', userId, traits })
   },
 
   async track(userId, event, properties = {}) {
-    const payload = {
-      type: 'track',
-      userId,
-      event,
-      properties,
-      timestamp: new Date().toISOString(),
-    }
-    
-    const res = await fetch('https://api.segment.io/v1/track', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(`${ACCESS_TOKEN}:`).toString('base64')}`,
-      },
-      body: JSON.stringify(payload),
-    })
-    
-    return { status: res.status, success: res.ok }
+    return send('/track', { type: 'track', userId, event, properties })
   },
 
   async page(userId, name, properties = {}) {
-    const payload = {
-      type: 'page',
-      userId,
-      name,
-      properties,
-      timestamp: new Date().toISOString(),
-    }
-    
-    const res = await fetch('https://api.segment.io/v1/page', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(`${ACCESS_TOKEN}:`).toString('base64')}`,
-      },
-      body: JSON.stringify(payload),
-    })
-    
-    return { status: res.status, success: res.ok }
+    return send('/page', { type: 'page', userId, name, properties })
   },
 
   async group(userId, groupId, traits = {}) {
-    const payload = {
-      type: 'group',
-      userId,
-      groupId,
-      traits,
-      timestamp: new Date().toISOString(),
-    }
-    
-    const res = await fetch('https://api.segment.io/v1/group', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(`${ACCESS_TOKEN}:`).toString('base64')}`,
-      },
-      body: JSON.stringify(payload),
-    })
-    
-    return { status: res.status, success: res.ok }
+    return send('/group', { type: 'group', userId, groupId, traits })
   },
 
   async alias(userId, previousId) {
-    const payload = {
-      type: 'alias',
-      userId,
-      previousId,
-      timestamp: new Date().toISOString(),
-    }
-    
-    const res = await fetch('https://api.segment.io/v1/alias', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${Buffer.from(`${ACCESS_TOKEN}:`).toString('base64')}`,
-      },
-      body: JSON.stringify(payload),
-    })
-    
-    return { status: res.status, success: res.ok }
+    return send('/alias', { type: 'alias', userId, previousId })
   },
 }

@@ -7,7 +7,7 @@ const BASE_URL = 'https://api.convertkit.com/v3'
 
 function checkKey() {
   if (!API_SECRET && !API_KEY) {
-    throw new Error('KIT_API_SECRET or KIT_API_KEY environment variable required')
+    throw new Error('KIT_API_KEY (public) or KIT_API_SECRET (private, required for subscriber data) environment variable required')
   }
 }
 

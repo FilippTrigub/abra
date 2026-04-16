@@ -286,18 +286,18 @@ write_env_file() {
     local runpod_api_key
     local runpod_endpoint_video_editor runpod_endpoint_video_matte runpod_endpoint_frame_interpolator
     local runpod_endpoint_bokeh_effect runpod_endpoint_background_remover runpod_endpoint_audio_splitter runpod_endpoint_photo_picker
-    local ga4_access_token ga4_property_id
+    local ga4_client_id ga4_client_secret ga4_refresh_token ga4_property_id
     local google_ads_client_id google_ads_client_secret google_ads_refresh_token google_ads_developer_token
     local gsc_client_id gsc_client_secret gsc_refresh_token
-    local resend_api_key mailchimp_api_key mailchimp_server_prefix sendgrid_api_key kit_api_key dub_api_key
+    local resend_api_key mailchimp_api_key mailchimp_server_prefix sendgrid_api_key kit_api_key kit_api_secret dub_api_key
     local semrush_api_key ahrefs_api_key dataforseo_login dataforseo_password keywords_everywhere_api_key
     local plausible_api_key plausible_site_id
     local mixpanel_sa_username mixpanel_secret amplitude_api_key amplitude_secret_key
     local hotjar_site_id hotjar_api_token optimizely_sdk_key optimizely_access_token
     local hubspot_access_token
     local salesforce_client_id salesforce_client_secret salesforce_username salesforce_password salesforce_security_token
-    local close_api_key outreach_access_token outreach_refresh_token crossbeam_api_key
-    local apollo_api_key clearbit_api_key zoominfo_access_token clay_api_key segment_write_key
+    local close_api_key outreach_client_id outreach_client_secret outreach_refresh_token crossbeam_api_key
+    local apollo_api_key clearbit_api_key zoominfo_username zoominfo_password clay_api_key segment_write_key
     local brave_api_key gh_token
 
     anthropic_api_key="$(resolve_installer_env_value "ANTHROPIC_API_KEY")"
@@ -320,7 +320,9 @@ write_env_file() {
     runpod_endpoint_background_remover="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER")"
     runpod_endpoint_audio_splitter="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER")"
     runpod_endpoint_photo_picker="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_PHOTO_PICKER")"
-    ga4_access_token="$(resolve_installer_env_value "GA4_ACCESS_TOKEN")"
+    ga4_client_id="$(resolve_installer_env_value "GA4_CLIENT_ID")"
+    ga4_client_secret="$(resolve_installer_env_value "GA4_CLIENT_SECRET")"
+    ga4_refresh_token="$(resolve_installer_env_value "GA4_REFRESH_TOKEN")"
     ga4_property_id="$(resolve_installer_env_value "GA4_PROPERTY_ID")"
     google_ads_client_id="$(resolve_installer_env_value "GOOGLE_ADS_CLIENT_ID")"
     google_ads_client_secret="$(resolve_installer_env_value "GOOGLE_ADS_CLIENT_SECRET")"
@@ -336,6 +338,7 @@ write_env_file() {
     mailchimp_server_prefix="$(resolve_installer_env_value "MAILCHIMP_SERVER_PREFIX")"
     sendgrid_api_key="$(resolve_installer_env_value "SENDGRID_API_KEY")"
     kit_api_key="$(resolve_installer_env_value "KIT_API_KEY")"
+    kit_api_secret="$(resolve_installer_env_value "KIT_API_SECRET")"
     dub_api_key="$(resolve_installer_env_value "DUB_API_KEY")"
     semrush_api_key="$(resolve_installer_env_value "SEMRUSH_API_KEY")"
     ahrefs_api_key="$(resolve_installer_env_value "AHREFS_API_KEY")"
@@ -359,12 +362,14 @@ write_env_file() {
     salesforce_password="$(resolve_installer_env_value "SALESFORCE_PASSWORD")"
     salesforce_security_token="$(resolve_installer_env_value "SALESFORCE_SECURITY_TOKEN")"
     close_api_key="$(resolve_installer_env_value "CLOSE_API_KEY")"
-    outreach_access_token="$(resolve_installer_env_value "OUTREACH_ACCESS_TOKEN")"
+    outreach_client_id="$(resolve_installer_env_value "OUTREACH_CLIENT_ID")"
+    outreach_client_secret="$(resolve_installer_env_value "OUTREACH_CLIENT_SECRET")"
     outreach_refresh_token="$(resolve_installer_env_value "OUTREACH_REFRESH_TOKEN")"
     crossbeam_api_key="$(resolve_installer_env_value "CROSSBEAM_API_KEY")"
     apollo_api_key="$(resolve_installer_env_value "APOLLO_API_KEY")"
     clearbit_api_key="$(resolve_installer_env_value "CLEARBIT_API_KEY")"
-    zoominfo_access_token="$(resolve_installer_env_value "ZOOMINFO_ACCESS_TOKEN")"
+    zoominfo_username="$(resolve_installer_env_value "ZOOMINFO_USERNAME")"
+    zoominfo_password="$(resolve_installer_env_value "ZOOMINFO_PASSWORD")"
     clay_api_key="$(resolve_installer_env_value "CLAY_API_KEY")"
     segment_write_key="$(resolve_installer_env_value "SEGMENT_WRITE_KEY")"
     brave_api_key="$(resolve_installer_env_value "BRAVE_API_KEY")"
@@ -419,7 +424,9 @@ RUNPOD_ENDPOINT_ID_PHOTO_PICKER="$(escape_env_value "${runpod_endpoint_photo_pic
 # =============================================================================
 # ANALYTICS
 # =============================================================================
-GA4_ACCESS_TOKEN="$(escape_env_value "${ga4_access_token}")"
+GA4_CLIENT_ID="$(escape_env_value "${ga4_client_id}")"
+GA4_CLIENT_SECRET="$(escape_env_value "${ga4_client_secret}")"
+GA4_REFRESH_TOKEN="$(escape_env_value "${ga4_refresh_token}")"
 GA4_PROPERTY_ID="$(escape_env_value "${ga4_property_id}")"
 GOOGLE_ADS_CLIENT_ID="$(escape_env_value "${google_ads_client_id}")"
 GOOGLE_ADS_CLIENT_SECRET="$(escape_env_value "${google_ads_client_secret}")"
@@ -439,6 +446,7 @@ MAILCHIMP_API_KEY="$(escape_env_value "${mailchimp_api_key}")"
 MAILCHIMP_SERVER_PREFIX="$(escape_env_value "${mailchimp_server_prefix}")"
 SENDGRID_API_KEY="$(escape_env_value "${sendgrid_api_key}")"
 KIT_API_KEY="$(escape_env_value "${kit_api_key}")"
+KIT_API_SECRET="$(escape_env_value "${kit_api_secret}")"
 DUB_API_KEY="$(escape_env_value "${dub_api_key}")"
 
 # =============================================================================
@@ -474,12 +482,14 @@ SALESFORCE_USERNAME="$(escape_env_value "${salesforce_username}")"
 SALESFORCE_PASSWORD="$(escape_env_value "${salesforce_password}")"
 SALESFORCE_SECURITY_TOKEN="$(escape_env_value "${salesforce_security_token}")"
 CLOSE_API_KEY="$(escape_env_value "${close_api_key}")"
-OUTREACH_ACCESS_TOKEN="$(escape_env_value "${outreach_access_token}")"
+OUTREACH_CLIENT_ID="$(escape_env_value "${outreach_client_id}")"
+OUTREACH_CLIENT_SECRET="$(escape_env_value "${outreach_client_secret}")"
 OUTREACH_REFRESH_TOKEN="$(escape_env_value "${outreach_refresh_token}")"
 CROSSBEAM_API_KEY="$(escape_env_value "${crossbeam_api_key}")"
 APOLLO_API_KEY="$(escape_env_value "${apollo_api_key}")"
 CLEARBIT_API_KEY="$(escape_env_value "${clearbit_api_key}")"
-ZOOMINFO_ACCESS_TOKEN="$(escape_env_value "${zoominfo_access_token}")"
+ZOOMINFO_USERNAME="$(escape_env_value "${zoominfo_username}")"
+ZOOMINFO_PASSWORD="$(escape_env_value "${zoominfo_password}")"
 CLAY_API_KEY="$(escape_env_value "${clay_api_key}")"
 SEGMENT_WRITE_KEY="$(escape_env_value "${segment_write_key}")"
 EOF

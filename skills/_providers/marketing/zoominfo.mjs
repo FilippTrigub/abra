@@ -1,26 +1,40 @@
-// ZoomInfo CLI wrapper
+// ZoomInfo provider
+// Generates a JWT access token from username/password at request time (tokens expire in 1 hour)
 
-const ACCESS_TOKEN = process.env.ZOOMINFO_ACCESS_TOKEN
+const USERNAME = process.env.ZOOMINFO_USERNAME
+const PASSWORD = process.env.ZOOMINFO_PASSWORD
+const BASE_URL = 'https://api.zoominfo.com'
 
-function checkKey() {
-  if (!ACCESS_TOKEN) {
-    throw new Error('ZOOMINFO_ACCESS_TOKEN environment variable required')
+function checkKeys() {
+  if (!USERNAME || !PASSWORD) {
+    throw new Error('ZOOMINFO_USERNAME and ZOOMINFO_PASSWORD environment variables required')
   }
 }
 
+async function getAccessToken() {
+  const res = await fetch(`${BASE_URL}/authenticate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: USERNAME, password: PASSWORD }),
+  })
+  const data = await res.json()
+  if (!data.jwt) {
+    throw new Error(`Failed to obtain ZoomInfo access token: ${data.message || 'unknown error'}`)
+  }
+  return data.jwt
+}
+
 async function apiCall(endpoint, method = 'GET', body = null) {
-  checkKey()
-  const url = `https://api.zoominfo.com/platform/v1${endpoint}`
-  
-  const res = await fetch(url, {
+  checkKeys()
+  const token = await getAccessToken()
+  const res = await fetch(`${BASE_URL}/platform/v1${endpoint}`, {
     method,
     headers: {
-      'Authorization': `Bearer ${ACCESS_TOKEN}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
     body: body ? JSON.stringify(body) : null,
   })
-  
   const text = await res.text()
   try {
     return JSON.parse(text)
