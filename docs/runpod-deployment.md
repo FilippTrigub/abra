@@ -184,9 +184,7 @@ Update endpoint <id> — no changes needed, just triggers a redeploy
 
 ## GPU availability note
 
-RunPod EU-RO-1 can experience GPU shortages (RTX 3090 / 4090 / A4000 stock varies). Jobs may queue for extended periods. If this happens, use **fal.ai** as an alternative provider — see [remote-inference.md](./remote-inference.md#falai-serverless).
-
-> ⚠️ fal.ai custom container deployment requires a one-time permission grant at https://fal.ai/dashboard/serverless-get-started before `fal deploy` will work.
+RunPod EU-RO-1 can experience GPU shortages (RTX 3090 / 4090 / A4000 stock varies). Jobs may queue for extended periods.
 
 ---
 

@@ -723,7 +723,7 @@ uv run python scripts/revenue.py --input ./input --output ./output
 | video-matte | videos | Remove video background | ~3 GB | ❌ no |
 | audio-splitter | video/audio | Separate vocals from music | ~2 GB | ✅ slow |
 | music-generator | prompt/video | Generate music | ~3 GB | ✅ very slow |
-| animate-image | images | Image → video clip | ~8 GB | ❌ no |
+| animate-image | images | Image → video clip | None (cloud) | ✅ N/A |
 | video-editor | video | Edit/inpaint video | ~8 GB | ❌ no |
 | giphy | videos | Animated GIF stickers from GIPHY + optional SFX | 0 GB | ✅ instant |
 | freesound | videos | Freesound SFX into video + optional GIF overlays | 0 GB | ✅ instant |

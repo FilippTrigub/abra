@@ -4,12 +4,11 @@ import os
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 
-VALID_REMOTE_PROVIDERS: frozenset[str] = frozenset({"huggingface", "replicate", "runpod", "fal"})
+VALID_REMOTE_PROVIDERS: frozenset[str] = frozenset({"huggingface", "replicate", "runpod"})
 
 DEFAULT_HF_TOKEN_ENV = "HF_TOKEN"
 DEFAULT_REPLICATE_API_KEY_ENV = "REPLICATE_API_TOKEN"
 DEFAULT_RUNPOD_API_KEY_ENV = "RUNPOD_API_KEY"
-DEFAULT_FAL_API_KEY_ENV = "FAL_KEY"
 DEFAULT_REMOTE_TIMEOUT_SECONDS = 300
 
 REMOTE_PROVIDER_CONFIG_KEYS: tuple[str, ...] = (
@@ -19,8 +18,6 @@ REMOTE_PROVIDER_CONFIG_KEYS: tuple[str, ...] = (
     "replicate_api_key_env",
     "runpod_api_key_env",
     "runpod_endpoint_id_env",
-    "fal_api_key_env",
-    "fal_app_id_env",
     "remote_timeout_seconds",
 )
 
@@ -33,8 +30,6 @@ class RemoteProviderConfig:
     replicate_api_key_env: str = DEFAULT_REPLICATE_API_KEY_ENV
     runpod_api_key_env: str = DEFAULT_RUNPOD_API_KEY_ENV
     runpod_endpoint_id_env: str | None = None
-    fal_api_key_env: str = DEFAULT_FAL_API_KEY_ENV
-    fal_app_id_env: str | None = None
     remote_timeout_seconds: int = DEFAULT_REMOTE_TIMEOUT_SECONDS
 
     @property
@@ -66,8 +61,6 @@ def merge_remote_provider_overrides(
     replicate_api_key_env: str | None = None,
     runpod_api_key_env: str | None = None,
     runpod_endpoint_id_env: str | None = None,
-    fal_api_key_env: str | None = None,
-    fal_app_id_env: str | None = None,
     remote_timeout_seconds: int | None = None,
 ) -> dict[str, object]:
     merged = dict(cfg)
@@ -84,10 +77,6 @@ def merge_remote_provider_overrides(
         merged["runpod_api_key_env"] = runpod_api_key_env
     if runpod_endpoint_id_env is not None:
         merged["runpod_endpoint_id_env"] = runpod_endpoint_id_env
-    if fal_api_key_env is not None:
-        merged["fal_api_key_env"] = fal_api_key_env
-    if fal_app_id_env is not None:
-        merged["fal_app_id_env"] = fal_app_id_env
     if remote_timeout_seconds is not None:
         merged["remote_timeout_seconds"] = remote_timeout_seconds
 
@@ -117,14 +106,6 @@ def remote_provider_from_config(
     runpod_endpoint_id_env = _string_config_value(
         cfg, "runpod_endpoint_id_env", None, allow_empty=True
     )
-    fal_api_key_env = _required_string_config_value(
-        cfg,
-        "fal_api_key_env",
-        DEFAULT_FAL_API_KEY_ENV,
-    )
-    fal_app_id_env = _string_config_value(
-        cfg, "fal_app_id_env", None, allow_empty=True
-    )
     remote_model = _string_config_value(cfg, "remote_model", None, allow_empty=True)
     timeout = _positive_int_config_value(
         cfg, "remote_timeout_seconds", DEFAULT_REMOTE_TIMEOUT_SECONDS
@@ -138,8 +119,6 @@ def remote_provider_from_config(
             replicate_api_key_env=replicate_api_key_env,
             runpod_api_key_env=runpod_api_key_env,
             runpod_endpoint_id_env=runpod_endpoint_id_env,
-            fal_api_key_env=fal_api_key_env,
-            fal_app_id_env=fal_app_id_env,
             remote_timeout_seconds=timeout,
         )
 
@@ -160,8 +139,6 @@ def remote_provider_from_config(
         replicate_api_key_env=replicate_api_key_env,
         runpod_api_key_env=runpod_api_key_env,
         runpod_endpoint_id_env=runpod_endpoint_id_env,
-        fal_api_key_env=fal_api_key_env,
-        fal_app_id_env=fal_app_id_env,
         remote_timeout_seconds=timeout,
     )
 
@@ -173,8 +150,6 @@ def provider_api_key_env(remote: RemoteProviderConfig) -> str:
         return remote.replicate_api_key_env
     if remote.provider == "runpod":
         return remote.runpod_api_key_env
-    if remote.provider == "fal":
-        return remote.fal_api_key_env
     raise ValueError("remote provider is not enabled")
 
 

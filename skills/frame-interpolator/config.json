@@ -7,7 +7,5 @@
   "runpod_api_key_env": "RUNPOD_API_KEY",
   "runpod_endpoint_id_env": "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR",
   "runpod_gpu_type": "NVIDIA RTX 4090",
-  "fal_api_key_env": "FAL_KEY",
-  "fal_app_id_env": "FAL_APP_ID_FRAME_INTERPOLATOR",
   "remote_timeout_seconds": 600
 }

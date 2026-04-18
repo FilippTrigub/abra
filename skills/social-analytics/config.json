@@ -1,0 +1,54 @@
+{
+  "sociavault": {
+    "api_key_env": "SOCIAVAULT_API_KEY",
+    "base_url": "https://api.sociavault.com",
+    "max_results_per_request": 50,
+    "rate_limit_delay_ms": 500
+  },
+  "platforms": {
+    "instagram": {
+      "endpoint": "/v1/scrape/instagram/posts",
+      "required_param": "handle",
+      "optional_params": ["next_max_id", "trim"]
+    },
+    "linkedin": {
+      "endpoint": "/v1/scrape/linkedin/post",
+      "required_param": "url",
+      "optional_params": []
+    },
+    "tiktok": {
+      "endpoint": "/v1/scrape/tiktok/user",
+      "required_param": "handle",
+      "optional_params": ["cursor"]
+    },
+    "youtube": {
+      "endpoint": "/v1/scrape/youtube/channel",
+      "required_param": "channel_id",
+      "optional_params": ["cursor"]
+    },
+    "twitter": {
+      "endpoint": "/v1/scrape/twitter/user",
+      "required_param": "handle",
+      "optional_params": ["cursor"]
+    },
+    "facebook": {
+      "endpoint": "/v1/scrape/facebook/page",
+      "required_param": "page_id",
+      "optional_params": ["cursor"]
+    },
+    "reddit": {
+      "endpoint": "/v1/scrape/reddit/user",
+      "required_param": "username",
+      "optional_params": ["cursor"]
+    },
+    "threads": {
+      "endpoint": "/v1/scrape/threads/user",
+      "required_param": "handle",
+      "optional_params": ["cursor"]
+    }
+  },
+  "output": {
+    "default_directory": "./output",
+    "filename_format": "{platform}_{handle}_{timestamp}.json"
+  }
+}

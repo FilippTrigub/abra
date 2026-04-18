@@ -454,18 +454,14 @@ def main() -> None:
         cfg["model"] = args.model
 
     _provider_name = cfg.get("provider")
-    if _provider_name in ("runpod", "fal"):
+    if _provider_name == "runpod":
         import importlib
         _cfg_mod = importlib.import_module("skills._providers.config")
-        remote = _cfg_mod.remote_provider_from_config(cfg, supported_providers={"runpod", "fal"})
+        remote = _cfg_mod.remote_provider_from_config(cfg, supported_providers={"runpod"})
         input_dir = Path(cfg.get("input_dir", "./input"))
         output_dir = Path(cfg.get("output_dir", "./output"))
-        if _provider_name == "runpod":
-            _rp = importlib.import_module("skills._providers.runpod")
-            _rp.RunpodProvider(remote).run_skill(input_dir, output_dir, cfg)
-        else:
-            _fal = importlib.import_module("skills._providers.fal")
-            _fal.FalProvider(remote).run_skill(input_dir, output_dir, cfg)
+        _rp = importlib.import_module("skills._providers.runpod")
+        _rp.RunpodProvider(remote).run_skill(input_dir, output_dir, cfg)
         return
 
     import tempfile as _tf, json as _json

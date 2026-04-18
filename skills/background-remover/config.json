@@ -9,7 +9,5 @@
   "runpod_api_key_env": "RUNPOD_API_KEY",
   "runpod_endpoint_id_env": "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER",
   "runpod_gpu_type": "NVIDIA RTX 3090",
-  "fal_api_key_env": "FAL_KEY",
-  "fal_app_id_env": "FAL_APP_ID_BACKGROUND_REMOVER",
-  "remote_timeout_seconds": 300
+"remote_timeout_seconds": 300
 }
