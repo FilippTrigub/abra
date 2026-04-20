@@ -63,6 +63,7 @@ Two skills interact with external APIs rather than local files and have no `inpu
 | Skill | What it does |
 |---|---|
 | `post-scheduler` | Posts to Instagram / LinkedIn via Buffer GraphQL API |
+| `social-analytics` | Fetches engagement analytics via SociaVault API |
 | `canva-connector` | 23 tools for Canva design management via MCP |
 
 One skill uses its own internal asset store instead:
@@ -84,3 +85,23 @@ skills/   ← all individual skill modules
 ```
 
 These are separate from the per-skill `input/` and `output/` directories inside each skill folder.
+
+## Environment Variables
+
+Some skills require API keys or credentials:
+
+| Variable | Required By | Where to Get |
+|---------|-------------|--------------|
+| `BUFFER_API_KEY` | `post-scheduler` | https://publish.buffer.com/settings/api |
+| `SOCIAVAULT_API_KEY` | `social-analytics` | https://sociavault.com/dashboard |
+| `BACKBLAZE_B2_*` | `post-scheduler` (video uploads) | Backblaze B2 dashboard |
+
+Set via shell export or in `~/.openclaw/openclaw.json`:
+
+```json
+{
+  "env": {
+    "SOCIAVAULT_API_KEY": "sk_live_..."
+  }
+}
+```
