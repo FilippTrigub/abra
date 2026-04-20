@@ -35,6 +35,114 @@ Three options:
 
 If the user has not mentioned a caption style, ask whether they want the default look, the futuristic style, or a custom CSS file.
 
+## Static captions
+
+Use `--caption` to add predefined text at specific timestamps instead of transcribing audio:
+
+```bash
+--caption "START-END: TEXT"
+```
+
+**Format:**
+- Times use `M:SS` or `MM:SS` format (e.g., `0:05` = 5 seconds, `1:30` = 90 seconds)
+- Multiple captions: use `--caption` multiple times
+- If both static captions and transcription are provided, static captions take precedence
+
+**Example:**
+```bash
+uv run python scripts/caption_service.py \
+  --input ./input --output ./output \
+  --caption "0:01-0:05: Hello world" \
+  --caption "0:10-0:20: This is a demo" \
+  --css scripts/futuristic.css
+```
+
+## Caption styling
+
+Styling is managed via **JSON config files**. When using static captions, styling is applied automatically.
+
+### Default styling
+
+When no `--style-config` is specified, `config.default.json` is used:
+- **Background:** white (`#FFFFFF`)
+- **Text color:** blue (`#0066FF`)
+- **Font:** Courier New
+- **Padding:** `10px 15px`
+- **Margin:** `0`
+
+### Using a style config
+
+Switch styles by passing a config file:
+
+```bash
+# Use dark-mode style
+uv run python scripts/caption_service.py \
+  --input ./input --output ./output \
+  --caption "0:01-0:05: Hello" \
+  --style-config config.dark-mode.json
+```
+
+**Included configs:**
+- `config.default.json` — white bg, blue text, Courier New (default)
+- `config.dark-mode.json` — dark bg, white text, larger font
+
+### Creating custom style configs
+
+Copy `config.default.json` and modify:
+
+```json
+{
+  "caption_bg_color": "#000000",
+  "caption_color": "#FFFFFF",
+  "caption_font": "DejaVu Sans Bold",
+  "caption_padding": "20px 30px",
+  "caption_margin": "10px",
+  "caption_font_size": 48
+}
+```
+
+Then use it:
+```bash
+uv run python scripts/caption_service.py \
+  --input ./input --output ./output \
+  --caption "0:01-0:05: Text" \
+  --style-config my-custom-style.json
+```
+
+### Overriding config with CLI flags
+
+CLI flags take precedence over config file values:
+
+```bash
+uv run python scripts/caption_service.py \
+  --input ./input --output ./output \
+  --caption "0:01-0:05: Hello" \
+  --style-config config.dark-mode.json \
+  --caption-color "#00FF00"  # Override config's text color
+```
+
+### Style config reference
+
+| Key | Type | Description |
+|-----|------|-------------|
+| `caption_bg_color` | string | Background color (hex or CSS color name) |
+| `caption_color` | string | Text color (hex or CSS color name) |
+| `caption_font` | string | Font family or path to .ttf file |
+| `caption_padding` | string | CSS padding (e.g., `"10px 15px"`) |
+| `caption_margin` | string | CSS margin (e.g., `"0"`) |
+| `caption_font_size` | integer or null | Font size in pixels (null = auto-scale) |
+
+### Available fonts
+
+System fonts can be specified by name:
+- `DejaVu Sans` / `DejaVu Sans Bold` / `DejaVu Serif`
+- `Liberation Sans` / Liberation Mono`
+- `Courier New`
+- `Ubuntu Mono`
+- Any TTF file path: `/path/to/font.ttf`
+
+Or choose from brand fonts in `skills/brand-manager/brand-assets/asset-manifest.json`.
+
 ## How to run
 
 Install dependencies (first run only):
@@ -57,7 +165,7 @@ cd skills/video-captioner && uv run python scripts/caption_service.py \
 ## Common invocations
 
 ```bash
-# Default minimalist captions
+# Default minimalist captions (Whisper transcription)
 uv run python scripts/caption_service.py --input ./input --output ./output
 
 # Futuristic style
@@ -69,6 +177,32 @@ uv run python scripts/caption_service.py \
 uv run python scripts/caption_service.py \
   --input ./input --output ./output \
   --css /path/to/my.css
+
+# Static captions with default styling (white bg, blue text, Courier New)
+uv run python scripts/caption_service.py \
+  --input ./input --output ./output \
+  --caption "0:01-0:05: Subscribe for more" \
+  --caption "0:10-0:15: Follow us on Instagram"
+
+# Static captions with dark-mode style
+uv run python scripts/caption_service.py \
+  --input ./input --output ./output \
+  --caption "0:01-0:05: Hello world" \
+  --caption "0:10-0:20: This is a demo" \
+  --style-config config.dark-mode.json
+
+# Static captions with custom style config
+uv run python scripts/caption_service.py \
+  --input ./input --output ./output \
+  --caption "0:01-0:05: Custom text" \
+  --style-config my-custom-style.json
+
+# Static captions with CLI flag overrides
+uv run python scripts/caption_service.py \
+  --input ./input --output ./output \
+  --caption "0:01-0:05: Hello" \
+  --style-config config.dark-mode.json \
+  --caption-color "#00FF00"
 
 # Watch mode (polls for new videos every 10s)
 uv run python scripts/caption_service.py --input ./input --output ./output --watch

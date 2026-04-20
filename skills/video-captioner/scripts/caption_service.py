@@ -73,10 +73,32 @@ def build_runtime_config(args: argparse.Namespace) -> dict[str, object]:
         "hf_token_env": DEFAULT_HF_TOKEN_ENV,
         "replicate_api_key_env": DEFAULT_REPLICATE_API_KEY_ENV,
         "remote_timeout_seconds": DEFAULT_REMOTE_TIMEOUT_SECONDS,
+        "static_captions": None,
+        "caption_bg_color": None,
+        "caption_color": None,
+        "caption_font_size": None,
+        "caption_font": None,
+        "caption_padding": None,
+        "caption_margin": None,
     }
 
     if args.config:
         config.update(load_config(Path(args.config).expanduser().resolve()))
+
+    # Load style config (default: config.default.json)
+    style_config_file = args.style_config if hasattr(args, "style_config") and args.style_config else None
+    if style_config_file:
+        style_config_path = Path(style_config_file).expanduser().resolve()
+    else:
+        # Default to config.default.json in the skill directory
+        style_config_path = Path(__file__).parent.parent / "config.default.json"
+
+    if style_config_path.exists():
+        style_config = load_style_config(style_config_path)
+        # Apply style config values to the config
+        for key in ["caption_bg_color", "caption_color", "caption_font_size", "caption_font", "caption_padding", "caption_margin"]:
+            if key in style_config and style_config[key] is not None:
+                config[key] = style_config[key]
 
     if args.input is not None:
         config["input"] = args.input
@@ -100,6 +122,22 @@ def build_runtime_config(args: argparse.Namespace) -> dict[str, object]:
         config["replicate_api_key_env"] = args.replicate_api_key_env
     if args.remote_timeout_seconds is not None:
         config["remote_timeout_seconds"] = args.remote_timeout_seconds
+    if args.captions is not None:
+        config["static_captions"] = args.captions
+
+    # CLI flags override config file values
+    if hasattr(args, "caption_bg_color") and args.caption_bg_color is not None:
+        config["caption_bg_color"] = args.caption_bg_color
+    if hasattr(args, "caption_color") and args.caption_color is not None:
+        config["caption_color"] = args.caption_color
+    if hasattr(args, "caption_font_size") and args.caption_font_size is not None:
+        config["caption_font_size"] = args.caption_font_size
+    if hasattr(args, "caption_font") and args.caption_font is not None:
+        config["caption_font"] = args.caption_font
+    if hasattr(args, "caption_padding") and args.caption_padding is not None:
+        config["caption_padding"] = args.caption_padding
+    if hasattr(args, "caption_margin") and args.caption_margin is not None:
+        config["caption_margin"] = args.caption_margin
 
     return config
 
@@ -325,6 +363,7 @@ def run_batch(
     template: str,
     css: Path | None = None,
     remote=None,
+    static_transcript: dict[str, object] | None = None,
 ) -> tuple[int, int]:
     """Caption all pending videos. Returns (success_count, failure_count)."""
     pending = collect_unprocessed(input_dir, output_dir)
@@ -336,11 +375,10 @@ def run_batch(
     success, failure = 0, 0
     for video in pending:
         output_path = output_dir / video.name
-        transcript = (
-            transcribe_video_remote(video, remote)
-            if remote and remote.enabled
-            else None
-        )
+        # Use static captions if provided, otherwise try remote transcription
+        transcript = static_transcript
+        if transcript is None and remote and remote.enabled:
+            transcript = transcribe_video_remote(video, remote)
         if process_video(video, output_path, template, css, transcript):
             success += 1
         else:
@@ -356,15 +394,133 @@ def watch_loop(
     css: Path | None,
     interval: int = 10,
     remote=None,
+    static_transcript: dict[str, object] | None = None,
 ) -> None:
     """Poll input_dir every `interval` seconds and process new videos."""
     log.info("Watching %s every %ds. Press Ctrl+C to stop.", input_dir, interval)
     try:
         while True:
-            run_batch(input_dir, output_dir, template, css, remote)
+            run_batch(input_dir, output_dir, template, css, remote, static_transcript)
             time.sleep(interval)
     except KeyboardInterrupt:
         log.info("Watch mode stopped.")
+
+
+def parse_time_format(time_str: str) -> float:
+    """Convert M:SS or MM:SS format to seconds."""
+    parts = time_str.split(":")
+    if len(parts) != 2:
+        raise ValueError(f"Invalid time format: {time_str}. Use M:SS or MM:SS")
+    try:
+        minutes = int(parts[0])
+        seconds = int(parts[1])
+        return minutes * 60 + seconds
+    except ValueError:
+        raise ValueError(f"Invalid time format: {time_str}. Use M:SS or MM:SS")
+
+
+def parse_caption_arg(caption_arg: str) -> dict[str, object]:
+    """Parse a caption argument: 'START-END: TEXT' into a segment dict."""
+    # Format: "0:01-0:05: Hello world"
+    # Split on the last ": " to separate time range from text
+    if ": " not in caption_arg:
+        raise ValueError(
+            f"Invalid caption format: {caption_arg}. Use 'START-END: TEXT' "
+            "(e.g., '0:01-0:05: Hello world')"
+        )
+
+    time_part, text = caption_arg.rsplit(": ", 1)
+    text = text.strip()
+    if not text:
+        raise ValueError(f"Caption text cannot be empty: {caption_arg}")
+
+    if "-" not in time_part:
+        raise ValueError(
+            f"Invalid time range format: {time_part}. Use 'START-END' "
+            "(e.g., '0:01-0:05')"
+        )
+
+    start_str, end_str = time_part.split("-", 1)
+    start = parse_time_format(start_str.strip())
+    end = parse_time_format(end_str.strip())
+
+    if start > end:
+        raise ValueError(
+            f"Start time ({start_str}) must be <= end time ({end_str}): {caption_arg}"
+        )
+
+    return {"start": start, "end": end, "text": text}
+
+
+def build_static_transcript(caption_args: list[str] | None) -> dict[str, object] | None:
+    """Convert caption CLI args into a pycaps transcript dict."""
+    if not caption_args:
+        return None
+
+    segments = []
+    for caption_arg in caption_args:
+        try:
+            segment = parse_caption_arg(caption_arg)
+            segments.append(segment)
+        except ValueError as exc:
+            log.error(str(exc))
+            sys.exit(1)
+
+    if not segments:
+        return None
+
+    segments.sort(key=lambda s: s["start"])
+    return {"segments": segments}
+
+
+def load_style_config(config_path: Path) -> dict[str, object]:
+    """Load caption styling from a JSON config file."""
+    if not config_path.exists():
+        log.error("Style config file does not exist: %s", config_path)
+        sys.exit(1)
+    with config_path.open(encoding="utf-8") as f:
+        return json.load(f)
+
+
+def build_caption_css(
+    bg_color: str | None = None,
+    text_color: str | None = None,
+    font_size: int | None = None,
+    font: str | None = None,
+    padding: str | None = None,
+    margin: str | None = None,
+) -> str:
+    """Generate CSS for caption styling from provided values."""
+    # These should be pre-loaded from config file, not defaulted here
+    bg = bg_color or "#FFFFFF"
+    color = text_color or "#0066FF"
+    pad = padding or "10px 15px"
+    marg = margin or "0"
+    font_family = font or "Courier New"
+
+    css_rules = [
+        "span.word {",
+        f"  background-color: {bg};",
+        f"  color: {color};",
+        f"  padding: {pad};",
+        f"  margin: {marg};",
+        f"  font-family: '{font_family}';",
+    ]
+
+    if font_size:
+        css_rules.append(f"  font-size: {font_size}px;")
+
+    css_rules.append("}")
+
+    return "\n".join(css_rules)
+
+
+def save_generated_css(css_content: str, skill_dir: Path) -> Path:
+    """Save generated CSS to a temp file and return its path."""
+    css_file = skill_dir / "generated_styles.css"
+    with css_file.open("w", encoding="utf-8") as f:
+        f.write(css_content)
+    return css_file
 
 
 def parse_args() -> argparse.Namespace:
@@ -388,6 +544,42 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--css",
         help="Path to an extra CSS file to overlay on the template",
+    )
+    parser.add_argument(
+        "--caption",
+        action="append",
+        dest="captions",
+        help="Static caption with timing: 'START-END: TEXT' (e.g., '0:01-0:05: Hello world'). "
+        "Use multiple times for multiple captions.",
+    )
+    parser.add_argument(
+        "--style-config",
+        help="JSON config file for caption styling (default: config.default.json)",
+    )
+    parser.add_argument(
+        "--caption-bg-color",
+        help="Override config: caption background color (hex or CSS color)",
+    )
+    parser.add_argument(
+        "--caption-color",
+        help="Caption text color (hex or CSS color, default: #0066FF)",
+    )
+    parser.add_argument(
+        "--caption-font-size",
+        type=int,
+        help="Caption font size in pixels (default: auto-scale)",
+    )
+    parser.add_argument(
+        "--caption-font",
+        help="Caption font family or path to .ttf file (e.g., 'DejaVu Sans Bold')",
+    )
+    parser.add_argument(
+        "--caption-padding",
+        help="Caption padding (CSS format, e.g., '10px 20px')",
+    )
+    parser.add_argument(
+        "--caption-margin",
+        help="Caption margin (CSS format, e.g., '10px 0')",
     )
     parser.add_argument(
         "--watch",
@@ -427,6 +619,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     config = build_runtime_config(args)
+
+    # Build static transcript from caption args if provided
+    static_captions = config.get("static_captions")
+    static_transcript: dict[str, object] | None = None
+    if static_captions:
+        static_transcript = build_static_transcript(static_captions)
+
     remote = remote_provider_from_config(
         merge_remote_provider_overrides(
             {
@@ -451,6 +650,7 @@ def main() -> None:
 
     input_dir = Path(str(config["input"])).expanduser().resolve()
     output_dir = Path(str(config["output"])).expanduser().resolve()
+    skill_dir = Path(__file__).parent.parent
 
     if not input_dir.exists():
         log.error("Input directory does not exist: %s", input_dir)
@@ -464,6 +664,19 @@ def main() -> None:
             log.error("CSS file does not exist: %s", css_path)
             sys.exit(1)
 
+    # Generate CSS for static captions (with defaults applied automatically)
+    if static_transcript:
+        generated_css = build_caption_css(
+            bg_color=config.get("caption_bg_color"),
+            text_color=config.get("caption_color"),
+            font_size=config.get("caption_font_size"),
+            font=config.get("caption_font"),
+            padding=config.get("caption_padding"),
+            margin=config.get("caption_margin"),
+        )
+        css_path = save_generated_css(generated_css, skill_dir)
+        log.info("Applied default caption styling (white bg, blue text, Courier New)")
+
     output_dir.mkdir(parents=True, exist_ok=True)
 
     log.info("Input:    %s", input_dir)
@@ -471,6 +684,14 @@ def main() -> None:
     log.info("Template: %s", config["template"])
     if css_path:
         log.info("CSS:      %s", css_path)
+    if static_transcript:
+        num_captions = len(static_transcript.get("segments", []))
+        log.info("Using %d static caption(s)", num_captions)
+        log.info("Caption style: bg=%s, color=%s, font=%s, padding=%s",
+                 config.get("caption_bg_color"),
+                 config.get("caption_color"),
+                 config.get("caption_font"),
+                 config.get("caption_padding"))
     if config.get("transcription_provider"):
         log.info("Remote transcription provider: %s", config["transcription_provider"])
         if config.get("remote_model"):
@@ -485,6 +706,7 @@ def main() -> None:
             css_path,
             interval,
             remote,
+            static_transcript,
         )
     else:
         success, failure = run_batch(
@@ -493,6 +715,7 @@ def main() -> None:
             str(config["template"]),
             css_path,
             remote,
+            static_transcript,
         )
         log.info("Finished — success: %d, failed: %d", success, failure)
         if failure:
