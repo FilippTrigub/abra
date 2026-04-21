@@ -314,6 +314,88 @@ env_key_skill_labels() {
     esac
 }
 
+env_key_provider() {
+    local key="$1"
+
+    case "${key}" in
+        RESEND_API_KEY)
+            printf '%s\n' "resend"
+            ;;
+        MAILCHIMP_API_KEY|MAILCHIMP_SERVER_PREFIX)
+            printf '%s\n' "mailchimp"
+            ;;
+        SENDGRID_API_KEY)
+            printf '%s\n' "sendgrid"
+            ;;
+        KIT_API_KEY|KIT_API_SECRET)
+            printf '%s\n' "kit"
+            ;;
+        DUB_API_KEY)
+            printf '%s\n' "dub"
+            ;;
+        GSC_CLIENT_ID|GSC_CLIENT_SECRET|GSC_REFRESH_TOKEN)
+            printf '%s\n' "gsc"
+            ;;
+        SEMRUSH_API_KEY)
+            printf '%s\n' "semrush"
+            ;;
+        AHREFS_API_KEY)
+            printf '%s\n' "ahrefs"
+            ;;
+        DATAFORSEO_LOGIN|DATAFORSEO_PASSWORD)
+            printf '%s\n' "dataforseo"
+            ;;
+        KEYWORDS_EVERYWHERE_API_KEY)
+            printf '%s\n' "keywords-everywhere"
+            ;;
+        PLAUSIBLE_API_KEY|PLAUSIBLE_SITE_ID)
+            printf '%s\n' "plausible"
+            ;;
+        MIXPANEL_SA_USERNAME|MIXPANEL_SECRET)
+            printf '%s\n' "mixpanel"
+            ;;
+        AMPLITUDE_API_KEY|AMPLITUDE_SECRET_KEY)
+            printf '%s\n' "amplitude"
+            ;;
+        HOTJAR_SITE_ID|HOTJAR_API_TOKEN)
+            printf '%s\n' "hotjar"
+            ;;
+        OPTIMIZELY_SDK_KEY|OPTIMIZELY_ACCESS_TOKEN)
+            printf '%s\n' "optimizely"
+            ;;
+        HUBSPOT_ACCESS_TOKEN)
+            printf '%s\n' "hubspot"
+            ;;
+        SALESFORCE_CLIENT_ID|SALESFORCE_CLIENT_SECRET|SALESFORCE_USERNAME|SALESFORCE_PASSWORD|SALESFORCE_SECURITY_TOKEN)
+            printf '%s\n' "salesforce"
+            ;;
+        CLOSE_API_KEY)
+            printf '%s\n' "close"
+            ;;
+        OUTREACH_CLIENT_ID|OUTREACH_CLIENT_SECRET|OUTREACH_REFRESH_TOKEN)
+            printf '%s\n' "outreach"
+            ;;
+        CROSSBEAM_API_KEY)
+            printf '%s\n' "crossbeam"
+            ;;
+        APOLLO_API_KEY)
+            printf '%s\n' "apollo"
+            ;;
+        CLEARBIT_API_KEY)
+            printf '%s\n' "clearbit"
+            ;;
+        ZOOMINFO_USERNAME|ZOOMINFO_PASSWORD)
+            printf '%s\n' "zoominfo"
+            ;;
+        CLAY_API_KEY)
+            printf '%s\n' "clay"
+            ;;
+        SEGMENT_WRITE_KEY)
+            printf '%s\n' "segment"
+            ;;
+    esac
+}
+
 select_enabled_skills() {
     local env_val="${ABRA_ENABLE_SKILLS:-}"
     local reply=""
@@ -610,6 +692,15 @@ warn_unset_skill_env_values() {
             local enabled_var="SKILL_ENABLED_${key_skill^^}"
             enabled_var="${enabled_var//-/_}"
             [ "${!enabled_var:-0}" = "1" ] || continue
+        fi
+
+        # Check if this key belongs to an enabled provider (for multi-provider skills)
+        local key_provider
+        key_provider="$(env_key_provider "${key}")"
+        if [ -n "${key_provider}" ]; then
+            local provider_enabled_var="PROVIDER_ENABLED_${key_provider^^}"
+            provider_enabled_var="${provider_enabled_var//-/_}"
+            [ "${!provider_enabled_var:-0}" = "1" ] || continue
         fi
 
         state="$(read_env_state "${ROOT_ENV_FILE}" "${key}")"
