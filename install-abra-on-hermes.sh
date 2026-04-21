@@ -157,6 +157,153 @@ resolve_installer_env_value() {
     printf '%s' "${value}"
 }
 
+skill_to_env_keys() {
+    local skill="$1"
+    case "${skill}" in
+        post-scheduler) printf '%s\n' "BUFFER_API_KEY" ;;
+        giphy) printf '%s\n' "GIPHY_API_KEY" ;;
+        freesound) printf '%s\n' "FREESOUND_API_KEY" ;;
+        pixabay) printf '%s\n' "PIXABAY_API_KEY" ;;
+        email-campaigner) printf '%s\n' "RESEND_API_KEY" "MAILCHIMP_API_KEY" "MAILCHIMP_SERVER_PREFIX" "SENDGRID_API_KEY" "KIT_API_KEY" "KIT_API_SECRET" "DUB_API_KEY" ;;
+        seo-researcher) printf '%s\n' "GSC_CLIENT_ID" "GSC_CLIENT_SECRET" "GSC_REFRESH_TOKEN" "SEMRUSH_API_KEY" "AHREFS_API_KEY" "DATAFORSEO_LOGIN" "DATAFORSEO_PASSWORD" "KEYWORDS_EVERYWHERE_API_KEY" "PLAUSIBLE_API_KEY" "PLAUSIBLE_SITE_ID" ;;
+        ads-manager) printf '%s\n' "GA4_CLIENT_ID" "GA4_CLIENT_SECRET" "GA4_REFRESH_TOKEN" "GA4_PROPERTY_ID" "GOOGLE_ADS_CLIENT_ID" "GOOGLE_ADS_CLIENT_SECRET" "GOOGLE_ADS_REFRESH_TOKEN" "GOOGLE_ADS_DEVELOPER_TOKEN" "GOOGLE_ADS_CUSTOMER_ID" "GOOGLE_ADS_LOGIN_CUSTOMER_ID" ;;
+        funnel-optimizer) printf '%s\n' "GA4_CLIENT_ID" "GA4_CLIENT_SECRET" "GA4_REFRESH_TOKEN" "GA4_PROPERTY_ID" "MIXPANEL_SA_USERNAME" "MIXPANEL_SECRET" "AMPLITUDE_API_KEY" "AMPLITUDE_SECRET_KEY" "HOTJAR_SITE_ID" "HOTJAR_API_TOKEN" "OPTIMIZELY_SDK_KEY" "OPTIMIZELY_ACCESS_TOKEN" ;;
+        revenue-manager) printf '%s\n' "HUBSPOT_ACCESS_TOKEN" "SALESFORCE_CLIENT_ID" "SALESFORCE_CLIENT_SECRET" "SALESFORCE_USERNAME" "SALESFORCE_PASSWORD" "SALESFORCE_SECURITY_TOKEN" "CLOSE_API_KEY" "OUTREACH_CLIENT_ID" "OUTREACH_CLIENT_SECRET" "OUTREACH_REFRESH_TOKEN" "CROSSBEAM_API_KEY" "APOLLO_API_KEY" "CLEARBIT_API_KEY" "ZOOMINFO_USERNAME" "ZOOMINFO_PASSWORD" "CLAY_API_KEY" "SEGMENT_WRITE_KEY" ;;
+        runpod-gpu) printf '%s\n' "RUNPOD_API_KEY" "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR" "RUNPOD_ENDPOINT_ID_VIDEO_MATTE" "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR" "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT" "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER" "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER" "RUNPOD_ENDPOINT_ID_PHOTO_PICKER" ;;
+        ml-models) printf '%s\n' "HF_TOKEN" "REPLICATE_API_TOKEN" ;;
+        animate-image) printf '%s\n' "FAL_API_KEY" ;;
+    esac
+}
+
+skill_has_any_value() {
+    local skill="$1"
+    while IFS= read -r key; do
+        [ -n "${key}" ] || continue
+        local val
+        val="$(resolve_installer_env_value "${key}")"
+        [ -n "${val}" ] && return 0
+    done < <(skill_to_env_keys "${skill}")
+    return 1
+}
+
+select_enabled_skills() {
+    local env_val="${ABRA_ENABLE_SKILLS:-}"
+    local reply=""
+
+    # Initialize all skills to disabled
+    SKILL_ENABLED_POST_SCHEDULER=0
+    SKILL_ENABLED_GIPHY=0
+    SKILL_ENABLED_FREESOUND=0
+    SKILL_ENABLED_PIXABAY=0
+    SKILL_ENABLED_EMAIL_CAMPAIGNER=0
+    SKILL_ENABLED_SEO_RESEARCHER=0
+    SKILL_ENABLED_ADS_MANAGER=0
+    SKILL_ENABLED_FUNNEL_OPTIMIZER=0
+    SKILL_ENABLED_REVENUE_MANAGER=0
+    SKILL_ENABLED_RUNPOD_GPU=0
+    SKILL_ENABLED_ML_MODELS=0
+    SKILL_ENABLED_ANIMATE_IMAGE=0
+
+    # Non-interactive: ABRA_ENABLE_SKILLS=all
+    if [ "${env_val}" = "all" ]; then
+        SKILL_ENABLED_POST_SCHEDULER=1
+        SKILL_ENABLED_GIPHY=1
+        SKILL_ENABLED_FREESOUND=1
+        SKILL_ENABLED_PIXABAY=1
+        SKILL_ENABLED_EMAIL_CAMPAIGNER=1
+        SKILL_ENABLED_SEO_RESEARCHER=1
+        SKILL_ENABLED_ADS_MANAGER=1
+        SKILL_ENABLED_FUNNEL_OPTIMIZER=1
+        SKILL_ENABLED_REVENUE_MANAGER=1
+        SKILL_ENABLED_RUNPOD_GPU=1
+        SKILL_ENABLED_ML_MODELS=1
+        SKILL_ENABLED_ANIMATE_IMAGE=1
+        return 0
+    fi
+
+    # Non-interactive: ABRA_ENABLE_SKILLS=post-scheduler,giphy,...
+    if [ -n "${env_val}" ]; then
+        local skill
+        IFS=',' read -ra skills_list <<< "${env_val}"
+        for skill in "${skills_list[@]}"; do
+            skill="$(printf '%s' "${skill}" | xargs)"
+            case "${skill}" in
+                post-scheduler) SKILL_ENABLED_POST_SCHEDULER=1 ;;
+                giphy) SKILL_ENABLED_GIPHY=1 ;;
+                freesound) SKILL_ENABLED_FREESOUND=1 ;;
+                pixabay) SKILL_ENABLED_PIXABAY=1 ;;
+                email-campaigner) SKILL_ENABLED_EMAIL_CAMPAIGNER=1 ;;
+                seo-researcher) SKILL_ENABLED_SEO_RESEARCHER=1 ;;
+                ads-manager) SKILL_ENABLED_ADS_MANAGER=1 ;;
+                funnel-optimizer) SKILL_ENABLED_FUNNEL_OPTIMIZER=1 ;;
+                revenue-manager) SKILL_ENABLED_REVENUE_MANAGER=1 ;;
+                runpod-gpu) SKILL_ENABLED_RUNPOD_GPU=1 ;;
+                ml-models) SKILL_ENABLED_ML_MODELS=1 ;;
+                animate-image) SKILL_ENABLED_ANIMATE_IMAGE=1 ;;
+            esac
+        done
+        return 0
+    fi
+
+    # Interactive mode: prompt user with defaults based on .env values
+    if [ -t 0 ]; then
+        echo
+        echo "Select skills to configure (API keys required only for enabled skills):"
+        echo
+
+        local default
+        default="N"; skill_has_any_value "post-scheduler" && default="y"
+        read -r -p "Enable post-scheduler (Buffer scheduling)? [${default}]: " reply
+        [ "${reply:-${default}}" = "y" ] && SKILL_ENABLED_POST_SCHEDULER=1
+
+        default="N"; skill_has_any_value "giphy" && default="y"
+        read -r -p "Enable giphy (animated GIF stickers)? [${default}]: " reply
+        [ "${reply:-${default}}" = "y" ] && SKILL_ENABLED_GIPHY=1
+
+        default="N"; skill_has_any_value "freesound" && default="y"
+        read -r -p "Enable freesound (sound effects)? [${default}]: " reply
+        [ "${reply:-${default}}" = "y" ] && SKILL_ENABLED_FREESOUND=1
+
+        default="N"; skill_has_any_value "pixabay" && default="y"
+        read -r -p "Enable pixabay (royalty-free media)? [${default}]: " reply
+        [ "${reply:-${default}}" = "y" ] && SKILL_ENABLED_PIXABAY=1
+
+        default="N"; skill_has_any_value "email-campaigner" && default="y"
+        read -r -p "Enable email-campaigner (email marketing)? [${default}]: " reply
+        [ "${reply:-${default}}" = "y" ] && SKILL_ENABLED_EMAIL_CAMPAIGNER=1
+
+        default="N"; skill_has_any_value "seo-researcher" && default="y"
+        read -r -p "Enable seo-researcher (SEO research)? [${default}]: " reply
+        [ "${reply:-${default}}" = "y" ] && SKILL_ENABLED_SEO_RESEARCHER=1
+
+        default="N"; skill_has_any_value "ads-manager" && default="y"
+        read -r -p "Enable ads-manager (Google Ads)? [${default}]: " reply
+        [ "${reply:-${default}}" = "y" ] && SKILL_ENABLED_ADS_MANAGER=1
+
+        default="N"; skill_has_any_value "funnel-optimizer" && default="y"
+        read -r -p "Enable funnel-optimizer (analytics)? [${default}]: " reply
+        [ "${reply:-${default}}" = "y" ] && SKILL_ENABLED_FUNNEL_OPTIMIZER=1
+
+        default="N"; skill_has_any_value "revenue-manager" && default="y"
+        read -r -p "Enable revenue-manager (CRM operations)? [${default}]: " reply
+        [ "${reply:-${default}}" = "y" ] && SKILL_ENABLED_REVENUE_MANAGER=1
+
+        default="N"; skill_has_any_value "runpod-gpu" && default="y"
+        read -r -p "Enable runpod-gpu (GPU inference)? [${default}]: " reply
+        [ "${reply:-${default}}" = "y" ] && SKILL_ENABLED_RUNPOD_GPU=1
+
+        default="N"; skill_has_any_value "ml-models" && default="y"
+        read -r -p "Enable ml-models (HF/Replicate access)? [${default}]: " reply
+        [ "${reply:-${default}}" = "y" ] && SKILL_ENABLED_ML_MODELS=1
+
+        default="N"; skill_has_any_value "animate-image" && default="y"
+        read -r -p "Enable animate-image (fal.ai)? [${default}]: " reply
+        [ "${reply:-${default}}" = "y" ] && SKILL_ENABLED_ANIMATE_IMAGE=1
+
+        echo
+    fi
+}
+
 copy_directory_clean() {
     local source_dir="$1"
     local destination_dir="$2"
@@ -306,74 +453,95 @@ write_env_file() {
     telegram_allowed_users="$(resolve_installer_env_value "TELEGRAM_ALLOWED_USERS")"
     telegram_home_channel="$(resolve_installer_env_value "TELEGRAM_HOME_CHANNEL")"
     telegram_home_channel_name="$(resolve_installer_env_value "TELEGRAM_HOME_CHANNEL_NAME")"
-    buffer_api_key="$(resolve_installer_env_value "BUFFER_API_KEY")"
-    giphy_api_key="$(resolve_installer_env_value "GIPHY_API_KEY")"
-    freesound_api_key="$(resolve_installer_env_value "FREESOUND_API_KEY")"
-    pixabay_api_key="$(resolve_installer_env_value "PIXABAY_API_KEY")"
-    hf_token="$(resolve_installer_env_value "HF_TOKEN")"
-    replicate_api_token="$(resolve_installer_env_value "REPLICATE_API_TOKEN")"
-    runpod_api_key="$(resolve_installer_env_value "RUNPOD_API_KEY")"
-    runpod_endpoint_video_editor="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR")"
-    runpod_endpoint_video_matte="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_VIDEO_MATTE")"
-    runpod_endpoint_frame_interpolator="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR")"
-    runpod_endpoint_bokeh_effect="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT")"
-    runpod_endpoint_background_remover="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER")"
-    runpod_endpoint_audio_splitter="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER")"
-    runpod_endpoint_photo_picker="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_PHOTO_PICKER")"
-    ga4_client_id="$(resolve_installer_env_value "GA4_CLIENT_ID")"
-    ga4_client_secret="$(resolve_installer_env_value "GA4_CLIENT_SECRET")"
-    ga4_refresh_token="$(resolve_installer_env_value "GA4_REFRESH_TOKEN")"
-    ga4_property_id="$(resolve_installer_env_value "GA4_PROPERTY_ID")"
-    google_ads_client_id="$(resolve_installer_env_value "GOOGLE_ADS_CLIENT_ID")"
-    google_ads_client_secret="$(resolve_installer_env_value "GOOGLE_ADS_CLIENT_SECRET")"
-    google_ads_refresh_token="$(resolve_installer_env_value "GOOGLE_ADS_REFRESH_TOKEN")"
-    google_ads_developer_token="$(resolve_installer_env_value "GOOGLE_ADS_DEVELOPER_TOKEN")"
-    google_ads_customer_id="$(resolve_installer_env_value "GOOGLE_ADS_CUSTOMER_ID")"
-    google_ads_login_customer_id="$(resolve_installer_env_value "GOOGLE_ADS_LOGIN_CUSTOMER_ID")"
-    gsc_client_id="$(resolve_installer_env_value "GSC_CLIENT_ID")"
-    gsc_client_secret="$(resolve_installer_env_value "GSC_CLIENT_SECRET")"
-    gsc_refresh_token="$(resolve_installer_env_value "GSC_REFRESH_TOKEN")"
-    resend_api_key="$(resolve_installer_env_value "RESEND_API_KEY")"
-    mailchimp_api_key="$(resolve_installer_env_value "MAILCHIMP_API_KEY")"
-    mailchimp_server_prefix="$(resolve_installer_env_value "MAILCHIMP_SERVER_PREFIX")"
-    sendgrid_api_key="$(resolve_installer_env_value "SENDGRID_API_KEY")"
-    kit_api_key="$(resolve_installer_env_value "KIT_API_KEY")"
-    kit_api_secret="$(resolve_installer_env_value "KIT_API_SECRET")"
-    dub_api_key="$(resolve_installer_env_value "DUB_API_KEY")"
-    semrush_api_key="$(resolve_installer_env_value "SEMRUSH_API_KEY")"
-    ahrefs_api_key="$(resolve_installer_env_value "AHREFS_API_KEY")"
-    dataforseo_login="$(resolve_installer_env_value "DATAFORSEO_LOGIN")"
-    dataforseo_password="$(resolve_installer_env_value "DATAFORSEO_PASSWORD")"
-    keywords_everywhere_api_key="$(resolve_installer_env_value "KEYWORDS_EVERYWHERE_API_KEY")"
-    plausible_api_key="$(resolve_installer_env_value "PLAUSIBLE_API_KEY")"
-    plausible_site_id="$(resolve_installer_env_value "PLAUSIBLE_SITE_ID")"
-    mixpanel_sa_username="$(resolve_installer_env_value "MIXPANEL_SA_USERNAME")"
-    mixpanel_secret="$(resolve_installer_env_value "MIXPANEL_SECRET")"
-    amplitude_api_key="$(resolve_installer_env_value "AMPLITUDE_API_KEY")"
-    amplitude_secret_key="$(resolve_installer_env_value "AMPLITUDE_SECRET_KEY")"
-    hotjar_site_id="$(resolve_installer_env_value "HOTJAR_SITE_ID")"
-    hotjar_api_token="$(resolve_installer_env_value "HOTJAR_API_TOKEN")"
-    optimizely_sdk_key="$(resolve_installer_env_value "OPTIMIZELY_SDK_KEY")"
-    optimizely_access_token="$(resolve_installer_env_value "OPTIMIZELY_ACCESS_TOKEN")"
-    hubspot_access_token="$(resolve_installer_env_value "HUBSPOT_ACCESS_TOKEN")"
-    salesforce_client_id="$(resolve_installer_env_value "SALESFORCE_CLIENT_ID")"
-    salesforce_client_secret="$(resolve_installer_env_value "SALESFORCE_CLIENT_SECRET")"
-    salesforce_username="$(resolve_installer_env_value "SALESFORCE_USERNAME")"
-    salesforce_password="$(resolve_installer_env_value "SALESFORCE_PASSWORD")"
-    salesforce_security_token="$(resolve_installer_env_value "SALESFORCE_SECURITY_TOKEN")"
-    close_api_key="$(resolve_installer_env_value "CLOSE_API_KEY")"
-    outreach_client_id="$(resolve_installer_env_value "OUTREACH_CLIENT_ID")"
-    outreach_client_secret="$(resolve_installer_env_value "OUTREACH_CLIENT_SECRET")"
-    outreach_refresh_token="$(resolve_installer_env_value "OUTREACH_REFRESH_TOKEN")"
-    crossbeam_api_key="$(resolve_installer_env_value "CROSSBEAM_API_KEY")"
-    apollo_api_key="$(resolve_installer_env_value "APOLLO_API_KEY")"
-    clearbit_api_key="$(resolve_installer_env_value "CLEARBIT_API_KEY")"
-    zoominfo_username="$(resolve_installer_env_value "ZOOMINFO_USERNAME")"
-    zoominfo_password="$(resolve_installer_env_value "ZOOMINFO_PASSWORD")"
-    clay_api_key="$(resolve_installer_env_value "CLAY_API_KEY")"
-    segment_write_key="$(resolve_installer_env_value "SEGMENT_WRITE_KEY")"
+    local fal_api_key
+
+    # Always resolve platform keys (not skill-dependent)
+    anthropic_api_key="$(resolve_installer_env_value "ANTHROPIC_API_KEY")"
+    openrouter_api_key="$(resolve_installer_env_value "OPENROUTER_API_KEY")"
+    telegram_bot_token="$(resolve_installer_env_value "TELEGRAM_BOT_TOKEN")"
+    telegram_allowed_users="$(resolve_installer_env_value "TELEGRAM_ALLOWED_USERS")"
+    telegram_home_channel="$(resolve_installer_env_value "TELEGRAM_HOME_CHANNEL")"
+    telegram_home_channel_name="$(resolve_installer_env_value "TELEGRAM_HOME_CHANNEL_NAME")"
     brave_api_key="$(resolve_installer_env_value "BRAVE_API_KEY")"
     gh_token="$(resolve_installer_env_value "GH_TOKEN")"
+
+    # Resolve skill-dependent keys only if skill is enabled
+    if [ "${SKILL_ENABLED_POST_SCHEDULER}" = "1" ]; then
+        buffer_api_key="$(resolve_installer_env_value "BUFFER_API_KEY")"
+    fi
+    if [ "${SKILL_ENABLED_GIPHY}" = "1" ]; then
+        giphy_api_key="$(resolve_installer_env_value "GIPHY_API_KEY")"
+    fi
+    if [ "${SKILL_ENABLED_FREESOUND}" = "1" ]; then
+        freesound_api_key="$(resolve_installer_env_value "FREESOUND_API_KEY")"
+    fi
+    if [ "${SKILL_ENABLED_PIXABAY}" = "1" ]; then
+        pixabay_api_key="$(resolve_installer_env_value "PIXABAY_API_KEY")"
+    fi
+    if [ "${SKILL_ENABLED_ML_MODELS}" = "1" ]; then
+        hf_token="$(resolve_installer_env_value "HF_TOKEN")"
+        replicate_api_token="$(resolve_installer_env_value "REPLICATE_API_TOKEN")"
+    fi
+    if [ "${SKILL_ENABLED_RUNPOD_GPU}" = "1" ]; then
+        runpod_api_key="$(resolve_installer_env_value "RUNPOD_API_KEY")"
+        runpod_endpoint_video_editor="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR")"
+        runpod_endpoint_video_matte="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_VIDEO_MATTE")"
+        runpod_endpoint_frame_interpolator="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR")"
+        runpod_endpoint_bokeh_effect="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT")"
+        runpod_endpoint_background_remover="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER")"
+        runpod_endpoint_audio_splitter="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER")"
+        runpod_endpoint_photo_picker="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_PHOTO_PICKER")"
+    fi
+    if [ "${SKILL_ENABLED_ADS_MANAGER}" = "1" ] || [ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ]; then
+        ga4_client_id="$(resolve_installer_env_value "GA4_CLIENT_ID")"
+        ga4_client_secret="$(resolve_installer_env_value "GA4_CLIENT_SECRET")"
+        ga4_refresh_token="$(resolve_installer_env_value "GA4_REFRESH_TOKEN")"
+        ga4_property_id="$(resolve_installer_env_value "GA4_PROPERTY_ID")"
+    fi
+    if [ "${SKILL_ENABLED_ADS_MANAGER}" = "1" ]; then
+        google_ads_client_id="$(resolve_installer_env_value "GOOGLE_ADS_CLIENT_ID")"
+        google_ads_client_secret="$(resolve_installer_env_value "GOOGLE_ADS_CLIENT_SECRET")"
+        google_ads_refresh_token="$(resolve_installer_env_value "GOOGLE_ADS_REFRESH_TOKEN")"
+        google_ads_developer_token="$(resolve_installer_env_value "GOOGLE_ADS_DEVELOPER_TOKEN")"
+        google_ads_customer_id="$(resolve_installer_env_value "GOOGLE_ADS_CUSTOMER_ID")"
+        google_ads_login_customer_id="$(resolve_installer_env_value "GOOGLE_ADS_LOGIN_CUSTOMER_ID")"
+    fi
+    if [ "${SKILL_ENABLED_SEO_RESEARCHER}" = "1" ]; then
+        [ "${PROVIDER_ENABLED_GSC}" = "1" ] && gsc_client_id="$(resolve_installer_env_value "GSC_CLIENT_ID")" && gsc_client_secret="$(resolve_installer_env_value "GSC_CLIENT_SECRET")" && gsc_refresh_token="$(resolve_installer_env_value "GSC_REFRESH_TOKEN")"
+        [ "${PROVIDER_ENABLED_SEMRUSH}" = "1" ] && semrush_api_key="$(resolve_installer_env_value "SEMRUSH_API_KEY")"
+        [ "${PROVIDER_ENABLED_AHREFS}" = "1" ] && ahrefs_api_key="$(resolve_installer_env_value "AHREFS_API_KEY")"
+        [ "${PROVIDER_ENABLED_DATAFORSEO}" = "1" ] && dataforseo_login="$(resolve_installer_env_value "DATAFORSEO_LOGIN")" && dataforseo_password="$(resolve_installer_env_value "DATAFORSEO_PASSWORD")"
+        [ "${PROVIDER_ENABLED_KEYWORDS_EVERYWHERE}" = "1" ] && keywords_everywhere_api_key="$(resolve_installer_env_value "KEYWORDS_EVERYWHERE_API_KEY")"
+        [ "${PROVIDER_ENABLED_PLAUSIBLE}" = "1" ] && plausible_api_key="$(resolve_installer_env_value "PLAUSIBLE_API_KEY")" && plausible_site_id="$(resolve_installer_env_value "PLAUSIBLE_SITE_ID")"
+    fi
+    if [ "${SKILL_ENABLED_EMAIL_CAMPAIGNER}" = "1" ]; then
+        [ "${PROVIDER_ENABLED_RESEND}" = "1" ] && resend_api_key="$(resolve_installer_env_value "RESEND_API_KEY")"
+        [ "${PROVIDER_ENABLED_MAILCHIMP}" = "1" ] && mailchimp_api_key="$(resolve_installer_env_value "MAILCHIMP_API_KEY")" && mailchimp_server_prefix="$(resolve_installer_env_value "MAILCHIMP_SERVER_PREFIX")"
+        [ "${PROVIDER_ENABLED_SENDGRID}" = "1" ] && sendgrid_api_key="$(resolve_installer_env_value "SENDGRID_API_KEY")"
+        [ "${PROVIDER_ENABLED_KIT}" = "1" ] && kit_api_key="$(resolve_installer_env_value "KIT_API_KEY")" && kit_api_secret="$(resolve_installer_env_value "KIT_API_SECRET")"
+        [ "${PROVIDER_ENABLED_DUB}" = "1" ] && dub_api_key="$(resolve_installer_env_value "DUB_API_KEY")"
+    fi
+    if [ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ]; then
+        [ "${PROVIDER_ENABLED_MIXPANEL}" = "1" ] && mixpanel_sa_username="$(resolve_installer_env_value "MIXPANEL_SA_USERNAME")" && mixpanel_secret="$(resolve_installer_env_value "MIXPANEL_SECRET")"
+        [ "${PROVIDER_ENABLED_AMPLITUDE}" = "1" ] && amplitude_api_key="$(resolve_installer_env_value "AMPLITUDE_API_KEY")" && amplitude_secret_key="$(resolve_installer_env_value "AMPLITUDE_SECRET_KEY")"
+        [ "${PROVIDER_ENABLED_HOTJAR}" = "1" ] && hotjar_site_id="$(resolve_installer_env_value "HOTJAR_SITE_ID")" && hotjar_api_token="$(resolve_installer_env_value "HOTJAR_API_TOKEN")"
+        [ "${PROVIDER_ENABLED_OPTIMIZELY}" = "1" ] && optimizely_sdk_key="$(resolve_installer_env_value "OPTIMIZELY_SDK_KEY")" && optimizely_access_token="$(resolve_installer_env_value "OPTIMIZELY_ACCESS_TOKEN")"
+    fi
+    if [ "${SKILL_ENABLED_REVENUE_MANAGER}" = "1" ]; then
+        [ "${PROVIDER_ENABLED_HUBSPOT}" = "1" ] && hubspot_access_token="$(resolve_installer_env_value "HUBSPOT_ACCESS_TOKEN")"
+        [ "${PROVIDER_ENABLED_SALESFORCE}" = "1" ] && salesforce_client_id="$(resolve_installer_env_value "SALESFORCE_CLIENT_ID")" && salesforce_client_secret="$(resolve_installer_env_value "SALESFORCE_CLIENT_SECRET")" && salesforce_username="$(resolve_installer_env_value "SALESFORCE_USERNAME")" && salesforce_password="$(resolve_installer_env_value "SALESFORCE_PASSWORD")" && salesforce_security_token="$(resolve_installer_env_value "SALESFORCE_SECURITY_TOKEN")"
+        [ "${PROVIDER_ENABLED_CLOSE}" = "1" ] && close_api_key="$(resolve_installer_env_value "CLOSE_API_KEY")"
+        [ "${PROVIDER_ENABLED_OUTREACH}" = "1" ] && outreach_client_id="$(resolve_installer_env_value "OUTREACH_CLIENT_ID")" && outreach_client_secret="$(resolve_installer_env_value "OUTREACH_CLIENT_SECRET")" && outreach_refresh_token="$(resolve_installer_env_value "OUTREACH_REFRESH_TOKEN")"
+        [ "${PROVIDER_ENABLED_CROSSBEAM}" = "1" ] && crossbeam_api_key="$(resolve_installer_env_value "CROSSBEAM_API_KEY")"
+        [ "${PROVIDER_ENABLED_APOLLO}" = "1" ] && apollo_api_key="$(resolve_installer_env_value "APOLLO_API_KEY")"
+        [ "${PROVIDER_ENABLED_CLEARBIT}" = "1" ] && clearbit_api_key="$(resolve_installer_env_value "CLEARBIT_API_KEY")"
+        [ "${PROVIDER_ENABLED_ZOOMINFO}" = "1" ] && zoominfo_username="$(resolve_installer_env_value "ZOOMINFO_USERNAME")" && zoominfo_password="$(resolve_installer_env_value "ZOOMINFO_PASSWORD")"
+        [ "${PROVIDER_ENABLED_CLAY}" = "1" ] && clay_api_key="$(resolve_installer_env_value "CLAY_API_KEY")"
+        [ "${PROVIDER_ENABLED_SEGMENT}" = "1" ] && segment_write_key="$(resolve_installer_env_value "SEGMENT_WRITE_KEY")"
+    fi
+    if [ "${SKILL_ENABLED_ANIMATE_IMAGE}" = "1" ]; then
+        fal_api_key="$(resolve_installer_env_value "FAL_API_KEY")"
+    fi
 
     cat > "${dest}" <<EOF
 # Hermes Agent .env — profile: ${PROFILE_NAME}
@@ -492,6 +660,11 @@ ZOOMINFO_USERNAME="$(escape_env_value "${zoominfo_username}")"
 ZOOMINFO_PASSWORD="$(escape_env_value "${zoominfo_password}")"
 CLAY_API_KEY="$(escape_env_value "${clay_api_key}")"
 SEGMENT_WRITE_KEY="$(escape_env_value "${segment_write_key}")"
+
+# =============================================================================
+# FAUX.AI IMAGE ANIMATION
+# =============================================================================
+FAL_API_KEY="$(escape_env_value "${fal_api_key}")"
 EOF
     echo "  ✓ .env"
 }
@@ -553,6 +726,9 @@ fi
 
 export SOURCE_ROOT
 
+# Select which skills to enable before any processing
+select_enabled_skills
+
 # ---------------------------------------------------------------------------
 # Create profile directory structure (matches _PROFILE_DIRS + entrypoint)
 # ---------------------------------------------------------------------------
@@ -607,6 +783,25 @@ for skill_dir in "${SKILL_SOURCE}"/*; do
     [ -d "${skill_dir}" ] || continue
     skill_name=$(basename "${skill_dir}")
     [[ "${skill_name}" == "input" || "${skill_name}" == "output" || "${skill_name}" == "_providers" || "${skill_name}" == "__pycache__" || "${skill_name}" == "__init__.py" ]] && continue
+
+    # Check if this skill should be copied based on enablement
+    local skip_skill=1
+    case "${skill_name}" in
+        post-scheduler) [ "${SKILL_ENABLED_POST_SCHEDULER}" = "1" ] && skip_skill=0 ;;
+        giphy) [ "${SKILL_ENABLED_GIPHY}" = "1" ] && skip_skill=0 ;;
+        freesound) [ "${SKILL_ENABLED_FREESOUND}" = "1" ] && skip_skill=0 ;;
+        pixabay) [ "${SKILL_ENABLED_PIXABAY}" = "1" ] && skip_skill=0 ;;
+        email-campaigner) [ "${SKILL_ENABLED_EMAIL_CAMPAIGNER}" = "1" ] && skip_skill=0 ;;
+        seo-researcher) [ "${SKILL_ENABLED_SEO_RESEARCHER}" = "1" ] && skip_skill=0 ;;
+        ads-manager) [ "${SKILL_ENABLED_ADS_MANAGER}" = "1" ] && skip_skill=0 ;;
+        funnel-optimizer) [ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ] && skip_skill=0 ;;
+        revenue-manager) [ "${SKILL_ENABLED_REVENUE_MANAGER}" = "1" ] && skip_skill=0 ;;
+        animate-image) [ "${SKILL_ENABLED_ANIMATE_IMAGE}" = "1" ] && skip_skill=0 ;;
+        *) skip_skill=0 ;; # Always copy skills that don't require API keys
+    esac
+
+    [ "${skip_skill}" = "1" ] && continue
+
     copy_directory_clean "${skill_dir}" "${HERMES_SKILL_CATEGORY}/${skill_name}"
     echo "  + skills/abra/${skill_name}"
 done
