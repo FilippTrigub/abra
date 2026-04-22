@@ -1,0 +1,24 @@
+{
+  "Modules": [
+    {
+      "Key": "",
+      "Source": "",
+      "Dir": "."
+    },
+    {
+      "Key": "agents",
+      "Source": "../../modules/agent",
+      "Dir": "../../modules/agent"
+    },
+    {
+      "Key": "foundation",
+      "Source": "../../modules/foundation",
+      "Dir": "../../modules/foundation"
+    },
+    {
+      "Key": "router",
+      "Source": "../../modules/router",
+      "Dir": "../../modules/router"
+    }
+  ]
+}

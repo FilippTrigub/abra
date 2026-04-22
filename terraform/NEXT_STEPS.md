@@ -1,0 +1,9 @@
+# Next Steps
+
+1. Add real values to `terraform/backend/prod.hcl`.
+2. Copy `terraform/environments/prod/prod.tfvars.example` to `prod.tfvars`.
+3. Replace all placeholder secrets, image tags, and ACR values.
+4. Run `terraform init` in `terraform/environments/prod`.
+5. Run `terraform plan -var-file=prod.tfvars`.
+6. Run `terraform apply -var-file=prod.tfvars`.
+7. Update the app runtime to read from Blob Storage and Key Vault instead of local paths.
