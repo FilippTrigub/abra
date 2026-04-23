@@ -1,0 +1,178 @@
+# Claw Parade Platform
+
+Local web dashboard for the Abra brand management system. This is a Next.js 16 application that provides an authenticated dashboard for managing deployment requests and user settings, plus a marketing landing page for Abra.
+
+## What this is (right now)
+
+| Surface | Status |
+|---------|--------|
+| Marketing landing page (`/`) | Live — static content, no backend connections |
+| Authentication (`/sign-in`) | Supabase OAuth (Google, GitHub). Sign-in page with provider buttons, OAuth callback handler, and server-side auth actions. |
+| Dashboard (`/dashboard`) | Live — deployment console, stats cards, quick-access nav. Requires Supabase connection. |
+| Settings (`/dashboard/settings`) | Live — client-side form backed by server actions. Persisted to Supabase or localStorage fallback. |
+| Deployment orchestration | Mock adapter only. No real agent backend exists. Requests queue in-memory or in Supabase (`platform.platform_deployment`). |
+
+## Quick start
+
+### Prerequisites
+
+- Node.js 20+ (the repo ships with a `.nvmrc`-compatible version)
+- pnpm 8+
+- A Supabase project (or run without one — auth stubs degrade gracefully)
+
+### Install
+
+```bash
+cd platform
+pnpm install
+```
+
+### Environment
+
+Copy the example env file and fill in at least the Supabase URL and anon key:
+
+```bash
+cp .env.example .env.local
+```
+
+See [`.env.example`](./.env.example) for every available variable. The minimal set to get the dashboard working locally is `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+### Run
+
+```bash
+pnpm dev
+```
+
+The dev server starts on `http://localhost:3000`.
+
+### Build and start
+
+```bash
+pnpm build
+pnpm start
+```
+
+### Lint and typecheck
+
+```bash
+pnpm typecheck   # TypeScript type-check (fast, local-only)
+pnpm lint        # ESLint
+pnpm test        # Runs both typecheck and lint together
+```
+
+## Architecture
+
+### Routing groups
+
+- `(auth)` — Authentication routes. Currently holds the Supabase OAuth callback handler.
+- `(dashboard)` — Authenticated dashboard layout with sidebar navigation, subscription gate, and user header.
+- `(marketing)` — Public marketing landing page for Abra.
+
+### Key libraries
+
+| Library | Purpose |
+|---------|---------|
+| `@supabase/ssr` + `@supabase/supabase-js` | Supabase client with cookie-based SSR support |
+| `tailwindcss` v4 + `@tailwindcss/postcss` | Utility-first CSS |
+| `clsx` + `tailwind-merge` | Conditional class merging (shadcn/ui pattern) |
+
+### Data layer
+
+- **Platform accounts** — `platform.platform_account` Supabase table. Bootstrapped on first sign-in.
+- **Deployments** — `platform.platform_deployment` Supabase table. Falls back to in-memory Map when Supabase is unavailable.
+- **Settings** — Persisted via Supabase or client-side localStorage. Loaded through server actions.
+- **Orchestration** — Mock adapter in `src/lib/orchestration/`. No real agent backend is connected.
+
+### Styling
+
+Custom design tokens live in `src/styles/` and are imported through `globals.css`:
+
+- `primitives.css` — base semantic colors (brand, secondary, accent, surface, content, border, status)
+- `tokens.css` — token scale (typography, spacing, radii, shadows)
+- `shape-language.css` — custom pseudo-elements and decorative shapes
+
+### Component library
+
+UI components are in `src/components/ui/` and re-exported through `src/components/ui/index.ts`:
+
+`Button`, `Link`, `Input`, `Label`, `Card`, `Panel`, `Badge`, `NavItem`, `Surface`, `Select`, `ToggleSwitch`, `EmptyState`, `ErrorState`
+
+## Environment variables
+
+See [`.env.example`](./.env.example) for the full list. All variables marked `NEXT_PUBLIC_` are bundled into the browser. The rest are server-only.
+
+### Supabase schema
+
+The app expects a `platform` schema in your Supabase database. If you have not set up the schema yet, the dashboard will degrade gracefully using in-memory stores. No migration is required to run locally.
+
+## What is NOT implemented (yet)
+
+- **Real agent orchestration** — the adapter is mocked. Deployments never actually process anything.
+- **Dashboard scope** — the current product surface is intentionally focused on `/dashboard` and `/dashboard/settings`. Deployment management lives inside the main dashboard feed rather than separate sub-pages.
+- **Subscription / billing** — always returns `active` / `free`. No Stripe or payment provider integration.
+- **Production hosting docs** — no deployment guide. This is a local development dashboard.
+
+## File structure
+
+```
+platform/
+├── src/
+│   ├── app/
+│   │   ├── (auth)/
+│   │   │   ├── auth/callback/route.ts        # OAuth session exchange
+│   │   │   └── sign-in/page.tsx              # Sign-in page (Google, GitHub)
+│   │   ├── (dashboard)/
+│   │   │   ├── layout.tsx                    # Auth check, sidebar, badge
+│   │   │   └── dashboard/
+│   │   │       ├── actions.ts                # Deployment request action
+│   │   │       ├── deployment-console.tsx    # Interactive deployment form
+│   │   │       ├── page.tsx                  # Dashboard landing
+│   │   │       └── settings/page.tsx         # User settings form
+│   │   ├── (marketing)/
+│   │   │   ├── layout.tsx                    # Navbar wrapper
+│   │   │   ├── page.tsx                      # Abra landing page
+│   │   │   └── components/navbar.tsx         # Marketing navbar
+│   │   ├── api/
+│   │   │   ├── dashboard/
+│   │   │   │   ├── account-info/route.ts      # Account info endpoint
+│   │   │   │   ├── deployments/[deploymentId]/status/route.ts  # Status sync
+│   │   │   │   └── settings/route.ts         # Settings CRUD endpoint
+│   │   │   └── orchestration/
+│   │   │       ├── operations/[operationId]/route.ts  # Operation status
+│   │   │       └── operations/route.ts       # Operation dispatch
+│   │   ├── favicon.ico
+│   │   ├── globals.css                       # Global styles + token imports
+│   │   └── layout.tsx                        # Root layout, fonts, metadata
+│   ├── components/ui/                        # Shared UI primitives
+│   │   ├── badge.tsx, button.tsx, card.tsx,
+│   │   ├── empty-state.tsx, error-state.tsx,
+│   │   ├── index.ts, input.tsx, label.tsx,
+│   │   ├── link.tsx, nav-item.tsx, panel.tsx,
+│   │   ├── select.tsx, surface.tsx,
+│   │   └── toggle-switch.tsx
+│   ├── lib/
+│   │   ├── auth/
+│   │   │   ├── actions.ts                    # Server auth actions
+│   │   │   ├── index.ts                      # (placeholder re-export)
+│   │   │   └── supabase-client.ts            # Supabase SSR client + getUser
+│   │   ├── cn.ts                             # cn() class merger
+│   │   ├── db/index.ts                       # DB helper (placeholder)
+│   │   ├── deployments.ts                    # Deployment CRUD + mock adapter glue
+│   │   ├── orchestration/
+│   │   │   ├── index.ts, mock-adapter.ts,
+│   │   │   ├── mock-store.ts, server.ts,
+│   │   │   └── types.ts                      # Mock orchestration adapter
+│   │   ├── platform-account.ts               # Account bootstrap + subscription stubs
+│   │   ├── settings/
+│   │   │   ├── actions.ts, definitions.ts,
+│   │   │   ├── schema.ts, service.ts         # Settings schema, actions, definitions
+│   │   └── validation/index.ts               # Validation helpers
+│   ├── styles/
+│   │   ├── index.ts, primitives.css,
+│   │   └── shape-language.css, tokens.css    # Design tokens + shape language
+│   ├── proxy.ts                              # ISR-style auth redirect middleware
+├── next.config.ts
+├── tsconfig.json
+├── package.json
+└── .env.example
+```

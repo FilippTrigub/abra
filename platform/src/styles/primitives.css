@@ -1,0 +1,128 @@
+@layer base {
+  /* ═══════════════════════════════════════════════════════
+     Global interactive element reset
+     Removes browser defaults, applies token-driven transitions
+     ═══════════════════════════════════════════════════════ */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  /* Focus ring system — visible, token-aligned, non-color-only */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-surface-default),
+                0 0 0 5px var(--color-brand-300);
+    border-radius: var(--radius-sm);
+  }
+
+  /* Disabled state — uniform across all interactive elements */
+  :disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  /* Default transition for interactive elements */
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    transition: background-color var(--motion-fast) var(--ease-smooth),
+                border-color var(--motion-fast) var(--ease-smooth),
+                box-shadow var(--motion-fast) var(--ease-smooth),
+                transform var(--motion-fast) var(--ease-snappy);
+  }
+
+  /* Selection styling */
+  ::selection {
+    background-color: var(--color-brand-200);
+    color: var(--color-content-100);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   Validation state indicators (left border accent)
+   Communicates state beyond color via border-width + icon area
+   ═══════════════════════════════════════════════════════ */
+.input-error {
+  border-left-width: 3px;
+  border-left-color: var(--color-danger-400);
+  box-shadow: inset 0 0 0 1px var(--color-danger-200);
+}
+
+.input-warning {
+  border-left-width: 3px;
+  border-left-color: var(--color-warning-400);
+  box-shadow: inset 0 0 0 1px var(--color-warning-200);
+}
+
+.input-success {
+  border-left-width: 3px;
+  border-left-color: var(--color-success-400);
+  box-shadow: inset 0 0 0 1px var(--color-success-200);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Focus ring variants for specific primitive types
+   ═══════════════════════════════════════════════════════ */
+.focus-ring-brand:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-surface-default),
+              0 0 0 5px var(--color-brand-300);
+}
+
+.focus-ring-secondary:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-surface-default),
+              0 0 0 5px var(--color-secondary-300);
+}
+
+.focus-ring-danger:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-surface-default),
+              0 0 0 5px var(--color-danger-300);
+}
+
+.focus-ring-success:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-surface-default),
+              0 0 0 5px var(--color-success-300);
+}
+
+/* ═══════════════════════════════════════════════════════
+   Nav link base styles (used by NavItem primitive)
+   ═══════════════════════════════════════════════════════ */
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-2) var(--s-3);
+  border-radius: var(--radius-md);
+  color: var(--color-content-500);
+  text-decoration: none;
+  font-size: var(--text-body);
+  line-height: var(--text-body);
+  font-family: var(--font-body);
+  transition: background-color var(--motion-fast) var(--ease-smooth),
+              color var(--motion-fast) var(--ease-smooth);
+}
+
+.nav-link:hover {
+  background-color: var(--color-surface-100);
+  color: var(--color-content-100);
+}
+
+.nav-link.active {
+  color: var(--color-brand-500);
+  font-weight: 600;
+  background-color: var(--color-brand-50);
+}
+
+.nav-link.active::after {
+  content: '';
+  display: block;
+  height: 2px;
+  width: calc(100% - var(--s-2));
+  margin: 0 auto;
+  background-color: var(--color-brand-500);
+  border-radius: var(--radius-full);
+}
