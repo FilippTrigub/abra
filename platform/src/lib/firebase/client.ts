@@ -13,7 +13,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { connectAuthEmulator } from "firebase/auth";
 
-import { getFirebaseConfig, isDevMode, FIREBASE_EMULATOR_HOST } from "./env";
+import { getFirebaseConfig, getFirebaseEmulatorHost, isDevMode } from "./env";
 
 let app: ReturnType<typeof initializeApp>;
 
@@ -33,8 +33,10 @@ export const firestore = getFirestore(app);
 /** The initialized Firebase app instance. */
 export { app };
 
-if (isDevMode() && FIREBASE_EMULATOR_HOST) {
-  connectAuthEmulator(auth, `http://${FIREBASE_EMULATOR_HOST}:9099`);
+const emulatorHost = getFirebaseEmulatorHost();
+
+if (isDevMode() && emulatorHost) {
+  connectAuthEmulator(auth, `http://${emulatorHost}:9099`);
 }
 
 export default app;

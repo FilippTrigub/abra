@@ -1,10 +1,12 @@
-import { createSupabaseServerClient } from "@/lib/auth/supabase-client";
+import { getAdminFirestore } from "@/lib/firebase/admin";
+import { getPlatformAccount } from "@/lib/platform-account";
 import {
   dispatchOrchestrationAction,
   getOrchestrationAdapter,
   type MockOperationOutcome,
 } from "@/lib/orchestration";
-import { getPlatformAccount } from "@/lib/platform-account";
+import * as admin from "firebase-admin";
+import type { DocumentData, Timestamp } from "firebase-admin/firestore";
 
 export type DeploymentStatus = "queued" | "running" | "succeeded" | "failed";
 export type DeploymentEnvironment = "preview" | "staging" | "production";
@@ -253,7 +255,7 @@ async function resolveAccountScope(authUserId: string) {
     accountScope: getMemoryScope(authUserId),
     persistence: "memory" as const,
     warning:
-      "Supabase deployment storage is unavailable. Requests are stored in an in-memory fallback for this session.",
+      "Firestore deployment storage is unavailable. Requests are stored in an in-memory fallback for this session.",
   };
 }
 
@@ -283,25 +285,27 @@ async function listDeployments(accountScope: string) {
   }
 
   try {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
-      .schema("platform")
-      .from("platform_deployment")
-      .select(
-        "id, account_id, agent_id, request_payload, status, error_message, result_url, created_at, updated_at",
-      )
-      .eq("account_id", accountScope)
-      .order("created_at", { ascending: false })
-      .limit(12);
+    const firestore = getAdminFirestore();
+    const snapshot = await firestore
+      .collection(`accounts/${accountScope}/deployments`)
+      .orderBy("createdAt", "desc")
+      .limit(12)
+      .get();
 
-    if (error) {
-      throw error;
-    }
-
-    return (data ?? []).map((row) =>
+    return snapshot.docs.map((doc) =>
       toDashboardDeployment({
         persistence: "database",
-        row: row as DeploymentRecordRow,
+        row: {
+          id: doc.id,
+          account_id: accountScope,
+          agent_id: null,
+          request_payload: doc.data().requestPayload,
+          status: doc.data().status,
+          error_message: doc.data().errorMessage ?? null,
+          result_url: doc.data().resultUrl ?? null,
+          created_at: doc.data().createdAt,
+          updated_at: doc.data().updatedAt,
+        } as DeploymentRecordRow,
         accountScope,
       }),
     );
@@ -339,24 +343,33 @@ async function getDeploymentRecord(accountScope: string, deploymentId: string) {
   }
 
   try {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
-      .schema("platform")
-      .from("platform_deployment")
-      .select(
-        "id, account_id, agent_id, request_payload, status, error_message, result_url, created_at, updated_at",
-      )
-      .eq("account_id", accountScope)
-      .eq("id", deploymentId)
-      .maybeSingle();
+    const firestore = getAdminFirestore();
+    const doc = await firestore
+      .doc(`accounts/${accountScope}/deployments/${deploymentId}`)
+      .get();
 
-    if (error || !data) {
+    if (!doc.exists) {
+      return null;
+    }
+
+    const data = doc.data();
+    if (!data) {
       return null;
     }
 
     return toDashboardDeployment({
       persistence: "database",
-      row: data as DeploymentRecordRow,
+      row: {
+        id: doc.id,
+        account_id: accountScope,
+        agent_id: null,
+        request_payload: data.requestPayload,
+        status: data.status,
+        error_message: data.errorMessage ?? null,
+        result_url: data.resultUrl ?? null,
+        created_at: data.createdAt,
+        updated_at: data.updatedAt,
+      } as DeploymentRecordRow,
       accountScope,
     });
   } catch (error) {
@@ -403,30 +416,46 @@ async function persistDeployment(
     });
   }
 
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
-    .schema("platform")
-    .from("platform_deployment")
-    .update({
-      request_payload: payload,
-      status: deployment.status,
-      error_message: deployment.errorMessage,
-      result_url: deployment.resultUrl,
-    })
-    .eq("account_id", accountScope)
-    .eq("id", deployment.id)
-    .select(
-      "id, account_id, agent_id, request_payload, status, error_message, result_url, created_at, updated_at",
-    )
-    .single();
+  const firestore = getAdminFirestore();
+  const docRef = firestore.doc(`accounts/${accountScope}/deployments/${deployment.id}`);
+  const doc = await docRef.get();
 
-  if (error) {
-    throw error;
+  const now = admin.firestore.FieldValue.serverTimestamp();
+
+  if (!doc.exists) {
+    await docRef.set({
+      id: deployment.id,
+      accountScope,
+      requestPayload: payload,
+      status: deployment.status,
+      errorMessage: deployment.errorMessage,
+      resultUrl: deployment.resultUrl,
+      createdAt: now,
+      updatedAt: now,
+    });
+  } else {
+    await docRef.update({
+      requestPayload: payload,
+      status: deployment.status,
+      errorMessage: deployment.errorMessage,
+      resultUrl: deployment.resultUrl,
+      updatedAt: now,
+    });
   }
 
   return toDashboardDeployment({
     persistence: "database",
-    row: data as DeploymentRecordRow,
+    row: {
+      id: deployment.id,
+      account_id: accountScope,
+      agent_id: null,
+      request_payload: payload,
+      status: deployment.status,
+      error_message: deployment.errorMessage,
+      result_url: deployment.resultUrl,
+      created_at: deployment.createdAt,
+      updated_at: deployment.updatedAt,
+    } as DeploymentRecordRow,
     accountScope,
   });
 }
@@ -473,28 +502,39 @@ export async function createDeploymentRecord({
   }
 
   try {
-    const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase
-      .schema("platform")
-      .from("platform_deployment")
-      .insert({
-        account_id: account.accountScope,
-        request_payload: requestPayload,
-        status: "queued",
-      })
-      .select(
-        "id, account_id, agent_id, request_payload, status, error_message, result_url, created_at, updated_at",
-      )
-      .single();
+    const firestore = getAdminFirestore();
+    const deploymentId = crypto.randomUUID();
+    const docRef = firestore.doc(`accounts/${account.accountScope}/deployments/${deploymentId}`);
 
-    if (error) {
-      throw error;
-    }
+    const nowTs = admin.firestore.FieldValue.serverTimestamp();
+
+    const data = {
+      id: deploymentId,
+      accountScope: account.accountScope,
+      requestPayload,
+      status: "queued",
+      errorMessage: null,
+      resultUrl: null,
+      createdAt: nowTs,
+      updatedAt: nowTs,
+    };
+
+    await docRef.set(data);
 
     return {
       deployment: toDashboardDeployment({
         persistence: "database",
-        row: data as DeploymentRecordRow,
+        row: {
+          id: deploymentId,
+          account_id: account.accountScope,
+          agent_id: null,
+          request_payload: requestPayload,
+          status: "queued",
+          error_message: null,
+          result_url: null,
+          created_at: now,
+          updated_at: now,
+        } as DeploymentRecordRow,
         accountScope: account.accountScope,
       }),
       warning: null,
@@ -510,8 +550,8 @@ export async function createDeploymentRecord({
       status: "queued",
       errorMessage: null,
       resultUrl: null,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     deploymentMemoryStore.set(row.id, row);
@@ -523,7 +563,7 @@ export async function createDeploymentRecord({
         accountScope: fallbackScope,
       }),
       warning:
-        "Supabase deployment storage is unavailable. The request was queued in local memory for this process.",
+        "Firestore deployment storage is unavailable. The request was queued in local memory for this process.",
     };
   }
 }

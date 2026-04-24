@@ -16,6 +16,8 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "firebase": "^12.4.0",
+    "firebase-admin": "^13.5.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.104.0",
     "clsx": "^2.1.1",

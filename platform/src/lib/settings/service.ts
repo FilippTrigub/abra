@@ -1,7 +1,8 @@
 import { type ConfigSnapshot, type SettingsResponse, type SettingsUpdatePayload, type SettingsUpdateResult } from "./schema";
-import { createSupabaseServerClient } from "@/lib/auth/supabase-client";
-import { getPlatformAccount } from "@/lib/platform-account";
+import { getAdminFirestore } from "@/lib/firebase/admin";
 import { SETTINGS_DEFINITIONS, validateSetting } from "./definitions";
+import * as admin from "firebase-admin";
+import type { DocumentData, Timestamp } from "firebase-admin/firestore";
 
 function buildDefaultValues(): ConfigSnapshot["values"] {
   const values = {} as ConfigSnapshot["values"];
@@ -12,65 +13,51 @@ function buildDefaultValues(): ConfigSnapshot["values"] {
 }
 
 export async function loadSettings(authUserId: string): Promise<SettingsResponse> {
-  const account = await getPlatformAccount(authUserId);
-  const accountScope = account?.id ?? "";
+  try {
+    const firestore = getAdminFirestore();
+    const docRef = firestore.doc(`accounts/${authUserId}/settings/current`);
+    const doc = await docRef.get();
 
-  if (accountScope) {
-    try {
-      const supabase = await createSupabaseServerClient();
-      const { data, error } = await supabase
-        .schema("platform")
-        .from("platform_settings")
-        .select("id, account_id, values, created_at, updated_at")
-        .eq("account_id", accountScope)
-        .order("updated_at", { ascending: false })
-        .limit(1);
-
-      if (error) throw error;
-
-      const row = data?.[0];
-      if (row) {
-        const values = (row.values as ConfigSnapshot["values"]) ?? buildDefaultValues();
+    if (doc.exists) {
+      const data = doc.data() as DocumentData;
+      if (data && data.values) {
         return {
           snapshot: {
-            id: row.id,
-            accountScope: row.account_id,
-            values,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
+            id: doc.id,
+            accountScope: authUserId,
+            values: data.values as ConfigSnapshot["values"],
+            createdAt: (data.createdAt as Timestamp)?.toDate()?.toISOString() ?? new Date().toISOString(),
+            updatedAt: (data.updatedAt as Timestamp)?.toDate()?.toISOString() ?? new Date().toISOString(),
           },
           definitions: SETTINGS_DEFINITIONS,
           persistence: "database",
           warning: null,
         };
       }
-    } catch (err) {
-      console.warn("[settings] DB load failed:", err);
     }
+  } catch {
+    // Firestore unavailable, return defaults
   }
 
   return {
     snapshot: {
       id: "",
-      accountScope: "",
+      accountScope: authUserId,
       values: buildDefaultValues(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     },
     definitions: SETTINGS_DEFINITIONS,
     persistence: "memory",
-    warning: "Database storage is unavailable. Showing default values.",
+    warning: "Firestore storage is unavailable. Showing default values.",
   };
 }
 
 export async function saveSettings(
   authUserId: string,
   payload: SettingsUpdatePayload,
-  currentValues?: ConfigSnapshot["values"],
+  _currentValues?: ConfigSnapshot["values"],
 ): Promise<SettingsUpdateResult> {
-  const account = await getPlatformAccount(authUserId);
-  const accountScope = account?.id ?? "";
-
   const validation = validateSetting(payload.key, payload.value);
   if (validation.errors.length > 0) {
     return {
@@ -82,46 +69,52 @@ export async function saveSettings(
     };
   }
 
-  if (accountScope) {
-    try {
-      const supabase = await createSupabaseServerClient();
-      const { data, error } = await supabase
-        .schema("platform")
-        .from("platform_settings")
-        .upsert(
-          {
-            account_id: accountScope,
-            values: {
-              ...(currentValues ?? {}),
-              [payload.key]: payload.value,
-            },
-          },
-          { onConflict: "account_id" },
-        )
-        .select("id, account_id, values, created_at, updated_at")
-        .single();
+  try {
+    const firestore = getAdminFirestore();
+    const docRef = firestore.doc(`accounts/${authUserId}/settings/current`);
+    const existingDoc = await docRef.get();
 
-      if (error) throw error;
+    const existingData = existingDoc.exists ? existingDoc.data() : undefined;
+    const existingValues = existingData?.values ?? buildDefaultValues();
+    
+    const mergedValues = {
+      ...existingValues,
+      [payload.key]: payload.value,
+    };
 
-      if (data) {
-        const snap: ConfigSnapshot = {
-          id: data.id,
-          accountScope: data.account_id,
-          values: data.values as ConfigSnapshot["values"],
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-        };
-        return {
-          success: true,
-          snapshot: snap,
-          errors: [],
-          restartRequired: payload.key === "defaultEnvironment",
-          warning: null,
-        };
-      }
-    } catch (err) {
-      console.warn("[settings] DB save failed:", err);
+    const now = admin.firestore.FieldValue.serverTimestamp();
+
+    if (!existingDoc.exists) {
+      await docRef.set({
+        values: mergedValues,
+        createdAt: now,
+        updatedAt: now,
+      });
+    } else {
+      await docRef.update({
+        values: mergedValues,
+        updatedAt: now,
+      });
     }
+
+    const snap: ConfigSnapshot = {
+      id: authUserId,
+      accountScope: authUserId,
+      values: mergedValues,
+      createdAt: existingDoc.exists 
+        ? new Date().toISOString() 
+        : new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    return {
+      success: true,
+      snapshot: snap,
+      errors: [],
+      restartRequired: payload.key === "defaultEnvironment",
+      warning: null,
+    };
+  } catch {
+    // Firestore unavailable, return local save result
   }
 
   return {
@@ -129,51 +122,39 @@ export async function saveSettings(
     snapshot: null,
     errors: [],
     restartRequired: payload.key === "defaultEnvironment",
-    warning: "Settings saved locally. Database storage was unavailable.",
+    warning: "Settings saved locally. Firestore storage was unavailable.",
   };
 }
 
 export async function revertSettings(authUserId: string): Promise<SettingsUpdateResult> {
-  const account = await getPlatformAccount(authUserId);
-  const accountScope = account?.id ?? "";
+  try {
+    const firestore = getAdminFirestore();
+    const docRef = firestore.doc(`accounts/${authUserId}/settings/current`);
+    
+    const defaultValues = buildDefaultValues();
+    const now = admin.firestore.FieldValue.serverTimestamp();
+    
+    await docRef.set({
+      values: defaultValues,
+      updatedAt: now,
+    }, { merge: true });
 
-  if (accountScope) {
-    try {
-      const supabase = await createSupabaseServerClient();
-      const { data, error } = await supabase
-        .schema("platform")
-        .from("platform_settings")
-        .upsert(
-          {
-            account_id: accountScope,
-            values: buildDefaultValues(),
-          },
-          { onConflict: "account_id" },
-        )
-        .select("id, account_id, values, created_at, updated_at")
-        .single();
-
-      if (error) throw error;
-
-      if (data) {
-        const snap: ConfigSnapshot = {
-          id: data.id,
-          accountScope: data.account_id,
-          values: data.values as ConfigSnapshot["values"],
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
-        };
-        return {
-          success: true,
-          snapshot: snap,
-          errors: [],
-          restartRequired: false,
-          warning: null,
-        };
-      }
-    } catch (err) {
-      console.warn("[settings] DB revert failed:", err);
-    }
+    const snap: ConfigSnapshot = {
+      id: authUserId,
+      accountScope: authUserId,
+      values: defaultValues,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    return {
+      success: true,
+      snapshot: snap,
+      errors: [],
+      restartRequired: false,
+      warning: null,
+    };
+  } catch {
+    // Firestore unavailable, return local revert result
   }
 
   return {
@@ -181,38 +162,30 @@ export async function revertSettings(authUserId: string): Promise<SettingsUpdate
     snapshot: null,
     errors: [],
     restartRequired: false,
-    warning: "Defaults restored locally. Database storage was unavailable.",
+    warning: "Defaults restored locally. Firestore storage was unavailable.",
   };
 }
 
 export async function getSettingsSnapshot(authUserId: string): Promise<ConfigSnapshot | null> {
-  const account = await getPlatformAccount(authUserId);
-  const accountScope = account?.id ?? "";
+  try {
+    const firestore = getAdminFirestore();
+    const docRef = firestore.doc(`accounts/${authUserId}/settings/current`);
+    const doc = await docRef.get();
 
-  if (accountScope) {
-    try {
-      const supabase = await createSupabaseServerClient();
-      const { data, error } = await supabase
-        .schema("platform")
-        .from("platform_settings")
-        .select("id, account_id, values, created_at, updated_at")
-        .eq("account_id", accountScope)
-        .maybeSingle();
-
-      if (error) throw error;
-
-      if (data) {
+    if (doc.exists) {
+      const data = doc.data() as DocumentData;
+      if (data && data.values) {
         return {
-          id: data.id,
-          accountScope: data.account_id,
+          id: doc.id,
+          accountScope: authUserId,
           values: data.values as ConfigSnapshot["values"],
-          createdAt: data.created_at,
-          updatedAt: data.updated_at,
+          createdAt: (data.createdAt as Timestamp)?.toDate()?.toISOString() ?? new Date().toISOString(),
+          updatedAt: (data.updatedAt as Timestamp)?.toDate()?.toISOString() ?? new Date().toISOString(),
         };
       }
-    } catch {
-      /* graceful fallthrough */
     }
+  } catch {
+    // graceful fallthrough
   }
 
   return null;

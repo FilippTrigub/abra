@@ -1,13 +1,10 @@
-"use server";
-
 import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { NextResponse } from "next/server";
 
 import { getAdminAuth } from "@/lib/firebase/admin";
 import { SESSION_COOKIE_NAME, verifySessionCookie } from "@/lib/firebase/session";
 
-export async function signOut() {
+async function clearSession() {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
@@ -21,6 +18,13 @@ export async function signOut() {
 
   cookieStore.delete(SESSION_COOKIE_NAME);
 
-  revalidatePath("/");
-  redirect("/sign-in");
+  return NextResponse.json({ ok: true });
+}
+
+export async function POST() {
+  return clearSession();
+}
+
+export async function DELETE() {
+  return clearSession();
 }

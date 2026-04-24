@@ -1,8 +1,8 @@
-import { createSupabaseServerClient } from "@/lib/auth/supabase-client";
-
 /* ═══════════════════════════════════════════════════════
    Subscription types — v1 stub, no billing logic
    ═══════════════════════════════════════════════════════ */
+
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 export type SubscriptionStatus = "active" | "inactive" | "missing";
 export type SubscriptionPlan = "free" | "pro" | "enterprise" | "unknown";
@@ -14,9 +14,9 @@ export interface SubscriptionInfo {
 }
 
 /**
- * Read subscription state from a platform_account row.
+ * Read subscription state from an account object (Firestore doc or legacy row).
  * Returns "active" / "free" for every v1 user (no billing integration).
- * Falls back to inactive when the row lacks subscription_plan entirely.
+ * Falls back to inactive when the object lacks subscription fields entirely.
  */
 export function getSubscriptionInfo(account: {
   subscription_plan?: string | null;
@@ -35,7 +35,7 @@ export function getSubscriptionInfo(account: {
   const validStatuses: SubscriptionStatus[] = ["active", "inactive", "missing"];
   const status = validStatuses.includes(rawStatus) ? rawStatus : "active";
 
-  // If the row exists but has no subscription fields at all, default to active v1.
+  // If the object exists but has no subscription fields at all, default to active v1.
   const effectiveStatus: SubscriptionStatus =
     !account.subscription_plan && !account.subscription_status
       ? "active"
@@ -60,60 +60,96 @@ export function getSubscriptionPlan(account: {
 }
 
 /* ═══════════════════════════════════════════════════════
-   Platform account bootstrap
+   Firestore account interface
+   ═══════════════════════════════════════════════════════ */
+
+export interface FirestoreAccount {
+  id: string;
+  authUserId: string;
+  subscriptionPlan: SubscriptionPlan;
+  subscriptionStatus: SubscriptionStatus;
+  subscriptionCancellationReason?: string | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+/* ═══════════════════════════════════════════════════════
+   Platform account bootstrap via Firestore
    ═══════════════════════════════════════════════════════ */
 
 export async function ensurePlatformAccount(authUserId: string) {
   try {
-    const supabase = await createSupabaseServerClient();
+    // Use dynamic import to avoid server-only issues in test environments
+    const adminMod = await import("@/lib/firebase/admin");
+    const firestore = adminMod.getAdminFirestore();
 
-    // Check if an account row already exists — this is the only reliable
-    // first-sign-in signal (display_name is nullable on existing rows too).
-    const { data: existing } = await supabase
-      .schema("platform")
-      .from("platform_account")
-      .select("id")
-      .eq("auth_user_id", authUserId)
-      .maybeSingle();
+    // Check if account doc already exists.
+    const docRef = firestore.doc(`accounts/${authUserId}`);
+    const docSnap = await docRef.get();
 
-    const isNewAccount = !existing;
+    const isNewAccount = !docSnap.exists;
 
-    // Upsert: create on first sign-in, sync on returning visits.
-    const { data, error } = await supabase
-      .schema("platform")
-      .from("platform_account")
-      .upsert({ auth_user_id: authUserId }, { onConflict: "auth_user_id" })
-      .select("*")
-      .single();
+    if (isNewAccount) {
+      // Create new account doc with explicit defaults and server timestamps.
+      await docRef.set({
+        authUserId,
+        subscriptionPlan: "free" as SubscriptionPlan,
+        subscriptionStatus: "active" as SubscriptionStatus,
+        subscriptionCancellationReason: null,
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+    }
 
-    if (error) {
-      console.warn("[platform-account] bootstrap failed:", error.message);
+    // Read the doc to return account data (compatibility with existing callers).
+    const updatedSnap = await docRef.get();
+    const data = updatedSnap.data();
+
+    if (!data) {
       return { account: null, booted: false };
     }
 
-    return { account: data, booted: isNewAccount };
-  } catch (err) {
-    console.warn("[platform-account] bootstrap exception:", err);
+    // Normalize Firestore doc to legacy-style object for downstream compatibility.
+    const account = {
+      id: updatedSnap.id, // doc.id = authUserId, but kept for settings/deployments compatibility
+      auth_user_id: data.authUserId,
+      subscription_plan: data.subscriptionPlan,
+      subscription_status: data.subscriptionStatus,
+      subscription_cancellation_reason: data.subscriptionCancellationReason ?? null,
+    };
+
+    return { account, booted: isNewAccount };
+  } catch {
     return { account: null, booted: false };
   }
 }
 
-export async function getPlatformAccount(authUserId: string) {
+export async function getPlatformAccount(authUserId: string): Promise<FirestoreAccount | null> {
   try {
-    const supabase = await createSupabaseServerClient();
+    // Use dynamic import to avoid server-only issues in test environments
+    const adminMod = await import("@/lib/firebase/admin");
+    const firestore = adminMod.getAdminFirestore();
 
-    const { data, error } = await supabase
-      .schema("platform")
-      .from("platform_account")
-      .select("*")
-      .eq("auth_user_id", authUserId)
-      .maybeSingle();
+    const docSnap = await firestore.doc(`accounts/${authUserId}`).get();
 
-    if (error || !data) {
+    if (!docSnap.exists) {
       return null;
     }
 
-    return data;
+    const data = docSnap.data();
+    if (!data) {
+      return null;
+    }
+
+    return {
+      id: docSnap.id,
+      authUserId: data.authUserId,
+      subscriptionPlan: data.subscriptionPlan,
+      subscriptionStatus: data.subscriptionStatus,
+      subscriptionCancellationReason: data.subscriptionCancellationReason ?? null,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+    };
   } catch {
     return null;
   }

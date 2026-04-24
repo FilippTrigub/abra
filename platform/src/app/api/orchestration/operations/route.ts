@@ -4,7 +4,7 @@ import type {
   OrchestrationAction,
   OrchestrationOperationInput,
 } from "@/lib/orchestration";
-import { getUser } from "@/lib/auth/supabase-client";
+import { requireApiAuth, unauthenticatedResponse } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 interface RouteRequestBody {
@@ -86,18 +86,9 @@ function toOperationInput(body: RouteRequestBody): {
 }
 
 export async function POST(request: Request) {
-  const { user, error: authError } = await getUser();
-
-  if (authError || !user) {
-    return NextResponse.json(
-      {
-        error: {
-          code: "UNAUTHORIZED",
-          message: "You must be signed in to dispatch orchestration operations.",
-        },
-      },
-      { status: 401 },
-    );
+  const authResult = await requireApiAuth();
+  if ("error" in authResult) {
+    return unauthenticatedResponse();
   }
 
   try {

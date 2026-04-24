@@ -1,10 +1,86 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ⚠️  INITIAL DEV RULES — permissive for local testing only.
-    //  TODO: Harden in Task 14 (production-ready security rules).
-    match /{document=**} {
-      allow read, write: if true;
+    // ═══════════════════════════════════════════════════════════════
+    // Helper functions
+    // ═══════════════════════════════════════════════════════════════
+    
+    // Returns true if the authenticated user's UID matches the resource owner
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+    
+    // Returns true if the authenticated user exists (signed in)
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Returns true if this is a create operation
+    function isCreate() {
+      return request.resource == resource;
+    }
+    
+    // Returns true if this is an update operation
+    function isUpdate() {
+      return request.resource != resource;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Account documents: accounts/{uid}
+    // ═══════════════════════════════════════════════════════════════
+    // - Only the authenticated owner can read/write their account doc
+    // - Account creation is idempotent (create-or-read pattern)
+    
+    match /accounts/{uid} {
+      // Read: owner only
+      allow read: if isAuthenticated() && isOwner(uid);
+      
+      // Create: allow if the requesting user is creating their own account
+      // This supports the idempotent bootstrap pattern
+      allow create: if isAuthenticated() && isOwner(uid);
+      
+      // Update: owner only, but cannot change authUserId
+      allow update: if isAuthenticated() && isOwner(uid)
+                    && (!('authUserId' in request.resource.data)
+                        || request.resource.data.authUserId == uid);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Settings subcollection: accounts/{uid}/settings/{docId}
+    // ═══════════════════════════════════════════════════════════════
+    // - Uses 'current' as the canonical document ID for settings snapshot
+    // - Only the account owner can read/write their settings
+    
+    match /accounts/{uid}/settings/{docId} {
+      // Read: owner only
+      allow read: if isAuthenticated() && isOwner(uid);
+      
+      // Write: owner only (create, update, delete)
+      allow write: if isAuthenticated() && isOwner(uid);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Deployments subcollection: accounts/{uid}/deployments/{deploymentId}
+    // ═══════════════════════════════════════════════════════════════
+    // - Only the account owner can read/create their deployment records
+    // - Updates allowed for status sync (owner only)
+    // - Deletion not supported in v1 (deployments are append-only feed)
+    
+    match /accounts/{uid}/deployments/{deploymentId} {
+      // Read: owner only - allows feed queries and individual record reads
+      allow read: if isAuthenticated() && isOwner(uid);
+      
+      // Create: owner only - allows deployment creation
+      allow create: if isAuthenticated() && isOwner(uid);
+      
+      // Update: owner only - allows status sync and orchestration metadata updates
+      // Cannot change ownership or the account scope
+      allow update: if isAuthenticated() && isOwner(uid)
+                    && (!('accountScope' in request.resource.data)
+                        || request.resource.data.accountScope == uid);
+      
+      // Delete: not allowed in v1 - deployments are durable historical records
+      allow delete: if false;
     }
   }
 }

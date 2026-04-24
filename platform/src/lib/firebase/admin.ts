@@ -14,32 +14,36 @@ import "server-only";
 
 import * as admin from "firebase-admin";
 
-import { FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, FIREBASE_EMULATOR_HOST } from "./env";
+import { getFirebaseAdminConfig, getFirebaseEmulatorHost } from "./env";
 
-// ---------------------------------------------------------------------------
-// Singleton initialization with admin.apps.length guard
-// ---------------------------------------------------------------------------
+function ensureAdminApp() {
+  if (admin.apps.length > 0) {
+    return;
+  }
 
-if (admin.apps.length === 0) {
+  const { projectId, clientEmail, privateKey } = getFirebaseAdminConfig();
+
   // Convert escaped newlines in private key to actual newline characters
-  const normalizedPrivateKey = FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n") ?? "";
+  const normalizedPrivateKey = privateKey.replace(/\\n/g, "\n");
 
   admin.initializeApp({
     credential: admin.credential.cert({
-      projectId: FIREBASE_PROJECT_ID,
-      clientEmail: FIREBASE_CLIENT_EMAIL,
+      projectId,
+      clientEmail,
       privateKey: normalizedPrivateKey,
     }),
   });
-}
 
-if (FIREBASE_EMULATOR_HOST) {
-  // Firestore emulator — no auth emulator for Admin SDK; custom token auth is required.
-  admin.firestore().settings({
-    host: FIREBASE_EMULATOR_HOST,
-    port: 8080,
-    forceSSL: true,
-  });
+  const emulatorHost = getFirebaseEmulatorHost();
+
+  if (emulatorHost) {
+    // Firestore emulator — no auth emulator for Admin SDK; custom token auth is required.
+    admin.firestore().settings({
+      host: emulatorHost,
+      port: 8080,
+      forceSSL: true,
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -51,6 +55,7 @@ if (FIREBASE_EMULATOR_HOST) {
  * Callers should use this instead of importing getAuth directly.
  */
 export function getAdminAuth(): admin.auth.Auth {
+  ensureAdminApp();
   return admin.auth();
 }
 
@@ -59,6 +64,7 @@ export function getAdminAuth(): admin.auth.Auth {
  * Callers should use this instead of importing getFirestore directly.
  */
 export function getAdminFirestore(): admin.firestore.Firestore {
+  ensureAdminApp();
   return admin.firestore();
 }
 

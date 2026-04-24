@@ -1,24 +1,23 @@
-import { createSupabaseServerClient } from "@/lib/auth/supabase-client";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
+  const providerError = searchParams.get("error");
   const code = searchParams.get("code");
 
-  if (!code) {
+  if (providerError) {
     return NextResponse.redirect(
-      new URL("/sign-in?error=missing_oauth_code", request.url),
+      new URL("/sign-in?error=oauth_callback_failed", request.url),
     );
   }
 
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-  if (error) {
+  if (code) {
     return NextResponse.redirect(
-      new URL("/sign-in?error=oauth_exchange_failed", request.url),
+      new URL("/sign-in?error=oauth_callback_not_supported", request.url),
     );
   }
 
-  return NextResponse.redirect(new URL("/dashboard", new URL(request.url).origin));
+  return NextResponse.redirect(
+    new URL("/sign-in?error=missing_oauth_code", request.url),
+  );
 }

@@ -5,4 +5,12 @@
  * instead of the deeper path.
  */
 export { createSupabaseServerClient, getUser } from "./supabase-client";
-export type { User } from "@supabase/supabase-js";
+export type { AuthenticatedUser } from "./supabase-client";
+export {
+  requireAuth,
+  requireApiAuth,
+  requireOwnership,
+  checkOwnershipJson,
+  unauthenticatedResponse,
+  permissionDeniedResponse,
+} from "./session";

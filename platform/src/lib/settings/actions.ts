@@ -1,6 +1,6 @@
 "use server";
 
-import { getUser } from "@/lib/auth/supabase-client";
+import { requireApiAuth } from "@/lib/auth";
 import {
   loadSettings as dbLoadSettings,
   saveSettings as dbSaveSettings,
@@ -23,9 +23,8 @@ function buildDefaultValues(): ConfigSnapshot["values"] {
 }
 
 export async function loadUserSettings(): Promise<SettingsResponse> {
-  const { user, error } = await getUser();
-
-  if (error || !user) {
+  const authResult = await requireApiAuth();
+  if ("error" in authResult) {
     return {
       snapshot: {
         id: "",
@@ -40,16 +39,15 @@ export async function loadUserSettings(): Promise<SettingsResponse> {
     };
   }
 
-  return dbLoadSettings(user.id);
+  return dbLoadSettings(authResult.user.id);
 }
 
 export async function updateUserSetting(
   payload: SettingsUpdatePayload,
   currentValues: Record<string, unknown>,
 ): Promise<SettingsUpdateResult> {
-  const { user, error } = await getUser();
-
-  if (error || !user) {
+  const authResult = await requireApiAuth();
+  if ("error" in authResult) {
     return {
       success: false,
       snapshot: null,
@@ -59,13 +57,12 @@ export async function updateUserSetting(
     };
   }
 
-  return dbSaveSettings(user.id, payload, currentValues as ConfigSnapshot["values"]);
+  return dbSaveSettings(authResult.user.id, payload, currentValues as ConfigSnapshot["values"]);
 }
 
 export async function revertToDefaults(): Promise<SettingsUpdateResult> {
-  const { user, error } = await getUser();
-
-  if (error || !user) {
+  const authResult = await requireApiAuth();
+  if ("error" in authResult) {
     return {
       success: false,
       snapshot: null,
@@ -75,7 +72,7 @@ export async function revertToDefaults(): Promise<SettingsUpdateResult> {
     };
   }
 
-  return dbRevertSettings(user.id);
+  return dbRevertSettings(authResult.user.id);
 }
 
 export async function saveClientSideSettings(): Promise<{ ok: boolean }> {

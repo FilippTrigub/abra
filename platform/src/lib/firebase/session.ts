@@ -19,6 +19,16 @@ import { DecodedIdToken, DEFAULT_SESSION_EXPIRY_MS } from "./env";
 // Session cookie name used by the application
 const SESSION_COOKIE_NAME = "__session";
 
+export function getSessionCookieOptions(maxAgeMs: number = DEFAULT_SESSION_EXPIRY_MS) {
+  return {
+    httpOnly: true,
+    maxAge: Math.floor(maxAgeMs / 1000),
+    path: "/",
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+  };
+}
+
 /**
  * Verifies a Firebase ID token and creates a session cookie.
  *
@@ -32,8 +42,6 @@ export async function createSessionCookie(
   idToken: string,
   expiresInMs: number = DEFAULT_SESSION_EXPIRY_MS,
 ): Promise<string> {
-  const decodedToken = await getAdminAuth().verifyIdToken(idToken);
-
   return getAdminAuth().createSessionCookie(idToken, {
     expiresIn: expiresInMs,
   });
@@ -50,7 +58,7 @@ export async function verifySessionCookie(
   cookie: string,
 ): Promise<DecodedIdToken> {
   // strict: true — also checks that the token has not been revoked
-  const decoded = await getAdminAuth().verifyIdToken(cookie, true);
+  const decoded = await getAdminAuth().verifySessionCookie(cookie, true);
   return decoded as DecodedIdToken;
 }
 
@@ -65,7 +73,7 @@ export async function verifySessionCookie(
 export function clearSessionCookie(): NextResponse {
   return NextResponse.next({
     headers: new Headers({
-      "Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT`,
+      "Set-Cookie": `${SESSION_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT`,
     }),
   });
 }

@@ -1,30 +1,23 @@
 import { NextResponse } from "next/server";
-import { getUser } from "@/lib/auth/supabase-client";
+
+import { requireApiAuth, unauthenticatedResponse } from "@/lib/auth";
 import { loadSettings as dbLoadSettings, saveSettings as dbSaveSettings, revertSettings as dbRevertSettings } from "@/lib/settings/service";
 import type { SettingsUpdatePayload } from "@/lib/settings/schema";
 
 export async function GET() {
-  const { user, error } = await getUser();
-
-  if (error || !user) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
+  const authResult = await requireApiAuth();
+  if ("error" in authResult) {
+    return unauthenticatedResponse();
   }
 
-  const response = await dbLoadSettings(user.id);
+  const response = await dbLoadSettings(authResult.user.id);
   return NextResponse.json(response);
 }
 
 export async function POST(request: Request) {
-  const { user, error } = await getUser();
-
-  if (error || !user) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
+  const authResult = await requireApiAuth();
+  if ("error" in authResult) {
+    return unauthenticatedResponse();
   }
 
   let body: SettingsUpdatePayload;
@@ -45,20 +38,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await dbSaveSettings(user.id, body, undefined);
+  const result = await dbSaveSettings(authResult.user.id, body, undefined);
   return NextResponse.json(result);
 }
 
 export async function PUT() {
-  const { user, error } = await getUser();
-
-  if (error || !user) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
+  const authResult = await requireApiAuth();
+  if ("error" in authResult) {
+    return unauthenticatedResponse();
   }
 
-  const result = await dbRevertSettings(user.id);
+  const result = await dbRevertSettings(authResult.user.id);
   return NextResponse.json(result);
 }

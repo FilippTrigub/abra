@@ -28,20 +28,11 @@ function getRequiredEnv(name: string): string {
 // ---------------------------------------------------------------------------
 
 /** Browser-facing env vars — safe to expose in client bundles (NEXT_PUBLIC_*). */
-const NEXT_PUBLIC_FIREBASE_API_KEY = getRequiredEnv("NEXT_PUBLIC_FIREBASE_API_KEY");
-const NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN = getRequiredEnv("NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN");
-const NEXT_PUBLIC_FIREBASE_PROJECT_ID = getRequiredEnv("NEXT_PUBLIC_FIREBASE_PROJECT_ID");
-const NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET = getRequiredEnv("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET");
-const NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = getRequiredEnv("NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID");
-const NEXT_PUBLIC_FIREBASE_APP_ID = getRequiredEnv("NEXT_PUBLIC_FIREBASE_APP_ID");
-
-/** Server-only env vars — must NEVER be prefixed NEXT_PUBLIC_ *. */
-export const FIREBASE_PROJECT_ID = getRequiredEnv("FIREBASE_PROJECT_ID");
-export const FIREBASE_CLIENT_EMAIL = getRequiredEnv("FIREBASE_CLIENT_EMAIL");
-export const FIREBASE_PRIVATE_KEY = getRequiredEnv("FIREBASE_PRIVATE_KEY");
+function getRequiredPublicEnv(name: string): string {
+  return getRequiredEnv(name);
+}
 
 /** Optional env vars. */
-export const FIREBASE_EMULATOR_HOST = process.env.FIREBASE_EMULATOR_HOST;
 const FIREBASE_SESSION_EXPIRY_MS = process.env.FIREBASE_SESSION_EXPIRY_MS
   ? parseInt(process.env.FIREBASE_SESSION_EXPIRY_MS, 10)
   : 432000000; // default: 5 days
@@ -59,6 +50,12 @@ export interface FirebaseConfig {
   messagingSenderId: string;
   appId: string;
   measurementId?: string;
+}
+
+export interface FirebaseAdminConfig {
+  projectId: string;
+  clientEmail: string;
+  privateKey: string;
 }
 
 /** Decoded Firebase session cookie / ID token claims. */
@@ -84,7 +81,7 @@ export interface DecodedIdToken {
  * Returns true when running in dev mode (Firebase emulator is configured).
  */
 export function isDevMode(): boolean {
-  return Boolean(FIREBASE_EMULATOR_HOST);
+  return Boolean(getFirebaseEmulatorHost());
 }
 
 /**
@@ -92,14 +89,26 @@ export function isDevMode(): boolean {
  */
 export function getFirebaseConfig(): FirebaseConfig {
   return {
-    apiKey: NEXT_PUBLIC_FIREBASE_API_KEY,
-    authDomain: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    projectId: NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    storageBucket: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    appId: NEXT_PUBLIC_FIREBASE_APP_ID,
+    apiKey: getRequiredPublicEnv("NEXT_PUBLIC_FIREBASE_API_KEY"),
+    authDomain: getRequiredPublicEnv("NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN"),
+    projectId: getRequiredPublicEnv("NEXT_PUBLIC_FIREBASE_PROJECT_ID"),
+    storageBucket: getRequiredPublicEnv("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET"),
+    messagingSenderId: getRequiredPublicEnv("NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID"),
+    appId: getRequiredPublicEnv("NEXT_PUBLIC_FIREBASE_APP_ID"),
     measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || undefined,
   };
+}
+
+export function getFirebaseAdminConfig(): FirebaseAdminConfig {
+  return {
+    projectId: getRequiredEnv("FIREBASE_PROJECT_ID"),
+    clientEmail: getRequiredEnv("FIREBASE_CLIENT_EMAIL"),
+    privateKey: getRequiredEnv("FIREBASE_PRIVATE_KEY"),
+  };
+}
+
+export function getFirebaseEmulatorHost() {
+  return process.env.FIREBASE_EMULATOR_HOST;
 }
 
 /** Session cookie TTL in milliseconds. Defaults to 5 days (432000000). */

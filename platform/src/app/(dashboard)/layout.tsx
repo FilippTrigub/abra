@@ -1,5 +1,4 @@
-import { getUser } from "@/lib/auth/supabase-client";
-import { redirect } from "next/navigation";
+import { requireAuth } from "@/lib/auth";
 import { NavItem, Badge } from "@/components/ui";
 import {
   ensurePlatformAccount,
@@ -12,11 +11,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, error } = await getUser();
-
-  if (error || !user) {
-    redirect("/sign-in");
-  }
+  const user = await requireAuth();
 
   // Bootstrap: ensure platform_account row exists.
   // Non-blocking — the dashboard renders regardless.

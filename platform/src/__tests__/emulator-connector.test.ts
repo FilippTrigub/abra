@@ -8,7 +8,8 @@
  * Skips gracefully when FIREBASE_EMULATOR_HOST is not set so CI
  * can run without the emulator.
  */
-import { describe, it, expect } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
+import { deleteDoc, doc, getDoc, setDoc } from "firebase/firestore";
 
 const emulatorHost = process.env.FIREBASE_EMULATOR_HOST;
 
@@ -20,8 +21,8 @@ describe("Firebase emulator connector", () => {
 
   // Use dynamic imports so module-level env validation in env.ts
   // only runs when the emulator is actually configured.
-  let firestore: FirebaseFirestore.Firestore;
-  let adminFirestore: FirebaseFirestore.Firestore;
+  let firestore: (typeof import("@/lib/firebase/client"))["firestore"];
+  let adminFirestore: ReturnType<(typeof import("@/lib/firebase/admin"))["getAdminFirestore"]>;
 
   beforeAll(async () => {
     const clientMod = await import("@/lib/firebase/client");
@@ -51,18 +52,18 @@ describe("Firebase emulator connector", () => {
 
   it("should write and read via client SDK (browser-facing)", async () => {
     const testId = `emulator_smoke_client_${Date.now()}`;
-    const docRef = firestore.doc(`__emulator_test__/${testId}`);
+    const docRef = doc(firestore, `__emulator_test__/${testId}`);
 
-    await docRef.set({
+    await setDoc(docRef, {
       kind: "emulator-smoke-test-client",
       timestamp: Date.now(),
     });
 
-    const snapshot = await docRef.get();
+    const snapshot = await getDoc(docRef);
     expect(snapshot.exists).toBe(true);
     expect(snapshot.data()?.kind).toBe("emulator-smoke-test-client");
 
-    await docRef.delete();
+    await deleteDoc(docRef);
   });
 
   it("should support collectionGroup-style queries", async () => {
