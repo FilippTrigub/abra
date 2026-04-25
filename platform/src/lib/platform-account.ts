@@ -81,6 +81,7 @@ export async function ensurePlatformAccount(authUserId: string) {
   try {
     // Use dynamic import to avoid server-only issues in test environments
     const adminMod = await import("@/lib/firebase/admin");
+    const settingsMod = await import("@/lib/settings/service");
     const firestore = adminMod.getAdminFirestore();
 
     // Check if account doc already exists.
@@ -99,6 +100,8 @@ export async function ensurePlatformAccount(authUserId: string) {
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       });
+
+      await settingsMod.ensureSettingsDocument(authUserId);
     }
 
     // Read the doc to return account data (compatibility with existing callers).

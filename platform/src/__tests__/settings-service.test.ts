@@ -63,16 +63,24 @@ describe("settings service - Firestore migration", () => {
       expect(result.warning).toBeNull();
     });
 
-    it("should return defaults when Firestore doc does not exist", async () => {
+    it("should create and return default settings when Firestore doc does not exist", async () => {
+      const set = vi.fn().mockResolvedValue(undefined);
       mockFirestore.doc.mockReturnValue({
         get: vi.fn().mockResolvedValue({ exists: false }),
+        set,
       } as any);
 
       const result = await loadSettings("user-456");
 
-      expect(result.persistence).toBe("memory");
+      expect(result.persistence).toBe("database");
       expect(result.snapshot.values.defaultEnvironment).toBe("preview");
-      expect(result.warning).toBe("Firestore storage is unavailable. Showing default values.");
+      expect(result.warning).toBeNull();
+      expect(set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          values: expect.objectContaining({ defaultEnvironment: "preview" }),
+        }),
+        { merge: true },
+      );
     });
 
     it("should return defaults when Firestore throws an error", async () => {

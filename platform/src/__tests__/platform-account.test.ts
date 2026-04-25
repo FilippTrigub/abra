@@ -39,6 +39,11 @@ describe("platform-account Firestore integration", () => {
   afterEach(async () => {
     // Clean up test document after each test
     try {
+      await firestore.doc(`accounts/${testUid}/settings/current`).delete();
+    } catch {
+      // Ignore cleanup errors
+    }
+    try {
       await firestore.doc(`accounts/${testUid}`).delete();
     } catch {
       // Ignore cleanup errors
@@ -79,6 +84,18 @@ describe("platform-account Firestore integration", () => {
 
       expect(account?.subscriptionPlan).toBe("free");
       expect(account?.subscriptionStatus).toBe("active");
+    });
+
+    it("should create default settings for a newly bootstrapped account", async () => {
+      await ensurePlatformAccount(testUid);
+
+      const settingsSnap = await firestore.doc(`accounts/${testUid}/settings/current`).get();
+
+      expect(settingsSnap.exists).toBe(true);
+      expect(settingsSnap.data()?.values).toMatchObject({
+        defaultEnvironment: "preview",
+        mockOutcome: "succeeded",
+      });
     });
   });
 

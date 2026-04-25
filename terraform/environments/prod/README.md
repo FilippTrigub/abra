@@ -1,25 +1,25 @@
 # Production Environment
 
-This root module deploys the first production environment for Abra.
+This root module deploys the first production **AKS foundation** for Abra.
 
-Status: module wiring is in place and the configuration validates locally.
+Status: module wiring now provisions shared services plus an AKS cluster for future stateful OpenClaw runtimes.
 
 ## Included resources
 
 - shared foundation module
-- public router Container App
-- one agent Container App per `users` entry
+- AKS cluster
+- ACR
+- Blob Storage containers
+- Service Bus namespace and queues
+- Key Vault
+- PostgreSQL flexible server
+- Log Analytics workspace
 
-## Terraform-managed onboarding
+## Important scope note
 
-Per-user agents are created by editing `users` in your tfvars and running:
+This environment provisions **infrastructure only**.
 
-```bash
-terraform plan -var-file=prod.tfvars
-terraform apply -var-file=prod.tfvars
-```
-
-This is Terraform-managed onboarding, not runtime self-provisioning.
+It does **not** create per-user Abra StatefulSets, Services, or PVCs yet. Those runtime resources are expected to be created by the future orchestration backend so that the platform can manage create/update/restart/destroy flows dynamically.
 
 ## Validation flow
 
@@ -32,11 +32,13 @@ terraform plan -var-file=prod.tfvars
 
 ## Important runtime note
 
-This environment provisions Azure resources only. The application still must be adapted to consume:
+This environment gives the platform the Azure foundation required by the AKS deployment plan. The application still must be adapted to:
 
-- Blob-backed artifacts instead of local `input/`, `output/`, and `archive/`
-- Key Vault / env-backed configuration instead of `~/.openclaw/openclaw.json`
-- Blob-backed brand asset storage instead of local `skills/brand-manager/brand-assets/`
+- create and reconcile per-agent StatefulSets and PVCs in AKS
+- hydrate `~/.openclaw` before OpenClaw startup
+- map runtime artifacts to Blob Storage
+- map secrets/config to Key Vault-backed runtime injection
+- replace the mock deployment adapter with a real AKS orchestration adapter
 
 ## Next steps
 

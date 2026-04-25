@@ -1,3 +1,79 @@
+variable "aks_default_node_count" {
+  description = "Initial node count for the AKS system pool"
+  type        = number
+  default     = 1
+}
+
+variable "aks_dns_service_ip" {
+  description = "Cluster DNS service IP inside the AKS service CIDR"
+  type        = string
+  default     = "10.0.0.10"
+}
+
+variable "aks_max_node_count" {
+  description = "Maximum node count for the AKS system pool autoscaler"
+  type        = number
+  default     = 3
+}
+
+variable "aks_max_pods" {
+  description = "Maximum pods per AKS node"
+  type        = number
+  default     = 30
+}
+
+variable "aks_min_node_count" {
+  description = "Minimum node count for the AKS system pool autoscaler"
+  type        = number
+  default     = 1
+}
+
+variable "aks_node_vm_size" {
+  description = "VM size for the AKS system pool"
+  type        = string
+  default     = "Standard_D4s_v5"
+}
+
+variable "aks_os_disk_size_gb" {
+  description = "OS disk size in GB for AKS nodes"
+  type        = number
+  default     = 128
+}
+
+variable "aks_service_cidr" {
+  description = "Kubernetes service CIDR for the AKS cluster"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "aks_sku_tier" {
+  description = "AKS SKU tier"
+  type        = string
+  default     = "Free"
+
+  validation {
+    condition     = contains(["Free", "Standard"], var.aks_sku_tier)
+    error_message = "aks_sku_tier must be Free or Standard."
+  }
+}
+
+variable "api_server_authorized_ip_ranges" {
+  description = "Optional public CIDR ranges allowed to reach the AKS API server"
+  type        = list(string)
+  default     = []
+}
+
+variable "kubernetes_version" {
+  description = "Kubernetes version for the AKS cluster"
+  type        = string
+  default     = "1.30.0"
+}
+
+variable "location" {
+  description = "Azure region for resources"
+  type        = string
+}
+
 variable "naming_prefix" {
   description = "Short prefix for all resources (a-z, 0-9, max 6 chars)"
   type        = string
@@ -8,15 +84,10 @@ variable "naming_prefix" {
   }
 }
 
-variable "location" {
-  description = "Azure region for resources"
+variable "postgres_admin_password" {
+  description = "PostgreSQL administrator password"
   type        = string
-}
-
-variable "tags" {
-  description = "Common tags for all resources"
-  type        = map(string)
-  default     = {}
+  sensitive   = true
 }
 
 variable "postgres_admin_user" {
@@ -25,76 +96,8 @@ variable "postgres_admin_user" {
   sensitive   = true
 }
 
-variable "postgres_admin_password" {
-  description = "PostgreSQL administrator password"
-  type        = string
-  sensitive   = true
-}
-
-variable "router_image" {
-  description = "ACR image reference for the router Container App"
-  type        = string
-}
-
-variable "agent_image" {
-  description = "ACR image reference for agent Container Apps"
-  type        = string
-}
-
-variable "acr_admin_username" {
-  description = "ACR admin username"
-  type        = string
-  sensitive   = true
-}
-
-variable "acr_admin_password" {
-  description = "ACR admin password"
-  type        = string
-  sensitive   = true
-}
-
-variable "acr_login_server" {
-  description = "ACR login server URL"
-  type        = string
-}
-
-variable "runpod_api_key" {
-  description = "Global RunPod API key"
-  type        = string
-  sensitive   = true
-}
-
-variable "runpod_endpoint_ids" {
-  description = "Map of per-skill RunPod endpoint IDs"
+variable "tags" {
+  description = "Common tags for all resources"
   type        = map(string)
   default     = {}
-}
-
-variable "backblaze_b2_key_id" {
-  description = "Backblaze B2 key ID for RunPod staging"
-  type        = string
-  sensitive   = true
-}
-
-variable "backblaze_b2_app_key" {
-  description = "Backblaze B2 application key for RunPod staging"
-  type        = string
-  sensitive   = true
-}
-
-variable "backblaze_b2_bucket_name" {
-  description = "Backblaze B2 bucket name for RunPod staging"
-  type        = string
-  sensitive   = true
-}
-
-variable "users" {
-  description = "Map of users to onboard. Each entry creates a per-user agent."
-  type = map(object({
-    display_name             = string
-    blob_prefix              = string
-    runpod_api_key           = string
-    backblaze_b2_bucket_name = string
-  }))
-  default = {}
 }

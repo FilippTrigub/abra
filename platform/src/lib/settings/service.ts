@@ -12,29 +12,63 @@ function buildDefaultValues(): ConfigSnapshot["values"] {
   return values;
 }
 
+function buildSnapshot(
+  authUserId: string,
+  values: ConfigSnapshot["values"],
+  timestamps?: {
+    createdAt?: Timestamp | null;
+    updatedAt?: Timestamp | null;
+  },
+): ConfigSnapshot {
+  return {
+    id: authUserId,
+    accountScope: authUserId,
+    values,
+    createdAt: timestamps?.createdAt?.toDate()?.toISOString() ?? new Date().toISOString(),
+    updatedAt: timestamps?.updatedAt?.toDate()?.toISOString() ?? new Date().toISOString(),
+  };
+}
+
+export async function ensureSettingsDocument(authUserId: string): Promise<ConfigSnapshot> {
+  const firestore = getAdminFirestore();
+  const docRef = firestore.doc(`accounts/${authUserId}/settings/current`);
+  const doc = await docRef.get();
+
+  if (doc.exists) {
+    const data = doc.data() as DocumentData | undefined;
+    if (data?.values) {
+      return buildSnapshot(authUserId, data.values as ConfigSnapshot["values"], {
+        createdAt: (data.createdAt as Timestamp | null | undefined) ?? null,
+        updatedAt: (data.updatedAt as Timestamp | null | undefined) ?? null,
+      });
+    }
+  }
+
+  const values = buildDefaultValues();
+  const now = admin.firestore.FieldValue.serverTimestamp();
+
+  await docRef.set(
+    {
+      values,
+      createdAt: now,
+      updatedAt: now,
+    },
+    { merge: true },
+  );
+
+  return buildSnapshot(authUserId, values);
+}
+
 export async function loadSettings(authUserId: string): Promise<SettingsResponse> {
   try {
-    const firestore = getAdminFirestore();
-    const docRef = firestore.doc(`accounts/${authUserId}/settings/current`);
-    const doc = await docRef.get();
+    const snapshot = await ensureSettingsDocument(authUserId);
 
-    if (doc.exists) {
-      const data = doc.data() as DocumentData;
-      if (data && data.values) {
-        return {
-          snapshot: {
-            id: doc.id,
-            accountScope: authUserId,
-            values: data.values as ConfigSnapshot["values"],
-            createdAt: (data.createdAt as Timestamp)?.toDate()?.toISOString() ?? new Date().toISOString(),
-            updatedAt: (data.updatedAt as Timestamp)?.toDate()?.toISOString() ?? new Date().toISOString(),
-          },
-          definitions: SETTINGS_DEFINITIONS,
-          persistence: "database",
-          warning: null,
-        };
-      }
-    }
+    return {
+      snapshot,
+      definitions: SETTINGS_DEFINITIONS,
+      persistence: "database",
+      warning: null,
+    };
   } catch {
     // Firestore unavailable, return defaults
   }
@@ -97,15 +131,7 @@ export async function saveSettings(
       });
     }
 
-    const snap: ConfigSnapshot = {
-      id: authUserId,
-      accountScope: authUserId,
-      values: mergedValues,
-      createdAt: existingDoc.exists 
-        ? new Date().toISOString() 
-        : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    const snap = buildSnapshot(authUserId, mergedValues);
     return {
       success: true,
       snapshot: snap,
@@ -139,13 +165,7 @@ export async function revertSettings(authUserId: string): Promise<SettingsUpdate
       updatedAt: now,
     }, { merge: true });
 
-    const snap: ConfigSnapshot = {
-      id: authUserId,
-      accountScope: authUserId,
-      values: defaultValues,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    const snap = buildSnapshot(authUserId, defaultValues);
     return {
       success: true,
       snapshot: snap,

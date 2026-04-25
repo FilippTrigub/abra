@@ -5,8 +5,10 @@ import {
   getOrchestrationAdapter,
   type MockOperationOutcome,
 } from "@/lib/orchestration";
+import { synthesizeMockOperation } from "@/lib/orchestration/mock-store";
+import { firestoreOperationStore } from "@/lib/orchestration/firestore-operation-store";
+import { toIsoTimestamp } from "@/lib/firestore-serialization";
 import * as admin from "firebase-admin";
-import type { DocumentData, Timestamp } from "firebase-admin/firestore";
 
 export type DeploymentStatus = "queued" | "running" | "succeeded" | "failed";
 export type DeploymentEnvironment = "preview" | "staging" | "production";
@@ -200,9 +202,13 @@ function toDashboardDeployment(
         ? record.row.status
         : "queued";
   const createdAt =
-    record.persistence === "database" ? record.row.created_at : record.row.createdAt;
+    record.persistence === "database"
+      ? toIsoTimestamp(record.row.created_at, new Date().toISOString())
+      : record.row.createdAt;
   const updatedAt =
-    record.persistence === "database" ? record.row.updated_at : record.row.updatedAt;
+    record.persistence === "database"
+      ? toIsoTimestamp(record.row.updated_at, createdAt)
+      : record.row.updatedAt;
   const errorMessage =
     record.persistence === "database"
       ? record.row.error_message
@@ -376,6 +382,26 @@ async function getDeploymentRecord(accountScope: string, deploymentId: string) {
     console.warn("[deployments] fetch failed:", error);
     return null;
   }
+}
+
+function buildDeploymentOperationInput(deployment: DashboardDeployment) {
+  return {
+    requestId: deployment.orchestration?.requestId ?? crypto.randomUUID(),
+    target: {
+      accountId: deployment.accountScope,
+      agentId: null,
+      deploymentId: deployment.id,
+    },
+    payload: {
+      name: deployment.request.name,
+      environment: deployment.request.environment,
+      sourceRef: deployment.request.sourceRef,
+      notes: deployment.request.notes,
+    },
+    mockBehavior: {
+      outcome: deployment.request.mockOutcome,
+    },
+  };
 }
 
 async function persistDeployment(
@@ -576,24 +602,10 @@ export async function dispatchDeploymentRequest(deploymentId: string, authUserId
   }
 
   try {
-    const operation = await dispatchOrchestrationAction("create", {
-      requestId:
-        deployment.orchestration?.requestId ?? crypto.randomUUID(),
-      target: {
-        accountId: deployment.accountScope,
-        agentId: null,
-        deploymentId: deployment.id,
-      },
-      payload: {
-        name: deployment.request.name,
-        environment: deployment.request.environment,
-        sourceRef: deployment.request.sourceRef,
-        notes: deployment.request.notes,
-      },
-      mockBehavior: {
-        outcome: deployment.request.mockOutcome,
-      },
-    });
+    const operation = await dispatchOrchestrationAction(
+      "create",
+      buildDeploymentOperationInput(deployment),
+    );
 
     return await persistDeployment(
       {
@@ -653,11 +665,56 @@ export async function syncDeploymentStatusForUser(
     return deployment;
   }
 
-  const operation = await getOrchestrationAdapter().getStatus(
+  // First, try to read from the durable operation store
+  let operation = await firestoreOperationStore.getStatus(
     deployment.orchestration.operationId,
   );
 
+  // Fallback: if not found in durable store and adapter is mock, synthesize from mock store
+  if (!operation && deployment.orchestration.adapter === "mock") {
+    const adapterOperation = await getOrchestrationAdapter().getStatus(
+      deployment.orchestration.operationId,
+    );
+
+    if (adapterOperation) {
+      // Persist the mock operation to durable store for future reads
+      operation = adapterOperation;
+      await firestoreOperationStore.create(adapterOperation);
+    }
+  }
+
+  // If still no operation found, synthesize or fail
   if (!operation) {
+    if (deployment.orchestration.adapter === "mock") {
+      const synthesizedOperation = synthesizeMockOperation(
+        deployment.orchestration.operationId,
+        "create",
+        buildDeploymentOperationInput(deployment),
+        deployment.request.mockOutcome,
+        deployment.createdAt,
+      );
+
+      return await persistDeployment(
+        {
+          ...deployment,
+          status: synthesizedOperation.status,
+          updatedAt: synthesizedOperation.updatedAt,
+          errorMessage: synthesizedOperation.error?.message ?? null,
+          resultUrl:
+            synthesizedOperation.result?.resourceHandle ?? deployment.resultUrl,
+          orchestration: {
+            requestId: synthesizedOperation.requestId,
+            operationId: synthesizedOperation.operationId,
+            adapter: synthesizedOperation.adapter,
+            pollAfterMs: synthesizedOperation.pollAfterMs,
+            lastKnownStatus: synthesizedOperation.status,
+            lastSyncedAt: synthesizedOperation.updatedAt,
+          },
+        },
+        deployment.accountScope,
+      );
+    }
+
     return await persistDeployment(
       {
         ...deployment,

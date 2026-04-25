@@ -8,38 +8,11 @@ import {
   type DeploymentEnvironment,
 } from "@/lib/deployments";
 import { getUser } from "@/lib/auth/supabase-client";
-
-type FieldName = "name" | "environment" | "sourceRef" | "notes" | "mockOutcome";
-
-export interface DeploymentFormState {
-  status: "idle" | "success" | "error";
-  message: string | null;
-  warning: string | null;
-  fields: {
-    name: string;
-    environment: DeploymentEnvironment;
-    sourceRef: string;
-    notes: string;
-    mockOutcome: "succeeded" | "failed";
-  };
-  fieldErrors: Partial<Record<FieldName, string>>;
-  deployment: DashboardDeployment | null;
-}
-
-export const initialDeploymentFormState: DeploymentFormState = {
-  status: "idle",
-  message: null,
-  warning: null,
-  fields: {
-    name: "",
-    environment: "preview",
-    sourceRef: "main",
-    notes: "",
-    mockOutcome: "succeeded",
-  },
-  fieldErrors: {},
-  deployment: null,
-};
+import {
+  initialDeploymentFormState,
+  type DeploymentFieldName,
+  type DeploymentFormState,
+} from "./deployment-form-state";
 
 function getString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -68,7 +41,7 @@ export async function submitDeploymentRequest(
     mockOutcome: getString(formData, "mockOutcome"),
   };
 
-  const fieldErrors: Partial<Record<FieldName, string>> = {};
+  const fieldErrors: Partial<Record<DeploymentFieldName, string>> = {};
 
   if (fields.name.length < 3 || fields.name.length > 60) {
     fieldErrors.name = "Use 3 to 60 characters for the deployment name.";

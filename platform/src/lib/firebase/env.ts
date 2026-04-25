@@ -23,13 +23,33 @@ function getRequiredEnv(name: string): string {
   return value;
 }
 
+function getRequiredValue(name: string, value: string | undefined): string {
+  if (!value) {
+    throw new Error(
+      `Missing required Firebase env var: ${name}. See platform/.env.example for all required variables.`,
+    );
+  }
+
+  return value;
+}
+
 // ---------------------------------------------------------------------------
 // Required env vars — validated at module load time
 // ---------------------------------------------------------------------------
 
 /** Browser-facing env vars — safe to expose in client bundles (NEXT_PUBLIC_*). */
-function getRequiredPublicEnv(name: string): string {
-  return getRequiredEnv(name);
+const PUBLIC_FIREBASE_ENV = {
+  NEXT_PUBLIC_FIREBASE_API_KEY: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  NEXT_PUBLIC_FIREBASE_PROJECT_ID: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  NEXT_PUBLIC_FIREBASE_APP_ID: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
+} as const;
+
+function getRequiredPublicEnv(name: keyof typeof PUBLIC_FIREBASE_ENV): string {
+  return getRequiredValue(name, PUBLIC_FIREBASE_ENV[name]);
 }
 
 /** Optional env vars. */
@@ -95,7 +115,7 @@ export function getFirebaseConfig(): FirebaseConfig {
     storageBucket: getRequiredPublicEnv("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET"),
     messagingSenderId: getRequiredPublicEnv("NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID"),
     appId: getRequiredPublicEnv("NEXT_PUBLIC_FIREBASE_APP_ID"),
-    measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || undefined,
+    measurementId: PUBLIC_FIREBASE_ENV.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || undefined,
   };
 }
 

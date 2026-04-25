@@ -3,10 +3,8 @@
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { Badge, Button, Card, EmptyState, Input, Label, Panel, Select, Textarea } from "@/components/ui";
 import type { DashboardDeployment } from "@/lib/deployments";
-import {
-  initialDeploymentFormState,
-  submitDeploymentRequest,
-} from "./actions";
+import { submitDeploymentRequest } from "./actions";
+import { initialDeploymentFormState } from "./deployment-form-state";
 
 interface DeploymentConsoleProps {
   initialDeployments: DashboardDeployment[];

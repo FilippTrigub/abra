@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getUser } from "@/lib/auth/supabase-client";
+import { isDevAuthBypassEnabled } from "@/lib/auth/dev-bypass";
 
 export default async function proxy(request: NextRequest) {
+  if (isDevAuthBypassEnabled()) {
+    return NextResponse.next();
+  }
+
   const response = NextResponse.next();
 
   try {
