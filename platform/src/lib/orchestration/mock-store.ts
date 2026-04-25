@@ -192,6 +192,24 @@ export function readMockOperation(operationId: string) {
   return buildMockOperation(record);
 }
 
+export function synthesizeMockOperation(
+  operationId: string,
+  action: OrchestrationAction,
+  input: OrchestrationOperationInput,
+  outcome: MockOperationOutcome,
+  createdAt: string,
+) {
+  const createdAtMs = Date.parse(createdAt);
+
+  return buildMockOperation({
+    operationId,
+    action,
+    input,
+    createdAtMs: Number.isNaN(createdAtMs) ? Date.now() : createdAtMs,
+    outcome,
+  });
+}
+
 function buildMockOperation(record: MockOperationRecord): OrchestrationOperation {
   const elapsedMs = Math.max(0, Date.now() - record.createdAtMs);
   const status = getOperationStatus(elapsedMs, record.outcome);

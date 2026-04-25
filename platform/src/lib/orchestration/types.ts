@@ -37,7 +37,8 @@ export interface OrchestrationOperationError {
 export interface OrchestrationOperationResult {
   message: string;
   resourceHandle: string;
-  metadata?: Record<string, unknown>;
+  /** Adapter-specific metadata (e.g., AKS runtime details) */
+  metadata?: AdapterMetadata;
 }
 
 export interface OrchestrationOperation {
@@ -55,6 +56,8 @@ export interface OrchestrationOperation {
   steps: OrchestrationOperationStep[];
   error: OrchestrationOperationError | null;
   result: OrchestrationOperationResult | null;
+  /** Adapter-specific runtime metadata for durable operation storage */
+  runtimeMetadata?: AdapterMetadata;
 }
 
 export interface OrchestrationAdapter {
@@ -64,4 +67,36 @@ export interface OrchestrationAdapter {
   restart(input: OrchestrationOperationInput): Promise<OrchestrationOperation>;
   destroy(input: OrchestrationOperationInput): Promise<OrchestrationOperation>;
   getStatus(operationId: string): Promise<OrchestrationOperation | null>;
+}
+
+/**
+ * AKS-specific runtime metadata for durable operation storage.
+ * Represents the Kubernetes resources created for an Abra agent runtime.
+ */
+export interface AkRuntimeMetadata {
+  /** Kubernetes namespace where the runtime is deployed */
+  namespace: string;
+  /** Name of the StatefulSet workload */
+  statefulSetName: string;
+  /** Name of the PVC backing ~/.openclaw */
+  pvcName: string;
+  /** Name of the internal Service for gateway routing */
+  serviceName: string;
+  /** Config revision number for the deployed runtime */
+  configRevision?: number;
+  /** Pod name (set when runtime is running) */
+  podName?: string;
+  /** Gateway route handle for reaching the runtime */
+  gatewayRoute?: string;
+}
+
+/**
+ * Adapter-specific metadata that can be attached to operation results.
+ * Used by real adapters (e.g., AKS) to provide resource handle details.
+ */
+export interface AdapterMetadata {
+  /** Runtime metadata for AKS-backed deployments */
+  aks?: AkRuntimeMetadata;
+  /** Additional adapter-specific fields */
+  [key: string]: unknown;
 }

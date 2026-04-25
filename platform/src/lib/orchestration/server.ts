@@ -1,3 +1,4 @@
+import { AksOrchestrationAdapter } from "./aks-adapter";
 import { MockOrchestrationAdapter } from "./mock-adapter";
 import type {
   OrchestrationAction,
@@ -7,20 +8,39 @@ import type {
 
 let adapterSingleton: OrchestrationAdapter | null = null;
 
+/**
+ * Gets the orchestration adapter based on backend configuration.
+ *
+ * Supported backends:
+ * - mock: Default for local development and testing
+ * - aks: AKS-backed adapter with Kubernetes auth bootstrap
+ */
 export function getOrchestrationAdapter(): OrchestrationAdapter {
   const backend = process.env.ORCHESTRATION_BACKEND ?? "mock";
 
-  if (backend !== "mock") {
-    throw new Error(
-      `Unsupported orchestration backend \"${backend}\". Only \"mock\" is configured locally.`,
-    );
-  }
+  switch (backend) {
+    case "mock":
+      if (!adapterSingleton) {
+        adapterSingleton = new MockOrchestrationAdapter();
+      }
+      return adapterSingleton;
 
-  if (!adapterSingleton) {
-    adapterSingleton = new MockOrchestrationAdapter();
-  }
+    case "aks":
+      if (!adapterSingleton) {
+        adapterSingleton = new AksOrchestrationAdapter();
+      }
+      return adapterSingleton;
 
-  return adapterSingleton;
+    default:
+      throw new Error(
+        `Unsupported orchestration backend "${backend}". Supported values: "mock", "aks".`,
+      );
+  }
+}
+
+/** @internal For testing only - resets the adapter singleton */
+export function __resetAdapterSingleton(): void {
+  adapterSingleton = null;
 }
 
 export async function dispatchOrchestrationAction(
