@@ -28,7 +28,7 @@ There is **no more runtime fallback** to `skills/post-scheduler/.env`.
 
 The installer writes credentials here and wires the path into `openclaw.json` via `env.BACKBLAZE_B2_ENV_FILE`.
 
-### 3. Updated Installer (`install-abra.sh`)
+### 3. Updated Installer (`installers/install-abra-on-openclaw.sh`)
 
 The installer now:
 
@@ -46,7 +46,7 @@ Added generic installer support for four API keys:
 - `FREESOUND_API_KEY` (freesound)
 - `PIXABAY_API_KEY` (pixabay)
 
-**Resolution order** (when running `./install-abra.sh`):
+**Resolution order** (when running `./installers/install-abra-on-openclaw.sh`):
 
 1. Shell environment variables
 2. Existing `openclaw.json` `env` block values
@@ -67,7 +67,7 @@ Created `backblaze.backup.env` in repo root (gitignored) containing the original
 |------|--------|
 | `skills/post-scheduler/scripts/video_staging.py` | Removed `_SKILL_ENV_PATH` fallback; added `_B2_ENV_FILE_VAR` and `_configured_b2_env_path()` |
 | `tests/test_post_scheduler_video_staging.py` | Removed tests for skill-local `.env` fallback; updated tests for new env-file path |
-| `install-abra.sh` | Added new helper functions, moved config file to `~/.openclaw/`, added API key installer support |
+| `installers/install-abra-on-openclaw.sh` | Added new helper functions, moved config file to `~/.openclaw/`, added API key installer support |
 | `README.md` | Documented new config path, resolution order, and API key installer support |
 | `SKILLS.md` | Updated skill summary with new secret loading behavior |
 | `skills/post-scheduler/SKILL.md` | Updated setup instructions |
@@ -111,7 +111,7 @@ Created `backblaze.backup.env` in repo root (gitignored) containing the original
 
 ## Migration Note
 
-On reinstall, `install-abra.sh` will:
+On reinstall, `installers/install-abra-on-openclaw.sh` will:
 1. Migrate any existing `~/.openclaw/workspace-abra/skills/post-scheduler/.env` to `~/.openclaw/post-scheduler-backblaze.env`
 2. Remove the legacy file
 3. Wire `env.BACKBLAZE_B2_ENV_FILE` in `openclaw.json`

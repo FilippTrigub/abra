@@ -86,11 +86,13 @@ Abra includes 29 specialized skills for personal brand management:
 
 ### Install Abra
 
-Abra runs on top of OpenClaw. First build and run the OpenClaw-based Docker image from this repo, then install Abra into that OpenClaw instance with `install-abra.sh`.
+Abra can be installed into either OpenClaw or Hermes. The platform-specific scripts now live under `installers/`.
 
-Before running the installer, it's best to set your API keys in a `.env` file first. By default, `install-abra.sh` reads `./.env`, but you can point it at a different file with `--env-file`. The installer imports values from that file, warns if expected keys are missing or empty, and writes the resolved configuration into `~/.openclaw/openclaw.json`.
+Before running an installer, it's best to set your API keys in a `.env` file first. By default, both install scripts read `./.env`, but you can point either one at a different file with `--env-file`. The installer imports values from that file and warns if expected keys are missing or empty.
 
 ```bash
+# OpenClaw install
+
 # 1. Build the OpenClaw-based image from this repo
 docker build -t abra:latest .
 
@@ -99,13 +101,16 @@ docker compose up -d openclaw-gateway
 
 # 3. Optional but recommended: set your API keys in ./.env first
 # 4. Install Abra into your OpenClaw workspace
-bash ./install-abra.sh
+bash ./installers/install-abra-on-openclaw.sh
 
 # Or use a different dotenv file
-bash ./install-abra.sh --env-file ./.env.production
+bash ./installers/install-abra-on-openclaw.sh --env-file ./.env.production
+
+# Hermes install
+bash ./installers/install-abra-on-hermes.sh
 ```
 
-The installer copies Abra into `~/.openclaw/workspace-abra/`, registers it with OpenClaw, and can scaffold optional env files such as `~/.openclaw/post-scheduler-backblaze.env`.
+The OpenClaw installer copies Abra into `~/.openclaw/workspace-abra/`, registers it with OpenClaw, and can scaffold optional env files such as `~/.openclaw/post-scheduler-backblaze.env`. The Hermes installer creates a profile under `~/.hermes/profiles/abra/` and writes an Abra-specific `.env`, `config.yaml`, and skill set there.
 
 ### Prerequisites
 
@@ -350,7 +355,7 @@ BUFFER_API_KEY=your-buffer-token   # Required for scheduling
 ### Optional post-scheduler Backblaze B2 setup
 
 Scheduled local video posts can stage through Backblaze B2. During
-`./install-abra.sh`, Abra can optionally scaffold the post-scheduler B2 env
+`./installers/install-abra-on-openclaw.sh`, Abra can optionally scaffold the post-scheduler B2 env
 file next to the OpenClaw config:
 
 ```bash
@@ -368,11 +373,11 @@ BACKBLAZE_B2_BUCKET_NAME=...
 
 Notes:
 - this installer step is optional
-- `install-abra.sh` also writes `env.BACKBLAZE_B2_ENV_FILE` into `~/.openclaw/openclaw.json`
+- `installers/install-abra-on-openclaw.sh` also writes `env.BACKBLAZE_B2_ENV_FILE` into `~/.openclaw/openclaw.json`
 - shell environment values still override any file-based B2 config
 - installer-managed skill env vars can be sourced from a dotenv file and persisted into `~/.openclaw/openclaw.json` under `env`
 - the installer reads `./.env` by default, or a custom file passed via `--env-file PATH`
-- for installer-managed env vars, `install-abra.sh` resolves values in this order: shell env → selected `.env` file → existing `openclaw.json` env
+- for installer-managed OpenClaw env vars, `installers/install-abra-on-openclaw.sh` resolves values in this order: shell env → selected `.env` file → existing `openclaw.json` env
 - instead of prompting for every env var, the installer now warns when expected keys are missing or empty in the selected dotenv file and continues with available fallback values
 - for non-interactive installs, set `ABRA_CONFIGURE_POST_SCHEDULER_ENV=1` to force the scaffold step or `ABRA_CONFIGURE_POST_SCHEDULER_ENV=0` to skip it
 
@@ -394,7 +399,7 @@ Resolution order for Backblaze values is:
 2. `BACKBLAZE_B2_ENV_FILE`
 
 There is no runtime fallback to `skills/post-scheduler/.env` anymore. On
-reinstall, `install-abra.sh` will migrate any old workspace-local
+reinstall, `installers/install-abra-on-openclaw.sh` will migrate any old workspace-local
 `skills/post-scheduler/.env` into `~/.openclaw/post-scheduler-backblaze.env`
 and remove the legacy copy.
 

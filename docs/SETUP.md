@@ -617,4 +617,4 @@ After obtaining your API keys, you can configure them in `~/.openclaw/openclaw.j
 }
 ```
 
-Or run `./install-abra.sh` interactively to be prompted for each key.
+Or run `./installers/install-abra-on-openclaw.sh` interactively to be prompted for each key.
