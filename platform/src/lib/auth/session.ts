@@ -14,8 +14,8 @@
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 
-import { getUser } from "./supabase-client";
-import type { AuthenticatedUser } from "./supabase-client";
+import { getUser } from "./firebase-auth";
+import type { AuthenticatedUser } from "./firebase-auth";
 
 /**
  * Centralized auth check for Server Components and Layouts.

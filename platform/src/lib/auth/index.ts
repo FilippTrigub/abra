@@ -1,11 +1,11 @@
 /**
  * Re-exports auth utilities for convenience.
- * The main entry point is `supabase-client.ts` — this module
+ * The main entry point is `firebase-auth.ts` — this module
  * exists so callers can do `import { getUser } from "@/lib/auth"`
  * instead of the deeper path.
  */
-export { createSupabaseServerClient, getUser } from "./supabase-client";
-export type { AuthenticatedUser } from "./supabase-client";
+export { getUser } from "./firebase-auth";
+export type { AuthenticatedUser } from "./firebase-auth";
 export {
   requireAuth,
   requireApiAuth,
