@@ -7,7 +7,7 @@ import {
   type DashboardDeployment,
   type DeploymentEnvironment,
 } from "@/lib/deployments";
-import { getUser } from "@/lib/auth/supabase-client";
+import { getUser } from "@/lib/auth/firebase-auth";
 import {
   initialDeploymentFormState,
   type DeploymentFieldName,

@@ -1,5 +1,5 @@
 import { Badge, Button, Card, ErrorState, Panel } from "@/components/ui";
-import { getUser } from "@/lib/auth/supabase-client";
+import { getUser } from "@/lib/auth/firebase-auth";
 import { getDeploymentFeed } from "@/lib/deployments";
 import { DeploymentConsole } from "./deployment-console";
 
