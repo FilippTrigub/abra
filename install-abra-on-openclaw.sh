@@ -1274,7 +1274,7 @@ for skill_dir in "${SKILL_SOURCE}"/*; do
     [[ "${skill_name}" == "input" || "${skill_name}" == "output" || "${skill_name}" == ".venv" ]] && continue
 
     # Check if this skill should be copied based on enablement
-    local skip_skill=1
+    skip_skill=1
     case "${skill_name}" in
         post-scheduler) [ "${SKILL_ENABLED_POST_SCHEDULER}" = "1" ] && skip_skill=0 ;;
         giphy) [ "${SKILL_ENABLED_GIPHY}" = "1" ] && skip_skill=0 ;;
