@@ -58,7 +58,7 @@ export FREESOUND_API_KEY="your_freesound_key"
 cd "$SKILL_DIR" && uv sync
 ```
 
-Or run `./install-abra.sh` to persist `FREESOUND_API_KEY` into
+Or run `./installers/install-abra-on-openclaw.sh` to persist `FREESOUND_API_KEY` into
 `~/.openclaw/openclaw.json` under `env`. The installer uses shell env first,
 existing OpenClaw config second, and the repo root `.env` as a fallback default
 before interactive confirmation.

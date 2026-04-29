@@ -83,7 +83,7 @@ docker push filipptri/abra-video-editor:latest
 
 **4. Configure via install script:**
 ```bash
-bash install-abra.sh
+bash ./installers/install-abra-on-openclaw.sh
 # Follow prompts for RunPod API key, endpoint IDs, and B2 staging credentials
 ```
 

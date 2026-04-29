@@ -14,7 +14,7 @@ dotenv file pointed to by `BACKBLAZE_B2_ENV_FILE`. The recommended OpenClaw
 setup is to store that dotenv file at `~/.openclaw/post-scheduler-backblaze.env` and set
 `env.BACKBLAZE_B2_ENV_FILE` in `~/.openclaw/openclaw.json`.
 
-`install-abra.sh` seeds all skill API keys into `~/.openclaw/openclaw.json` under `env`. This includes:
+`installers/install-abra-on-openclaw.sh` seeds all skill API keys into `~/.openclaw/openclaw.json` under `env`. This includes:
 - Core skills: `BUFFER_API_KEY`, `GIPHY_API_KEY`, `FREESOUND_API_KEY`, `PIXABAY_API_KEY`
 - Marketing skills: all keys documented in [docs/SETUP.md](./docs/SETUP.md)
 
@@ -41,6 +41,7 @@ Every tool accepts `--device cpu` to fall back to CPU/RAM:
 | audio-splitter | ~2 GB | ✅ yes | slow but usable (~3–5× realtime) |
 | music-generator | ~3 GB | ✅ yes | very slow (~10× realtime) |
 | animate-image | None (cloud) | ✅ N/A | cloud speed |
+| video-generator | None (cloud) | ✅ N/A | cloud speed |
 | video-editor | ~8 GB | ❌ no | hours per clip |
 | video-enhancer | 0 GB (CPU) | ✅ yes | fast (~15s/clip) |
 | video-captioner | 0 GB (CPU) | ✅ yes | ~30s/clip (Whisper tiny) |
@@ -526,7 +527,7 @@ uv run python scripts/cta.py --config config.json
 **Optional staged local video support:**
 - local `shareNow` video still uses `cloudflared`
 - scheduled/queued local video can stage through Backblaze B2 using `BACKBLAZE_B2_ENV_FILE`
-- installer support: `./install-abra.sh` scaffolds `~/.openclaw/post-scheduler-backblaze.env` and wires `env.BACKBLAZE_B2_ENV_FILE`
+- installer support: `./installers/install-abra-on-openclaw.sh` scaffolds `~/.openclaw/post-scheduler-backblaze.env` and wires `env.BACKBLAZE_B2_ENV_FILE`
 - required B2 keys in that file: `BACKBLAZE_B2_KEY_ID`, `BACKBLAZE_B2_APPLICATION_KEY`, `BACKBLAZE_B2_BUCKET_ID`, `BACKBLAZE_B2_BUCKET_NAME`
 - `BUFFER_API_KEY` can be persisted in `~/.openclaw/openclaw.json` under `env`
 
@@ -723,7 +724,8 @@ uv run python scripts/revenue.py --input ./input --output ./output
 | video-matte | videos | Remove video background | ~3 GB | ❌ no |
 | audio-splitter | video/audio | Separate vocals from music | ~2 GB | ✅ slow |
 | music-generator | prompt/video | Generate music | ~3 GB | ✅ very slow |
-| animate-image | images | Image → video clip | None (cloud) | ✅ N/A |
+| animate-image | images | Image → video clip (fal.ai LTX-2.3, up to 4K) | None (cloud) | ✅ N/A |
+| video-generator | images or none | Text→video or image→video via Higgsfield (Kling, Sora, Veo…) | None (cloud) | ✅ N/A |
 | video-editor | video | Edit/inpaint video | ~8 GB | ❌ no |
 | giphy | videos | Animated GIF stickers from GIPHY + optional SFX | 0 GB | ✅ instant |
 | freesound | videos | Freesound SFX into video + optional GIF overlays | 0 GB | ✅ instant |
