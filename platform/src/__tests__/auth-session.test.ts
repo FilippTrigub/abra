@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
 
 import { requireAuth, requireApiAuth, requireOwnership, checkOwnershipJson } from "@/lib/auth/session";
-import { getUser } from "@/lib/auth/supabase-client";
+import { getUser } from "@/lib/auth/firebase-auth";
 
 // Mock dependencies
 vi.mock("next/navigation", () => {
@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => {
   };
 });
 
-vi.mock("@/lib/auth/supabase-client", () => ({
+vi.mock("@/lib/auth/firebase-auth", () => ({
   getUser: vi.fn(),
 }));
 

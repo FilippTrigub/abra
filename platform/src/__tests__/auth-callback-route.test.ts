@@ -15,10 +15,10 @@ describe("auth callback route", () => {
     );
   });
 
-  it("redirects legacy OAuth code callbacks back to sign-in without exchanging sessions", async () => {
+  it("redirects unsupported OAuth code callbacks back to sign-in without exchanging sessions", async () => {
     const { GET } = await import("@/app/(auth)/auth/callback/route");
     const response = await GET(
-      new Request("http://localhost:3000/auth/callback?code=legacy-supabase-code"),
+      new Request("http://localhost:3000/auth/callback?code=unsupported-oauth-code"),
     );
 
     expect(response.status).toBe(307);
