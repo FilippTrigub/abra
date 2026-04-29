@@ -6,7 +6,7 @@
 --   2. platform_agent   — owned by an account
 --   3. platform_deployment — owned by an account, optionally linked to an agent
 --
--- Run once against your Supabase project to establish the platform namespace.
+-- Run once against your legacy Postgres platform database to establish the platform namespace.
 -- Idempotent: uses DO blocks so repeated execution is safe.
 
 -- ============================================================

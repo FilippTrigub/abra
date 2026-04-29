@@ -2,11 +2,11 @@
 
 ## Overview
 
-This document describes the data migration tooling and cutover strategy for migrating from Supabase (Postgres) to Firebase Auth + Firestore.
+This document describes the data migration tooling and cutover strategy for migrating from the legacy Postgres platform store to Firebase Auth + Firestore.
 
 ## Source Data
 
-### Supabase Tables (to migrate)
+### Legacy Postgres Tables (to migrate)
 
 | Table | Records | Key Fields |
 |-------|---------|------------|
@@ -53,7 +53,7 @@ accounts/{uid}/deployments/{deploymentId}
 
 ## Identity Mapping Strategy
 
-### Returning Users (Existing Supabase accounts)
+### Returning Users (Existing legacy accounts)
 
 1. User signs in with Firebase Auth (Google or GitHub)
 2. System checks if Firebase `uid` has existing Firestore account at `accounts/{uid}`
@@ -71,7 +71,7 @@ accounts/{uid}/deployments/{deploymentId}
 
 ## Migration Tooling
 
-### Phase 1: Export (Supabase → JSON)
+### Phase 1: Export (Postgres → JSON)
 
 ```bash
 # Export accounts
@@ -161,7 +161,7 @@ node scripts/verify-migration.ts
 - [ ] Smoke test with test user credentials
 
 ### Cutover (Production)
-- [ ] Disable Supabase write access (read-only for audit)
+- [ ] Disable legacy Postgres write access (read-only for audit)
 - [ ] Run full migration export
 - [ ] Transform and import to Firestore
 - [ ] Verify import counts match export counts
@@ -177,8 +177,8 @@ node scripts/verify-migration.ts
 - Settings not loading/saving
 
 ### Rollback Procedure
-1. Revert platform to Supabase-era build
-2. Restore Supabase write access
+1. Revert platform to the pre-migration build
+2. Restore legacy Postgres write access
 3. Notify affected users if data loss occurred
 4. Debug and re-run migration with fixes
 
@@ -186,7 +186,7 @@ node scripts/verify-migration.ts
 
 1. **Historical deployments**: Only deployments from the last 90 days are migrated
 2. **Agent configurations**: Not migrated (not surfaced in v1)
-3. **Audit history**: Pre-migration audit data remains in Supabase (read-only)
+3. **Audit history**: Pre-migration audit data remains in the legacy Postgres store (read-only)
 4. **Provider linking**: Users with multiple providers may need to relink in Firebase console
 
 ## Testing the Migration

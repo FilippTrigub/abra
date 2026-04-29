@@ -11,7 +11,7 @@
 --   values     — JSONB map of setting key → value
 --   created_at / updated_at — timestamps, kept current by _set_updated_at()
 --
--- Run once against your Supabase project. Idempotent via DO blocks.
+-- Run once against your legacy Postgres platform database. Idempotent via DO blocks.
 
 -- ============================================================
 -- 4. platform_settings

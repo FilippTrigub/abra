@@ -9,7 +9,8 @@
 --   - All tables use FOR ALL (covers SELECT, INSERT, UPDATE, DELETE).
 --   - Policies are wrapped in SELECT(auth.uid()) for RLS performance
 --     best practice — the function is called once per query, not per row.
---     See security-rls-performance.md from supabase-postgres-best-practices.
+--     See the project RLS performance guidance for the rationale behind
+--     wrapping auth.uid() in a SELECT.
 
 -- ============================================================
 -- Enable RLS on all platform tables
