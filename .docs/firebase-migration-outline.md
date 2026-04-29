@@ -1,6 +1,14 @@
 # Firebase Migration Outline for Platform
 
-## Goal
+## Status: DEPRIORITIZED
+
+The Firebase migration plan is **no longer the active path**. Instead, the platform implemented a **real AKS-backed orchestration adapter** (commit `5b8f4e0`) while keeping the existing Supabase Auth + Postgres foundation intact.
+
+The Firebase setup work (`.docs/logs/2026-04-24-firebase-setup.md`) was partially completed but not integrated. The platform continues to use Supabase as its primary backend.
+
+---
+
+## Original Goal
 Replace the current **Supabase Auth + Supabase Postgres** platform foundation with **Firebase Auth + Firebase database** while preserving the current product surface:
 - landing page
 - sign-in flow
@@ -87,6 +95,8 @@ Needed migration work:
 - adapt polling/status APIs to Firestore reads/writes
 - preserve graceful fallback behavior if Firebase config is unavailable
 
+**Update (2026-04-29):** The orchestration adapter was implemented with **AKS backend** (see `.docs/aks-orchestration-adapter-plan.md`). The Firebase migration for deployments is no longer needed.
+
 ### 7. Rework Settings Persistence
 Current settings flow depends on:
 - typed setting definitions
@@ -102,7 +112,7 @@ Needed migration work:
 - Firestore is document-oriented, not relational; some current SQL/RLS concepts will need redesign, not direct translation
 - ownership/security must be re-audited carefully because Firestore rules are not equivalent to Postgres RLS
 - Next.js SSR/session patterns differ substantially between Supabase and Firebase
-- some current “query by relationship” flows may need denormalization
+- some current "query by relationship" flows may need denormalization
 
 ## Suggested Migration Order
 1. Introduce Firebase project config and env vars
@@ -142,3 +152,34 @@ This is **not** a drop-in provider swap. It is a real backend migration affectin
 - API contracts
 
 The current UI layer is reusable, but the platform data/auth foundation would need a substantial rewrite.
+
+---
+
+## Final Implementation (2026-04-29)
+
+Instead of completing this Firebase migration, the platform implemented:
+
+| Component | Status | Implementation |
+|-----------|--------|-----------------|
+| **Orchestration Adapter** | ✅ Complete | AKS-backed adapter (`aks-adapter.ts`) with create/update/restart/destroy flows |
+| **Operation Storage** | ✅ Complete | Firestore-backed durable store (`firestore-operation-store.ts`) |
+| **K8s Manifests** | ✅ Complete | StatefulSet + Service + PVC generator (`manifest-generator.ts`) |
+| **Auth** | ⏸ Unchanged | Still uses Supabase Auth (Google/GitHub OAuth) |
+| **Database** | ⏸ Unchanged | Still uses Supabase Postgres (`platform` schema) |
+| **Firebase** | ⏸ Partial | Project created (`abra-89a44`), config files exist, NOT integrated |
+
+### Files Created/Modified (AKS Adapter — commit `5b8f4e0`)
+- `platform/src/lib/orchestration/aks-adapter.ts` (1210 lines)
+- `platform/src/lib/orchestration/aks-k8s-bootstrap.ts` (209 lines)
+- `platform/src/lib/orchestration/firestore-operation-store.ts` (165 lines)
+- `platform/src/lib/orchestration/manifest-generator.ts` (706 lines)
+- `platform/src/lib/orchestration/naming-helpers.ts` (332 lines)
+- Plus 8 test files (181 tests passing)
+
+### Firebase Setup (NOT Integrated)
+- `platform/firebase.json` — Firebase project config
+- `platform/.firebaserc` — Project aliases
+- `platform/.env.local` — Firebase env vars (not loaded by platform)
+- `platform/next.config.ts` — Added explicit Firebase env vars (unused)
+
+The Firebase migration remains an option for future consideration but is not required for the current AKS orchestration architecture.
