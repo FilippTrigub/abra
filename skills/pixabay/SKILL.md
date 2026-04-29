@@ -45,7 +45,7 @@ Use this skill when the user wants to:
 export PIXABAY_API_KEY="your_api_key_here"
 ```
 
-Or run `./install-abra.sh` to persist `PIXABAY_API_KEY` into
+Or run `./installers/install-abra-on-openclaw.sh` to persist `PIXABAY_API_KEY` into
 `~/.openclaw/openclaw.json` under `env`. The installer uses shell env first,
 existing OpenClaw config second, and the repo root `.env` as a fallback default
 before interactive confirmation.

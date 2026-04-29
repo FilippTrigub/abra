@@ -36,7 +36,7 @@ Schedule, create, and manage social media posts on Instagram and LinkedIn via th
 
 1. Go to https://publish.buffer.com/settings/api
 2. Copy your access token
-3. Either run `./install-abra.sh` to persist `BUFFER_API_KEY` into
+3. Either run `./installers/install-abra-on-openclaw.sh` to persist `BUFFER_API_KEY` into
    `~/.openclaw/openclaw.json`, or set the environment variable manually:
    ```bash
    export BUFFER_API_KEY="your-access-token"
@@ -219,7 +219,7 @@ and any lifecycle/deletion policy is your responsibility.
 
 The Backblaze credentials can be provided via normal shell environment
 variables or a mounted dotenv file referenced by `BACKBLAZE_B2_ENV_FILE`.
-Dotenv files must use plain dotenv syntax (`KEY=value`). `install-abra.sh` now
+Dotenv files must use plain dotenv syntax (`KEY=value`). `installers/install-abra-on-openclaw.sh` now
 writes the recommended file beside `openclaw.json`, sets
 `env.BACKBLAZE_B2_ENV_FILE`, persists `BUFFER_API_KEY` in `openclaw.json env`
 when provided, and removes any old workspace-local `skills/post-scheduler/.env`
