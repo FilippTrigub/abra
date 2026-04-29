@@ -1,6 +1,6 @@
 # Firebase Setup Guide
 
-This guide covers setting up Firebase for the Claw Parade platform migration from Supabase to Firebase Auth + Firestore.
+This guide covers setting up Firebase for the Claw Parade platform and its Firebase Auth + Firestore runtime.
 
 ## Prerequisites
 
@@ -233,16 +233,11 @@ In Firebase console → Firestore Database:
 
 ## Rollback (If Needed)
 
-If you need to revert to Supabase:
+If you need to back out the Firebase migration:
 
-1. Remove Firebase env vars from `.env.local`
-2. Restore Supabase environment variables:
-   ```bash
-   NEXT_PUBLIC_SUPABASE_URL=...
-   NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-   SUPABASE_SERVICE_ROLE_KEY=...
-   ```
-3. Platform code is already compatible - it checks for Firebase first, falls back gracefully
+1. Remove the Firebase env vars from `.env.local`
+2. Revert the platform code to the last known-good commit for your previous provider setup
+3. Reinstall dependencies and restart the app so the restored configuration is picked up
 
 ---
 

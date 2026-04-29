@@ -7,10 +7,10 @@ Local web dashboard for the Abra brand management system. This is a Next.js 16 a
 | Surface | Status |
 |---------|--------|
 | Marketing landing page (`/`) | Live — static content, no backend connections |
-| Authentication (`/sign-in`) | Supabase OAuth (Google, GitHub). Sign-in page with provider buttons, OAuth callback handler, and server-side auth actions. |
-| Dashboard (`/dashboard`) | Live — deployment console, stats cards, quick-access nav. Requires Supabase connection. |
-| Settings (`/dashboard/settings`) | Live — client-side form backed by server actions. Persisted to Supabase or localStorage fallback. |
-| Deployment orchestration | Mock adapter only. No real agent backend exists. Requests queue in-memory or in Supabase (`platform.platform_deployment`). |
+| Authentication (`/sign-in`) | Firebase Auth (Google, GitHub) with server-side session cookies. |
+| Dashboard (`/dashboard`) | Live — deployment console, stats cards, quick-access nav. Requires Firebase-backed auth. |
+| Settings (`/dashboard/settings`) | Live — client-side form backed by server actions. Persisted to Firestore or memory fallback. |
+| Deployment orchestration | Mock adapter only. No real agent backend exists. Requests queue in Firestore or the in-memory fallback. |
 
 ## Quick start
 
@@ -18,7 +18,7 @@ Local web dashboard for the Abra brand management system. This is a Next.js 16 a
 
 - Node.js 20+ (the repo ships with a `.nvmrc`-compatible version)
 - pnpm 8+
-- A Supabase project (or run without one — auth stubs degrade gracefully)
+- A Firebase project (or local Firebase emulator configuration)
 
 ### Install
 
@@ -29,13 +29,13 @@ pnpm install
 
 ### Environment
 
-Copy the example env file and fill in at least the Supabase URL and anon key:
+Copy the example env file and fill in the Firebase values required for your environment:
 
 ```bash
 cp .env.example .env.local
 ```
 
-See [`.env.example`](./.env.example) for every available variable. The minimal set to get the dashboard working locally is `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+See [`.env.example`](./.env.example) for every available variable. The minimal set to get the dashboard working locally is the `NEXT_PUBLIC_FIREBASE_*` browser config plus the server-side `FIREBASE_*` service-account values.
 
 ### Run
 
@@ -64,7 +64,7 @@ pnpm test        # Runs both typecheck and lint together
 
 ### Routing groups
 
-- `(auth)` — Authentication routes. Currently holds the Supabase OAuth callback handler.
+- `(auth)` — Authentication routes. Holds the sign-in screen, Firebase session bootstrap flow, and the legacy unsupported OAuth callback handler.
 - `(dashboard)` — Authenticated dashboard layout with sidebar navigation, subscription gate, and user header.
 - `(marketing)` — Public marketing landing page for Abra.
 
@@ -72,15 +72,15 @@ pnpm test        # Runs both typecheck and lint together
 
 | Library | Purpose |
 |---------|---------|
-| `@supabase/ssr` + `@supabase/supabase-js` | Supabase client with cookie-based SSR support |
+| `firebase` + `firebase-admin` | Firebase Auth, Firestore access, and server-side session verification |
 | `tailwindcss` v4 + `@tailwindcss/postcss` | Utility-first CSS |
 | `clsx` + `tailwind-merge` | Conditional class merging (shadcn/ui pattern) |
 
 ### Data layer
 
-- **Platform accounts** — `platform.platform_account` Supabase table. Bootstrapped on first sign-in.
-- **Deployments** — `platform.platform_deployment` Supabase table. Falls back to in-memory Map when Supabase is unavailable.
-- **Settings** — Persisted via Supabase or client-side localStorage. Loaded through server actions.
+- **Platform accounts** — Firestore document at `accounts/{authUserId}`. Bootstrapped on first sign-in.
+- **Deployments** — Firestore-backed records with an in-memory fallback when Firestore is unavailable.
+- **Settings** — Persisted in Firestore at `accounts/{authUserId}/settings/current`, with an in-memory fallback when Firestore is unavailable.
 - **Orchestration** — Mock adapter in `src/lib/orchestration/`. No real agent backend is connected.
 
 ### Styling
@@ -101,9 +101,9 @@ UI components are in `src/components/ui/` and re-exported through `src/component
 
 See [`.env.example`](./.env.example) for the full list. All variables marked `NEXT_PUBLIC_` are bundled into the browser. The rest are server-only.
 
-### Supabase schema
+### Firebase data model
 
-The app expects a `platform` schema in your Supabase database. If you have not set up the schema yet, the dashboard will degrade gracefully using in-memory stores. No migration is required to run locally.
+The app expects Firebase Auth for sign-in and Firestore for persistence. If Firestore is unavailable, the dashboard degrades gracefully to the in-memory fallbacks used by the deployment and settings layers.
 
 ## What is NOT implemented (yet)
 
@@ -154,7 +154,7 @@ platform/
 │   │   ├── auth/
 │   │   │   ├── actions.ts                    # Server auth actions
 │   │   │   ├── index.ts                      # (placeholder re-export)
-│   │   │   └── supabase-client.ts            # Supabase SSR client + getUser
+│   │   │   └── firebase-auth.ts              # Firebase-backed getUser helper
 │   │   ├── cn.ts                             # cn() class merger
 │   │   ├── db/index.ts                       # DB helper (placeholder)
 │   │   ├── deployments.ts                    # Deployment CRUD + mock adapter glue
