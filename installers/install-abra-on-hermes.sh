@@ -698,10 +698,14 @@ if command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' 2>/dev/n
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PARENT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 REPO_ROOT=""
 if command -v git >/dev/null 2>&1; then
     REPO_ROOT="$(git -C "${SCRIPT_DIR}" rev-parse --show-toplevel 2>/dev/null || true)"
+fi
+if [ -z "${REPO_ROOT}" ] && [ -d "${SCRIPT_PARENT}/skills" ]; then
+    REPO_ROOT="${SCRIPT_PARENT}"
 fi
 [ -z "${REPO_ROOT}" ] && REPO_ROOT="${SCRIPT_DIR}"
 
