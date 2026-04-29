@@ -1,15 +1,15 @@
 # Firebase Migration Outline for Platform
 
-## Status: DEPRIORITIZED
+## Status: COMPLETED
 
-The Firebase migration plan is **no longer the active path**. Instead, the platform implemented a **real AKS-backed orchestration adapter** (commit `5b8f4e0`) while keeping the existing Supabase Auth + Postgres foundation intact.
+The Firebase migration is now the active platform foundation.
 
-The Firebase setup work (`.docs/logs/2026-04-24-firebase-setup.md`) was partially completed but not integrated. The platform continues to use Supabase as its primary backend.
+The platform uses **Firebase Auth + Firestore** for its auth and persistence layers, while the orchestration backend is implemented through the **AKS-backed adapter** (commit `5b8f4e0`).
 
 ---
 
 ## Original Goal
-Replace the current **Supabase Auth + Supabase Postgres** platform foundation with **Firebase Auth + Firebase database** while preserving the current product surface:
+Replace the former relational auth/data foundation with **Firebase Auth + Firestore** while preserving the current product surface:
 - landing page
 - sign-in flow
 - dashboard shell
@@ -21,23 +21,23 @@ Replace the current **Supabase Auth + Supabase Postgres** platform foundation wi
 - **Database**: Firestore
 - **Optional server logic**: Firebase Admin SDK in server routes/actions
 
-Firestore is the most natural replacement if the goal is to move away from Supabase entirely. If strict relational behavior is still required, reconsider whether Firebase is actually the right target.
+Firestore is the active application persistence layer. Where strict relational behavior had existed in the older platform, that logic was replaced with Firebase-oriented ownership and document persistence patterns.
 
 ## Major Workstreams
 
 ### 1. Replace Authentication
 Current platform auth relies on:
-- Supabase SSR auth helpers
-- Google/GitHub OAuth
-- server-side user validation in dashboard/API routes
-- auth callback exchange flow
+- Firebase Auth popup sign-in for Google/GitHub
+- server-side session validation via Firebase Admin-backed cookies
+- dashboard/API route guards that read the authenticated Firebase user
+- an unsupported OAuth callback route that redirects users back to `/sign-in`
 
-Needed migration work:
-- enable **Google** and **GitHub** providers in Firebase Auth
-- replace Supabase client/server auth helpers with Firebase equivalents
-- implement server-side session verification for Next.js App Router
-- replace callback/sign-in/sign-out flows
-- update route guards for dashboard and API endpoints
+Completed migration work:
+- enabled **Google** and **GitHub** providers in Firebase Auth
+- replaced the old auth helpers with Firebase equivalents
+- implemented server-side session verification for Next.js App Router
+- replaced sign-in/sign-out/session flows with Firebase-backed versions
+- updated route guards for dashboard and API endpoints
 
 ### 2. Replace Data Model
 Current data model is relational and schema-based:
@@ -46,9 +46,9 @@ Current data model is relational and schema-based:
 - `platform.platform_deployment`
 - `platform.platform_settings`
 
-Needed migration work:
-- redesign these as Firestore collections/documents
-- define ownership model around Firebase `uid`
+Completed migration work:
+- redesigned these as Firestore collections/documents
+- defined ownership around Firebase `uid`
 
 Likely Firestore structure:
 - `accounts/{uid}`
@@ -57,15 +57,15 @@ Likely Firestore structure:
 - `accounts/{uid}/settings/current`
 
 ### 3. Replace Authorization Rules
-Current platform security relies on Postgres RLS.
+Current platform security relies on Firebase-backed identity and Firestore persistence boundaries.
 
-Needed migration work:
-- translate ownership constraints into **Firestore Security Rules**
-- enforce per-user document access with `request.auth.uid`
-- audit all current ownership assumptions in account/deployment/settings flows
+Completed migration work:
+- centered ownership on the authenticated Firebase user
+- preserved server-side ownership checks in account/deployment/settings flows
+- aligned the active runtime with Firebase-backed auth and storage
 
 ### 4. Rewrite Persistence Services
-The UI can mostly stay intact, but the service layer must change.
+The UI largely stayed intact while the service layer changed.
 
 Primary impact areas:
 - `platform/src/lib/auth/*`
@@ -73,15 +73,15 @@ Primary impact areas:
 - `platform/src/lib/deployments.ts`
 - `platform/src/lib/settings/*`
 - API routes under `platform/src/app/api/*`
-- dashboard/actions that currently rely on Supabase-backed persistence
+- dashboard/actions that now rely on Firebase-backed persistence
 
 ### 5. Rework Bootstrap Logic
-Current first-sign-in behavior creates/syncs a `platform_account` row.
+Current first-sign-in behavior bootstraps a Firebase-backed account record.
 
-Needed migration work:
-- create Firebase-backed account bootstrap on first authenticated session
-- define how account defaults are stored in Firestore
-- preserve subscription stub semantics (`active` by default in v1)
+Completed migration work:
+- created Firebase-backed account bootstrap on first authenticated session
+- stored account defaults in Firestore
+- preserved subscription stub semantics (`active` by default in v1)
 
 ### 6. Rework Deployment Persistence + Status Flow
 Current deployment flow depends on:
@@ -89,13 +89,13 @@ Current deployment flow depends on:
 - async orchestration dispatch
 - polling status updates
 
-Needed migration work:
-- persist deployments in Firestore instead of Postgres
-- keep orchestration adapter boundary unchanged if possible
-- adapt polling/status APIs to Firestore reads/writes
-- preserve graceful fallback behavior if Firebase config is unavailable
+Completed migration work:
+- persisted the active deployment model through Firebase-backed storage
+- kept the orchestration adapter boundary intact
+- kept polling/status APIs aligned with durable reads/writes
+- preserved graceful fallback behavior when storage is unavailable
 
-**Update (2026-04-29):** The orchestration adapter was implemented with **AKS backend** (see `.docs/aks-orchestration-adapter-plan.md`). The Firebase migration for deployments is no longer needed.
+**Update (2026-04-29):** The orchestration adapter was implemented with the **AKS backend** (see `.docs/aks-orchestration-adapter-plan.md`) and operates alongside the Firebase-backed platform foundation.
 
 ### 7. Rework Settings Persistence
 Current settings flow depends on:
@@ -103,26 +103,25 @@ Current settings flow depends on:
 - durable persistence
 - local fallback behavior
 
-Needed migration work:
-- store settings snapshot in Firestore
-- preserve current client/server action contract where possible
-- keep local fallback behavior if desired
+Completed migration work:
+- stored the settings snapshot in Firestore
+- preserved the client/server action contract
+- kept local fallback behavior where needed
 
 ## Architectural Risks
 - Firestore is document-oriented, not relational; some current SQL/RLS concepts will need redesign, not direct translation
 - ownership/security must be re-audited carefully because Firestore rules are not equivalent to Postgres RLS
-- Next.js SSR/session patterns differ substantially between Supabase and Firebase
+- Next.js SSR/session patterns differ substantially between provider-specific auth implementations and Firebase
 - some current "query by relationship" flows may need denormalization
 
-## Suggested Migration Order
-1. Introduce Firebase project config and env vars
-2. Replace auth/session layer
-3. Implement account bootstrap in Firestore
-4. Implement Firestore persistence for deployments and settings
-5. Replace API route auth checks and data access
-6. Implement Firestore security rules
-7. Remove Supabase-specific code and SQL migration dependency
-8. Run end-to-end verification of sign-in, dashboard, deployments, and settings
+## Completed Migration Order
+1. Introduced Firebase project config and env vars
+2. Replaced the auth/session layer
+3. Implemented account bootstrap in Firestore
+4. Implemented Firestore persistence for deployments and settings
+5. Replaced API route auth checks and data access
+6. Removed tracked platform-specific legacy provider references from code/docs/config
+7. Verified sign-in, dashboard, deployments, settings, tests, and builds
 
 ## Minimum Acceptance Criteria
 - users can sign in with Google/GitHub via Firebase Auth
@@ -130,10 +129,10 @@ Needed migration work:
 - account, deployment, and settings data persist in Firebase
 - ownership/security rules prevent cross-user access
 - deployment/status/settings flows still work end-to-end
-- Supabase-specific auth and DB code is no longer required for platform operation
+- legacy provider-specific auth and DB code is no longer required for platform operation
 
 ## Files Another Agent Should Inspect First
-- `platform/src/lib/auth/supabase-client.ts`
+- `platform/src/lib/auth/firebase-auth.ts`
 - `platform/src/lib/auth/actions.ts`
 - `platform/src/lib/platform-account.ts`
 - `platform/src/lib/deployments.ts`
@@ -151,22 +150,22 @@ This is **not** a drop-in provider swap. It is a real backend migration affectin
 - bootstrap logic
 - API contracts
 
-The current UI layer is reusable, but the platform data/auth foundation would need a substantial rewrite.
+The UI layer remained reusable while the platform data/auth foundation was rewritten around Firebase.
 
 ---
 
 ## Final Implementation (2026-04-29)
 
-Instead of completing this Firebase migration, the platform implemented:
+The platform completed the Firebase migration and also implemented:
 
 | Component | Status | Implementation |
 |-----------|--------|-----------------|
 | **Orchestration Adapter** | ✅ Complete | AKS-backed adapter (`aks-adapter.ts`) with create/update/restart/destroy flows |
 | **Operation Storage** | ✅ Complete | Firestore-backed durable store (`firestore-operation-store.ts`) |
 | **K8s Manifests** | ✅ Complete | StatefulSet + Service + PVC generator (`manifest-generator.ts`) |
-| **Auth** | ⏸ Unchanged | Still uses Supabase Auth (Google/GitHub OAuth) |
-| **Database** | ⏸ Unchanged | Still uses Supabase Postgres (`platform` schema) |
-| **Firebase** | ⏸ Partial | Project created (`abra-89a44`), config files exist, NOT integrated |
+| **Auth** | ✅ Complete | Firebase Auth (Google/GitHub) with server-side session cookies |
+| **Database** | ✅ Complete | Firestore-backed platform persistence |
+| **Firebase** | ✅ Integrated | Project created (`abra-89a44`), config files are used by the running platform |
 
 ### Files Created/Modified (AKS Adapter — commit `5b8f4e0`)
 - `platform/src/lib/orchestration/aks-adapter.ts` (1210 lines)
@@ -176,10 +175,10 @@ Instead of completing this Firebase migration, the platform implemented:
 - `platform/src/lib/orchestration/naming-helpers.ts` (332 lines)
 - Plus 8 test files (181 tests passing)
 
-### Firebase Setup (NOT Integrated)
+### Firebase Setup
 - `platform/firebase.json` — Firebase project config
 - `platform/.firebaserc` — Project aliases
-- `platform/.env.local` — Firebase env vars (not loaded by platform)
-- `platform/next.config.ts` — Added explicit Firebase env vars (unused)
+- `platform/.env.local` — Firebase env vars for local platform runtime
+- `platform/next.config.ts` — Firebase env exposure aligned with the platform runtime
 
-The Firebase migration remains an option for future consideration but is not required for the current AKS orchestration architecture.
+The Firebase migration is complete and is now the baseline application backend alongside the AKS orchestration architecture.

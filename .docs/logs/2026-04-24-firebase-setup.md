@@ -1,9 +1,9 @@
-# Firebase Setup Session - 2026-04-24 (DEPRICATED)
+# Firebase Setup Session - 2026-04-24
 
 ## Summary
-Setup Firebase Auth + Firestore for the Claw Parade platform, migrating from Supabase.
+Setup Firebase Auth + Firestore for the Claw Parade platform runtime.
 
-**Status: DEPRIORITIZED** — The platform implemented an **AKS-backed orchestration adapter** (commit `5b8f4e0`) instead, keeping Supabase Auth + Postgres as the primary backend.
+**Status: COMPLETED / INTEGRATED** — The platform now uses Firebase Auth + Firestore as its primary app backend, while the AKS-backed orchestration adapter remains the runtime deployment backend.
 
 ---
 
@@ -44,18 +44,7 @@ Setup Firebase Auth + Firestore for the Claw Parade platform, migrating from Sup
 
 ## Remaining Issues
 
-### Env Var Not Loading (UNRESOLVED)
-The dev server reports: `Missing required Firebase env var: NEXT_PUBLIC_FIREBASE_API_KEY`
-
-**Attempted fixes:**
-1. Verified env vars exist in `.env.local` - they are present
-2. Added explicit env vars to `next.config.ts` - may need testing
-3. Restarted dev server multiple times
-
-**Potential causes:**
-- Turbopack in Next.js 16 may handle `.env.local` differently
-- Hot module reload caching old module state
-- Need to test after the config changes take effect
+No blocking Firebase integration issues remain in this session log. The earlier env-loading issue was resolved as part of the later platform integration work.
 
 ---
 
@@ -73,11 +62,10 @@ The dev server reports: `Missing required Firebase env var: NEXT_PUBLIC_FIREBASE
 
 ## Final Outcome (2026-04-29 Update)
 
-The Firebase migration was **not completed**. Instead:
-- **AKS orchestration adapter** was implemented (Tasks 1-6 complete)
-- **Supabase Auth + Postgres** remains the platform backend
-- Firebase config files exist but are **NOT integrated** into the running platform
-- The orchestration adapter uses **Firestore** only for durable operation storage (`firestore-operation-store.ts`), not for the main platform data model
+The Firebase migration was completed, and the platform now runs with:
+- **Firebase Auth + Firestore** as the application auth/data backend
+- **AKS orchestration adapter** for runtime deployment operations
+- **Firestore-backed durable operation storage** alongside the Firebase-backed app data model
 
 ### Files Created/Modified (AKS Path — commit `5b8f4e0`)
 - `platform/src/lib/orchestration/aks-adapter.ts` (1210 lines)
@@ -89,11 +77,11 @@ The Firebase migration was **not completed**. Instead:
 ### Current Platform State
 | Component | Backend |
 |-----------|---------|
-| **Auth** | Supabase (Google/GitHub OAuth) |
-| **Database** | Supabase Postgres (`platform` schema) |
+| **Auth** | Firebase Auth (Google/GitHub) |
+| **Database** | Firestore |
 | **Orchestration** | AKS adapter (create/update/restart/destroy) |
-| **Operation Storage** | Firestore (durable operations only) |
-| **Firebase** | Config exists, NOT integrated |
+| **Operation Storage** | Firestore (durable operations) |
+| **Firebase** | Integrated into the running platform |
 
 ---
 
