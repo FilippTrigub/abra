@@ -1,0 +1,10 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "mode": "auto",
+  "model": "kling",
+  "prompt": "cinematic push-in, warm golden light, subtle depth of field",
+  "duration": 5,
+  "aspect_ratio": "16:9",
+  "extra_params": {}
+}
