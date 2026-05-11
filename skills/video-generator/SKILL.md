@@ -1,10 +1,10 @@
 ---
 name: video-generator
 description: >-
-  Generate videos from text or images using Higgsfield's multi-model cloud
-  platform. Supports Kling 3.0, Sora 2, Veo 3.1, Wan 2.5, Seedance 2.0, and
-  MiniMax Hailuo. Auto-detects text-to-video or image-to-video based on input.
-  No GPU required.
+Generate videos from text or images using Higgsfield's multi-model cloud
+platform. Supports Kling 3.0, Sora 2, Veo 3.1, Wan 2.5, Seedance 2.0, and
+MiniMax Hailuo. Uses a small preset layer for common creative styles.
+Auto-detects text-to-video or image-to-video based on input. No GPU required.
 metadata:
   {
     "openclaw":
@@ -36,6 +36,30 @@ The skill directory (where this SKILL.md lives) is referred to as `$SKILL_DIR` b
 | `text-to-video` | No images in `input/` | Generates video from prompt alone |
 | `image-to-video` | Images present in `input/` | Animates each image into a clip |
 | `auto` (default) | — | Picks the mode above automatically |
+
+---
+
+## Presets
+
+The skill uses presets as thin overlays on top of the same video engine. A
+preset can set the default model, aspect ratio, duration, and prompt prefix.
+Explicit config values still win.
+
+| Preset | Best for | Default model | Default ratio |
+|--------|----------|---------------|---------------|
+| `cinematic` (default) | General-purpose cinematic video | `kling` | `16:9` |
+| `social-hook` | Scroll-stopping short-form | `seedance` | `9:16` |
+| `motion-design-ad` | SaaS/product motion ads | `kling` | `16:9` |
+| `ecommerce-ad` | Product promo clips | `kling` | `9:16` |
+| `brand-story` | Founder/brand narrative | `kling` | `16:9` |
+| `product-360` | Isolated product showcase | `kling` | `1:1` |
+
+Workflow rules:
+- choose a preset before editing `config.json`
+- verify the preset matches the desired output style
+- if the user does not choose, keep the default preset and record it in config
+- do not stack the same style twice; if the prompt already matches the preset,
+  keep the prompt as-is
 
 ---
 
@@ -87,6 +111,11 @@ Before I generate the video, I need to know:
    - text-to-video (prompt only) or image-to-video (drop images in input/)
    - default: auto-detect
 
+🎛️ Preset (default: cinematic)
+   - cinematic · social-hook · motion-design-ad · ecommerce-ad · brand-story · product-360
+   - verify the choice before writing config.json
+   - if omitted, keep the default preset and record that choice
+
 🤖 Model  (default: kling)
    kling · wan · seedance · minimax · sora · veo
    Recommendation: kling for speed/cost, sora/veo for premium quality
@@ -106,6 +135,7 @@ Wait for user response before proceeding.
 ### 2. Edit config.json
 
 Write or update `$SKILL_DIR/config.json` based on the user's choices.
+Set `preset` explicitly, even when using the default.
 
 ### 3. (image-to-video only) Place images
 
@@ -133,6 +163,7 @@ Tell the user:
 | `input_dir` | path | `./input` | Source images (image-to-video only) |
 | `output_dir` | path | `./output` | Where MP4s are written |
 | `mode` | `auto` · `text-to-video` · `image-to-video` | `auto` | Generation mode |
+| `preset` | `cinematic` · `social-hook` · `motion-design-ad` · `ecommerce-ad` · `brand-story` · `product-360` | `cinematic` | Creative preset overlay |
 | `model` | `kling` · `seedance` · `dop` · `dop-preview` | `kling` | Which model to use |
 | `prompt` | string | *(required)* | Motion or scene description |
 | `duration` | integer 3–16 | `5` | Video length in seconds |
