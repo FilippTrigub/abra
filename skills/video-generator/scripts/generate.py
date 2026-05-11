@@ -13,15 +13,23 @@ Models (--model): kling (default), seedance, dop, dop-preview
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import os
 import sys
 import urllib.request
 from pathlib import Path
+from typing import Any
 
-import higgsfield_client
+higgsfield_client: Any = importlib.import_module("higgsfield_client")
 
 INPUT_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+
+BASE_DEFAULTS: dict[str, object] = {
+    "model": "kling",
+    "duration": 5,
+    "aspect_ratio": "16:9",
+}
 
 # Model ID strings as documented at docs.higgsfield.ai/guides/video.md
 # Find additional model IDs at: https://cloud.higgsfield.ai/explore
@@ -35,6 +43,53 @@ MODEL_IDS: dict[str, str] = {
 VALID_MODELS = list(MODEL_IDS.keys())
 VALID_MODES = ["auto", "text-to-video", "image-to-video"]
 VALID_ASPECT_RATIOS = ["16:9", "9:16", "1:1"]
+
+PRESETS: dict[str, dict[str, object]] = {
+    "cinematic": {
+        "model": "kling",
+        "duration": 5,
+        "aspect_ratio": "16:9",
+        "prompt_prefix": "cinematic push-in, warm golden light, subtle depth of field",
+        "extra_params": {},
+    },
+    "social-hook": {
+        "model": "seedance",
+        "duration": 6,
+        "aspect_ratio": "9:16",
+        "prompt_prefix": "scroll-stopping social hook, fast opener, bold motion, clear subject",
+        "extra_params": {},
+    },
+    "motion-design-ad": {
+        "model": "kling",
+        "duration": 8,
+        "aspect_ratio": "16:9",
+        "prompt_prefix": "clean motion-design ad, polished transitions, product-forward framing",
+        "extra_params": {},
+    },
+    "ecommerce-ad": {
+        "model": "kling",
+        "duration": 6,
+        "aspect_ratio": "9:16",
+        "prompt_prefix": "premium ecommerce ad, hero product shots, conversion-focused framing",
+        "extra_params": {},
+    },
+    "brand-story": {
+        "model": "kling",
+        "duration": 10,
+        "aspect_ratio": "16:9",
+        "prompt_prefix": "brand story sequence, emotional arc, polished narrative progression",
+        "extra_params": {},
+    },
+    "product-360": {
+        "model": "kling",
+        "duration": 6,
+        "aspect_ratio": "1:1",
+        "prompt_prefix": "360-degree product showcase, isolated hero object, controlled studio light",
+        "extra_params": {},
+    },
+}
+
+VALID_PRESETS = list(PRESETS.keys())
 
 
 # ---------------------------------------------------------------------------
@@ -54,6 +109,9 @@ def validate_config(cfg: dict) -> dict:
 
     if not cfg.get("prompt"):
         errors.append("'prompt' is required")
+
+    if cfg.get("preset", "cinematic") not in VALID_PRESETS:
+        errors.append(f"'preset' must be one of {VALID_PRESETS}")
 
     if cfg.get("model", "kling") not in VALID_MODELS:
         errors.append(f"'model' must be one of {VALID_MODELS}")
@@ -75,6 +133,35 @@ def validate_config(cfg: dict) -> dict:
         sys.exit(1)
 
     return cfg
+
+
+def normalize_config(cfg: dict) -> dict:
+    preset_name = cfg.get("preset", "cinematic")
+    preset = PRESETS[preset_name]
+
+    resolved = dict(cfg)
+    resolved["preset"] = preset_name
+
+    extra_params = resolved.get("extra_params", {})
+    if not isinstance(extra_params, dict):
+        print("Error: 'extra_params' must be an object", file=sys.stderr)
+        sys.exit(1)
+
+    preset_extra_params = preset.get("extra_params", {})
+    if not isinstance(preset_extra_params, dict):
+        preset_extra_params = {}
+
+    for key in ("model", "duration", "aspect_ratio"):
+        default_value = BASE_DEFAULTS[key]
+        if resolved.get(key, default_value) == default_value:
+            resolved[key] = preset[key]
+
+    resolved.setdefault("prompt_prefix", preset.get("prompt_prefix", ""))
+    merged_extra_params = dict(preset_extra_params)
+    merged_extra_params.update(extra_params)
+    resolved["extra_params"] = merged_extra_params
+
+    return resolved
 
 
 # ---------------------------------------------------------------------------
@@ -180,12 +267,22 @@ def download_video(url: str, output_path: Path) -> None:
     urllib.request.urlretrieve(url, str(output_path))
 
 
+def compose_prompt(prefix: str, prompt: str) -> str:
+    clean_prefix = prefix.strip()
+    clean_prompt = prompt.strip()
+    if not clean_prefix:
+        return clean_prompt
+    if clean_prompt.lower().startswith(clean_prefix.lower()):
+        return clean_prompt
+    return f"{clean_prefix}. {clean_prompt}"
+
+
 # ---------------------------------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------------------------------
 
 def process(config_path: Path) -> None:
-    cfg = validate_config(load_config(config_path))
+    cfg = validate_config(normalize_config(load_config(config_path)))
     check_credentials()
 
     input_dir = Path(cfg.get("input_dir", "./input"))
@@ -193,7 +290,7 @@ def process(config_path: Path) -> None:
     mode: str = cfg.get("mode", "auto")
     model: str = cfg.get("model", "kling")
     model_id: str = MODEL_IDS[model]
-    prompt: str = cfg["prompt"]
+    prompt: str = compose_prompt(str(cfg.get("prompt_prefix", "")), cfg["prompt"])
     duration: int = cfg.get("duration", 5)
     aspect_ratio: str = cfg.get("aspect_ratio", "16:9")
     extra_params: dict = cfg.get("extra_params", {})
@@ -221,6 +318,7 @@ def process(config_path: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     print(f"Mode:     {mode}")
+    print(f"Preset:   {cfg.get('preset', 'cinematic')}")
     print(f"Model:    {model}  ({model_id})")
     print(f"Settings: {duration}s · {aspect_ratio}")
     print(f"Prompt:   {prompt[:80]}{'...' if len(prompt) > 80 else ''}")
@@ -295,7 +393,7 @@ def main() -> None:
 
     import tempfile
 
-    cfg = validate_config(load_config(Path(args.config)))
+    cfg = load_config(Path(args.config))
 
     overrides = {
         "input_dir":    args.input,
@@ -309,6 +407,8 @@ def main() -> None:
     for key, val in overrides.items():
         if val is not None:
             cfg[key] = val
+
+    cfg = validate_config(normalize_config(cfg))
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
         json.dump(cfg, tmp)

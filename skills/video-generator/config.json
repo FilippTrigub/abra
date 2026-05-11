@@ -3,6 +3,7 @@
   "output_dir": "./output",
   "mode": "auto",
   "model": "kling",
+  "preset": "cinematic",
   "prompt": "cinematic push-in, warm golden light, subtle depth of field",
   "duration": 5,
   "aspect_ratio": "16:9",
