@@ -1,0 +1,11 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "render_spec_path": "./input/render-spec.json",
+  "render_spec_version": "1.0",
+  "render_spec_schema": "./schemas/render-spec.v1.schema.json",
+  "render_manifest_schema": "./schemas/render-manifest.v1.schema.json",
+  "manifest_filename": "render-manifest.json",
+  "thumbnail_filename": "thumbnail.png",
+  "overwrite": true
+}

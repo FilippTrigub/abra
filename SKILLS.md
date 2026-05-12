@@ -45,6 +45,7 @@ Every tool accepts `--device cpu` to fall back to CPU/RAM:
 | video-editor | ~8 GB | ❌ no | hours per clip |
 | video-enhancer | 0 GB (CPU) | ✅ yes | fast (~15s/clip) |
 | video-captioner | 0 GB (CPU) | ✅ yes | ~30s/clip (Whisper tiny) |
+| remotion-video | 0 GB (CPU) | ✅ yes | CPU only, browser render |
 | giphy | 0 GB (CPU) | ✅ yes | instant |
 | freesound | 0 GB (CPU) | ✅ yes | instant |
 | pixabay | 0 GB (CPU) | ✅ yes | instant |
@@ -353,6 +354,36 @@ uv run python scripts/caption_service.py
 uv run python scripts/caption_service.py --css scripts/futuristic.css
 # Drop videos in skills/video-captioner/input/, results appear in skills/video-captioner/output/
 ```
+
+---
+
+### remotion-video — Remotion Video Rendering
+
+**What it does:** Renders one branded starter composition from a versioned render spec. It validates the spec, stages assets, renders an MP4 and thumbnail, and writes a manifest for downstream reuse. CPU only, no GPU required.
+
+**Requires:** `uv`, `python3`, `node`, `npm`, `ffmpeg`, Chrome Headless Shell
+
+**Usage:**
+```bash
+cd skills/remotion-video
+uv sync
+npm ci
+npm run browser:ensure
+
+# End to end smoke test from the checked in fixture spec
+uv run python scripts/render.py --config config.json --render-spec fixtures/render-spec.valid.json
+
+# Real render from the default input spec
+uv run python scripts/render.py --config config.json
+```
+
+**Input contract:** `input/render-spec.json` by default, or `--render-spec <path>`. The spec uses `render_spec_version: "1.0"` and requires `composition`, `title`, `duration_seconds`, `fps`, `width`, `height`, `background`, `brand`, `scenes`, `assets`, and `output`.
+
+**Output contract:** `output/<basename>.mp4`, `output/<thumbnail_filename>`, and `output/<manifest_filename>`. The manifest uses `manifest_version: "1.0"` and includes `render_id`, `composition`, `video_path`, `thumbnail_path`, `duration_seconds`, `fps`, `width`, `height`, `created_at`, `warnings`, and `source_spec_path`.
+
+**Downstream reuse:** Consume the MP4, thumbnail, and manifest only. Use `source_spec_path` plus the manifest paths. Do not depend on Remotion internals, React components, or temp staging paths.
+
+**Scope:** one branded starter composition only. No workflow integration. No multiple templates.
 
 ---
 
@@ -747,4 +778,4 @@ uv run python scripts/revenue.py --input ./input --output ./output
 | ads-manager | root | Google Ads campaign management | GA4 + Google Ads keys |
 | revenue-manager | root | CRM and revenue operations | HubSpot, Salesforce, Close, or other CRM |
 
-**Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, social-resizer, post-scheduler, canva-connector
+**Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, remotion-video, social-resizer, post-scheduler, canva-connector

@@ -1,0 +1,73 @@
+{
+  "render_spec_version": "1.0",
+  "composition": "branded-starter",
+  "title": "Fixture branded render",
+  "duration_seconds": 2,
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "background": {
+    "type": "solid",
+    "color": "#0F172A"
+  },
+  "brand": {
+    "name": "Fixture Brand",
+    "primary_color": "#22C55E",
+    "secondary_color": "#0F172A",
+    "accent_color": "#E2E8F0",
+    "text_color": "#F8FAFC",
+    "font_family": "Inter",
+    "logo_path": "../../../tests/fixtures/frames/frame_01.jpg",
+    "cta_text": "Follow for more"
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "type": "title",
+      "duration_seconds": 0.75,
+      "headline": "Fixture intro",
+      "body": "Real media fixture"
+    },
+    {
+      "id": "proof",
+      "type": "content",
+      "duration_seconds": 0.75,
+      "headline": "Deterministic artifacts",
+      "body": "MP4, thumbnail, and manifest",
+      "asset_refs": ["hero-image", "reference-clip"]
+    },
+    {
+      "id": "cta",
+      "type": "cta",
+      "duration_seconds": 0.5,
+      "headline": "Renderer comes next",
+      "body": "This fixture is ready for real E2E use"
+    }
+  ],
+  "assets": {
+    "images": [
+      {
+        "id": "hero-image",
+        "path": "../../../tests/fixtures/frames/frame_01.jpg",
+        "kind": "image",
+        "role": "hero"
+      }
+    ],
+    "videos": [
+      {
+        "id": "reference-clip",
+        "path": "../../../tests/fixtures/clip_4s.mp4",
+        "kind": "video",
+        "role": "reference"
+      }
+    ],
+    "audio": [],
+    "fonts": []
+  },
+  "output": {
+    "basename": "fixture-branded-render",
+    "video_filename": "fixture-branded-render.mp4",
+    "thumbnail_filename": "fixture-branded-render.png",
+    "overwrite": true
+  }
+}

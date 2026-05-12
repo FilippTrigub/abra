@@ -1,0 +1,26 @@
+{
+  "name": "remotion-video",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Skill-local Remotion runtime for Abra video rendering",
+  "packageManager": "npm@11.6.2",
+  "scripts": {
+    "browser:ensure": "remotion browser ensure",
+    "render": "tsx scripts/render.ts",
+    "typecheck": "tsc --noEmit",
+    "validate:contracts": "python scripts/validate_contracts.py --schema ./schemas/render-spec.v1.schema.json --instance ./fixtures/render-spec.valid.json"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.459",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "remotion": "4.0.459"
+  },
+  "devDependencies": {
+    "@types/node": "25.7.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "tsx": "4.21.0",
+    "typescript": "6.0.3"
+  }
+}

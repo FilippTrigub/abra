@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://claw-parade.local/schemas/remotion-video/render-manifest.v1.schema.json",
+  "title": "Remotion Video Render Manifest v1.0",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "manifest_version",
+    "render_id",
+    "composition",
+    "video_path",
+    "thumbnail_path",
+    "duration_seconds",
+    "fps",
+    "width",
+    "height",
+    "created_at",
+    "warnings",
+    "source_spec_path"
+  ],
+  "properties": {
+    "manifest_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "render_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "composition": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "video_path": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._/-]+\\.mp4$"
+    },
+    "thumbnail_path": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._/-]+\\.(png|jpg|jpeg)$"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "fps": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "width": {
+      "type": "integer",
+      "minimum": 16
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 16
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "source_spec_path": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._/-]+\\.json$"
+    }
+  }
+}

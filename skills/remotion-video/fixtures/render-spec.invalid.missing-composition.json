@@ -1,0 +1,39 @@
+{
+  "render_spec_version": "1.0",
+  "title": "Broken fixture",
+  "duration_seconds": 12,
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "background": {
+    "type": "solid",
+    "color": "#0F172A"
+  },
+  "brand": {
+    "name": "Abra",
+    "primary_color": "#7C3AED",
+    "secondary_color": "#0EA5E9",
+    "accent_color": "#F59E0B",
+    "text_color": "#F8FAFC",
+    "font_family": "Inter"
+  },
+  "scenes": [
+    {
+      "id": "intro",
+      "type": "title",
+      "duration_seconds": 4
+    }
+  ],
+  "assets": {
+    "images": [],
+    "videos": [],
+    "audio": [],
+    "fonts": []
+  },
+  "output": {
+    "basename": "broken-fixture",
+    "video_filename": "broken-fixture.mp4",
+    "thumbnail_filename": "broken-fixture.png",
+    "overwrite": true
+  }
+}

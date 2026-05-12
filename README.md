@@ -22,7 +22,7 @@ Transform articles, notes, ideas, and meeting recordings into ready-to-publish c
 
 ## 🎨 Skills & Tools
 
-Abra includes 29 specialized skills for personal brand management:
+Abra includes 30 specialized skills for personal brand management:
 
 ### Creative & Media Skills
 
@@ -43,6 +43,7 @@ Abra includes 29 specialized skills for personal brand management:
 | **pixabay** | videos | Overlay royalty-free Pixabay images and video clips | 0 GB |
 | **video-enhancer** | videos | Sharpen, colour grade, normalise audio | 0 GB |
 | **video-captioner** | videos | Whisper transcription + animated caption burn-in | 0 GB |
+| **remotion-video** | render spec / assets | Render one branded video with Remotion, MP4 + thumbnail + manifest | 0 GB |
 
 ### Marketing & Growth Skills
 
@@ -56,7 +57,7 @@ Abra includes 29 specialized skills for personal brand management:
 | **ads-manager** | root | Paid advertising management for Google Ads campaigns |
 | **revenue-manager** | root | CRM integration and revenue operations with HubSpot, Salesforce, Close |
 
-**Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, social-resizer, post-scheduler, canva-connector
+**Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, remotion-video, social-resizer, post-scheduler, canva-connector
 
 **Social Media Skills** *(each requires one API key)*: giphy (`GIPHY_API_KEY`), freesound (`FREESOUND_API_KEY`), pixabay (`PIXABAY_API_KEY`)
 
@@ -312,7 +313,7 @@ claw-parade/
 │   ├── social-resizer/   # Image resize and filtering
 │   ├── post-scheduler/   # Schedule and publish posts
 │   ├── _providers/      # Marketing CLI wrappers
-│   └── + 17 more skills        # AI enhancement + social media tools
+│   └── + 18 more skills        # AI enhancement + social media tools
 ├── input/               # Raw input files (staging for processing)
 │   └── staging/         # Temporary staging area
 ├── output/              # Processed content organized by workflow/date
