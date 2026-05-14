@@ -4,7 +4,7 @@ RUN apk add --no-cache git
 
 # wacli
 WORKDIR /build/wacli
-RUN git clone https://github.com/steipete/wacli.git . && \
+RUN git clone https://github.com/openclaw/wacli.git . && \
     go build -o wacli ./cmd/wacli
 
 # camsnap (RTSP/ONVIF camera snapshots)

@@ -1,11 +1,11 @@
 # ── extra builders ────────────────────────────────────────────────────
 FROM golang:1.25-alpine AS go-builder
-RUN apk add --no-cache git
+RUN apk add --no-cache git gcc musl-dev
 
 # wacli
 WORKDIR /build/wacli
-RUN git clone https://github.com/steipete/wacli.git . && \
-    go build -o wacli ./cmd/wacli
+RUN git clone https://github.com/openclaw/wacli.git .
+RUN CGO_ENABLED=1 CGO_CFLAGS="-Wno-error=missing-braces" go build -tags sqlite_fts5 -o ./wacli ./cmd/wacli
 
 # camsnap (RTSP/ONVIF camera snapshots)
 WORKDIR /build/camsnap

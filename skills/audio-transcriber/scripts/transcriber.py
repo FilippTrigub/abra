@@ -197,6 +197,13 @@ def _string_config_value(config: dict[str, object], key: str, default: str) -> s
     return value if isinstance(value, str) else default
 
 
+def _has_remote_provider(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and value.strip().lower() not in {"", "local", "none"}
+    )
+
+
 def format_output(result: dict, file_name: str, model_id: str) -> dict:
     """Format transcription result into standard JSON output."""
     duration: float = result.get("duration", 0)
@@ -342,28 +349,36 @@ def main():
         args.device = _string_config_value(config, "device", "auto")
         args.language = _string_config_value(config, "language", "en")
 
-    remote_config = merge_remote_provider_overrides(
-        {
-            "provider": config.get("provider") if args.config else None,
-            "remote_model": config.get("remote_model") if args.config else None,
-            "hf_token_env": config.get("hf_token_env") if args.config else None,
-            "replicate_api_key_env": config.get("replicate_api_key_env")
-            if args.config
-            else None,
-            "remote_timeout_seconds": config.get("remote_timeout_seconds")
-            if args.config
-            else None,
-        },
-        provider=args.provider,
-        remote_model=args.remote_model,
-        hf_token_env=args.hf_token_env,
-        replicate_api_key_env=args.replicate_api_key_env,
-        remote_timeout_seconds=args.remote_timeout_seconds,
-    )
-    remote = remote_provider_from_config(
-        remote_config,
-        supported_providers={"huggingface", "replicate"},
-    )
+    requested_provider = None
+    if args.config:
+        requested_provider = config.get("provider")
+    if args.provider is not None:
+        requested_provider = args.provider
+
+    remote = None
+    if _has_remote_provider(requested_provider):
+        remote_config = merge_remote_provider_overrides(
+            {
+                "provider": config.get("provider") if args.config else None,
+                "remote_model": config.get("remote_model") if args.config else None,
+                "hf_token_env": config.get("hf_token_env") if args.config else None,
+                "replicate_api_key_env": config.get("replicate_api_key_env")
+                if args.config
+                else None,
+                "remote_timeout_seconds": config.get("remote_timeout_seconds")
+                if args.config
+                else None,
+            },
+            provider=args.provider,
+            remote_model=args.remote_model,
+            hf_token_env=args.hf_token_env,
+            replicate_api_key_env=args.replicate_api_key_env,
+            remote_timeout_seconds=args.remote_timeout_seconds,
+        )
+        remote = remote_provider_from_config(
+            remote_config,
+            supported_providers={"huggingface", "replicate"},
+        )
 
     # Convert to absolute paths (for test compatibility)
     args.input_dir = os.path.abspath(args.input_dir)
