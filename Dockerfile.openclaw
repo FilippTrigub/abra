@@ -52,6 +52,10 @@ ENV LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}"
 # Python packages
 RUN pip3 install --no-cache-dir --break-system-packages protobuf tiktoken
 
+# Playwright + Chromium for pycaps caption rendering (provides libEGL and all Chromium deps)
+RUN pip3 install --no-cache-dir --break-system-packages playwright && \
+    playwright install --with-deps chromium
+
 # Homebrew
 RUN mkdir -p /home/node/.linuxbrew && \
     chown -R node:node /home/node/.linuxbrew
