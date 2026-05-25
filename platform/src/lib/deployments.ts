@@ -98,6 +98,10 @@ function isDeploymentStatus(value: unknown): value is DeploymentStatus {
   );
 }
 
+function isTerminalDeploymentStatus(status: DeploymentStatus) {
+  return status === "succeeded" || status === "failed";
+}
+
 function isEnvironment(value: unknown): value is DeploymentEnvironment {
   return value === "preview" || value === "staging" || value === "production";
 }
@@ -659,20 +663,63 @@ export async function syncDeploymentStatusForUser(
 
   if (
     !deployment.orchestration?.operationId ||
-    deployment.status === "succeeded" ||
-    deployment.status === "failed"
+    isTerminalDeploymentStatus(deployment.status)
   ) {
     return deployment;
   }
 
   // First, try to read from the durable operation store
-  let operation = await firestoreOperationStore.getStatus(
+  const storedOperation = await firestoreOperationStore.getStatus(
     deployment.orchestration.operationId,
   );
+  let operation = storedOperation;
+  const adapter = getOrchestrationAdapter();
+  const canRefreshFromAdapter =
+    !deployment.orchestration.adapter || deployment.orchestration.adapter === adapter.name;
+
+  if (
+    canRefreshFromAdapter &&
+    (!storedOperation || !isTerminalDeploymentStatus(storedOperation.status))
+  ) {
+    try {
+      const liveOperation = await adapter.getStatus(deployment.orchestration.operationId);
+
+      if (liveOperation) {
+        operation = liveOperation;
+
+        if (storedOperation) {
+          await firestoreOperationStore.update(liveOperation);
+        } else {
+          await firestoreOperationStore.create(liveOperation);
+        }
+      }
+    } catch (error) {
+      const now = new Date().toISOString();
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to refresh orchestration status for this deployment request.";
+
+      return await persistDeployment(
+        {
+          ...deployment,
+          status: "failed",
+          updatedAt: now,
+          errorMessage: message,
+          orchestration: {
+            ...deployment.orchestration,
+            lastKnownStatus: "failed",
+            lastSyncedAt: now,
+          },
+        },
+        deployment.accountScope,
+      );
+    }
+  }
 
   // Fallback: if not found in durable store and adapter is mock, synthesize from mock store
   if (!operation && deployment.orchestration.adapter === "mock") {
-    const adapterOperation = await getOrchestrationAdapter().getStatus(
+    const adapterOperation = await adapter.getStatus(
       deployment.orchestration.operationId,
     );
 

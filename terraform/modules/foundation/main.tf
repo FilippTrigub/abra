@@ -42,7 +42,7 @@ resource "azurerm_storage_account" "app" {
   min_tls_version            = "TLS1_2"
   name                       = "${var.naming_prefix}stapp${local.random_suffix}"
   resource_group_name        = azurerm_resource_group.this.name
-  shared_access_key_enabled  = false
+  shared_access_key_enabled  = true
 
   blob_properties {
     delete_retention_policy {

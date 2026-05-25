@@ -48,6 +48,27 @@ function createInput(overrides: Partial<OrchestrationOperationInput> = {}): Orch
   };
 }
 
+function createResourceClient(overrides: Record<string, unknown> = {}) {
+  return {
+    ensureNamespace: vi.fn(async () => "created" as const),
+    ensureServiceAccount: vi.fn(async () => "created" as const),
+    ensureConfigMap: vi.fn(async () => "created" as const),
+    ensureSecret: vi.fn(async () => "created" as const),
+    ensurePersistentVolumeClaim: vi.fn(async () => "created" as const),
+    ensureService: vi.fn(async () => "created" as const),
+    ensureStatefulSet: vi.fn(async () => "created" as const),
+    readStatefulSet: vi.fn(async () => ({ status: { readyReplicas: 1, replicas: 1 } })),
+    readPodReadiness: vi.fn(async () => ({ found: true, ready: true, phase: "Running" })),
+    patchStatefulSet: vi.fn(async () => undefined),
+    deleteStatefulSet: vi.fn(async () => undefined),
+    deleteService: vi.fn(async () => undefined),
+    deleteConfigMap: vi.fn(async () => undefined),
+    deleteSecret: vi.fn(async () => undefined),
+    deletePersistentVolumeClaim: vi.fn(async () => undefined),
+    ...overrides,
+  };
+}
+
 describe("AksOrchestrationAdapter create flow", () => {
   let store: InMemoryOperationStore;
   let nowIndex: number;
@@ -79,6 +100,8 @@ describe("AksOrchestrationAdapter create flow", () => {
     expect(operation.runtimeMetadata?.aks).toEqual(
       expect.objectContaining({
         namespace: "abra",
+        configMapName: "abra-account-1-deployment-1-config",
+        secretName: "abra-account-1-deployment-1-secrets",
         statefulSetName: "abra-account-1-deployment-1",
         pvcName: "abra-account-1-deployment-1-data",
         serviceName: "abra-account-1-deployment-1-svc",
@@ -88,6 +111,8 @@ describe("AksOrchestrationAdapter create flow", () => {
       phase: "create_created",
       order: ["storage", "service", "workload"],
       createdResources: {
+        configMap: false,
+        secret: false,
         service: false,
         workload: false,
       },
@@ -99,7 +124,19 @@ describe("AksOrchestrationAdapter create flow", () => {
     const callOrder: string[] = [];
     let readinessChecks = 0;
 
-    const resourceClient = {
+    const resourceClient = createResourceClient({
+      ensureNamespace: vi.fn(async () => {
+        callOrder.push("namespace");
+        return "created" as const;
+      }),
+      ensureConfigMap: vi.fn(async () => {
+        callOrder.push("config");
+        return "created" as const;
+      }),
+      ensureSecret: vi.fn(async () => {
+        callOrder.push("secret");
+        return "created" as const;
+      }),
       ensurePersistentVolumeClaim: vi.fn(async () => {
         callOrder.push("storage");
         return "created" as const;
@@ -129,11 +166,7 @@ describe("AksOrchestrationAdapter create flow", () => {
               message: "Waiting for hydrated runtime readiness.",
             };
       }),
-      patchStatefulSet: vi.fn(async () => undefined),
-      deleteStatefulSet: vi.fn(async () => undefined),
-      deleteService: vi.fn(async () => undefined),
-      deletePersistentVolumeClaim: vi.fn(async () => undefined),
-    };
+    });
 
     const adapter = new AksOrchestrationAdapter({
       operationStore: store as never,
@@ -150,7 +183,7 @@ describe("AksOrchestrationAdapter create flow", () => {
     const waiting = await adapter.getStatus(created.operationId);
     const succeeded = await adapter.getStatus(created.operationId);
 
-    expect(callOrder).toEqual(["storage", "service", "workload"]);
+    expect(callOrder).toEqual(["namespace", "config", "secret", "storage", "service", "workload"]);
     expect(afterStorage?.status).toBe("running");
     expect(afterStorage?.runtimeMetadata?.createFlow).toEqual(
       expect.objectContaining({ phase: "storage_reconciled" })
@@ -158,13 +191,23 @@ describe("AksOrchestrationAdapter create flow", () => {
     expect(afterService?.runtimeMetadata?.createFlow).toEqual(
       expect.objectContaining({
         phase: "service_reconciled",
-        createdResources: { service: true, workload: false },
+        createdResources: {
+          configMap: true,
+          secret: true,
+          service: true,
+          workload: false,
+        },
       })
     );
     expect(afterWorkload?.runtimeMetadata?.createFlow).toEqual(
       expect.objectContaining({
         phase: "workload_reconciled",
-        createdResources: { service: true, workload: true },
+        createdResources: {
+          configMap: true,
+          secret: true,
+          service: true,
+          workload: true,
+        },
       })
     );
     expect(waiting?.status).toBe("running");
@@ -183,10 +226,7 @@ describe("AksOrchestrationAdapter create flow", () => {
   });
 
   it("fails and cleans up created service and workload when readiness becomes fatal", async () => {
-    const resourceClient = {
-      ensurePersistentVolumeClaim: vi.fn(async () => "created" as const),
-      ensureService: vi.fn(async () => "created" as const),
-      ensureStatefulSet: vi.fn(async () => "created" as const),
+    const resourceClient = createResourceClient({
       readStatefulSet: vi.fn(async () => ({
         status: {
           readyReplicas: 0,
@@ -199,11 +239,7 @@ describe("AksOrchestrationAdapter create flow", () => {
         phase: "Pending",
         fatalReason: "CrashLoopBackOff",
       })),
-      patchStatefulSet: vi.fn(async () => undefined),
-      deleteStatefulSet: vi.fn(async () => undefined),
-      deleteService: vi.fn(async () => undefined),
-      deletePersistentVolumeClaim: vi.fn(async () => undefined),
-    };
+    });
 
     const adapter = new AksOrchestrationAdapter({
       operationStore: store as never,
@@ -234,6 +270,148 @@ describe("AksOrchestrationAdapter create flow", () => {
       "abra",
       "abra-account-1-deployment-1-svc"
     );
+    expect(resourceClient.deleteConfigMap).toHaveBeenCalledWith(
+      "abra",
+      "abra-account-1-deployment-1-config"
+    );
+    expect(resourceClient.deleteSecret).toHaveBeenCalledWith(
+      "abra",
+      "abra-account-1-deployment-1-secrets"
+    );
+  });
+
+  it("reconciles a configured service account before moving past storage", async () => {
+    const callOrder: string[] = [];
+    const resourceClient = createResourceClient({
+      ensureNamespace: vi.fn(async () => {
+        callOrder.push("namespace");
+        return "created" as const;
+      }),
+      ensureServiceAccount: vi.fn(async () => {
+        callOrder.push("service-account");
+        return "created" as const;
+      }),
+      ensureConfigMap: vi.fn(async () => {
+        callOrder.push("config");
+        return "created" as const;
+      }),
+      ensureSecret: vi.fn(async () => {
+        callOrder.push("secret");
+        return "created" as const;
+      }),
+      ensurePersistentVolumeClaim: vi.fn(async () => {
+        callOrder.push("storage");
+        return "created" as const;
+      }),
+    });
+
+    const adapter = new AksOrchestrationAdapter({
+      operationStore: store as never,
+      now: nextTimestamp,
+      createOperationId: () => "op-create-sa",
+      loadKubernetesClient: vi.fn(async () => ({}) as never),
+      createResourceClient: vi.fn(() => resourceClient),
+    });
+
+    const created = await adapter.create(
+      createInput({
+        payload: {
+          name: "Abra runtime",
+          image: "ghcr.io/abra/runtime:latest",
+          useServiceAccount: true,
+          serviceAccountName: "abra-runtime-sa",
+        },
+      })
+    );
+
+    const afterStorage = await adapter.getStatus(created.operationId);
+
+    expect(callOrder).toEqual(["namespace", "service-account", "config", "secret", "storage"]);
+    expect(afterStorage?.status).toBe("running");
+    expect(afterStorage?.runtimeMetadata?.aks).toEqual(
+      expect.objectContaining({
+        serviceAccountName: "abra-runtime-sa",
+      })
+    );
+    expect(resourceClient.ensureServiceAccount).toHaveBeenCalledWith(
+      "abra",
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          name: "abra-runtime-sa",
+        }),
+      })
+    );
+  });
+
+  it("fails durably when runtime configuration reconciliation fails", async () => {
+    const resourceClient = createResourceClient({
+      ensureConfigMap: vi.fn(async () => {
+        throw new Error("config access denied");
+      }),
+    });
+
+    const adapter = new AksOrchestrationAdapter({
+      operationStore: store as never,
+      now: nextTimestamp,
+      createOperationId: () => "op-create-config-fail",
+      loadKubernetesClient: vi.fn(async () => ({}) as never),
+      createResourceClient: vi.fn(() => resourceClient),
+    });
+
+    const created = await adapter.create(createInput());
+    const failed = await adapter.getStatus(created.operationId);
+
+    expect(failed?.status).toBe("failed");
+    expect(failed?.error).toEqual(
+      expect.objectContaining({
+        code: "AKS_API_ERROR",
+        message:
+          "Failed to reconcile ConfigMap abra-account-1-deployment-1-config: config access denied",
+      })
+    );
+    expect(resourceClient.deleteStatefulSet).not.toHaveBeenCalled();
+    expect(resourceClient.deleteService).not.toHaveBeenCalled();
+  });
+
+  it("fails durably when Kubernetes bootstrap is unavailable during queued status polling", async () => {
+    const adapter = new AksOrchestrationAdapter({
+      operationStore: store as never,
+      now: nextTimestamp,
+      createOperationId: () => "op-create-bootstrap-fail",
+      loadKubernetesClient: vi.fn(async () => {
+        throw new Error("Azure Workload Identity is not configured for Kubernetes bootstrap.");
+      }),
+    });
+
+    const created = await adapter.create(createInput());
+    const failed = await adapter.getStatus(created.operationId);
+
+    expect(failed?.status).toBe("failed");
+    expect(failed?.completedAt).toBe("2026-04-24T12:01:00.000Z");
+    expect(failed?.pollAfterMs).toBe(0);
+    expect(failed?.error).toEqual(
+      expect.objectContaining({
+        code: "AKS_API_ERROR",
+        message: "Azure Workload Identity is not configured for Kubernetes bootstrap.",
+      })
+    );
+    expect(failed?.runtimeMetadata).toEqual(
+      expect.objectContaining({
+        aks: expect.objectContaining({
+          namespace: "abra",
+          statefulSetName: "abra-account-1-deployment-1",
+        }),
+        createFlow: expect.objectContaining({
+          phase: "failed",
+        }),
+      })
+    );
+    expect(failed?.steps.at(-1)).toEqual(
+      expect.objectContaining({
+        status: "failed",
+        summary: "AKS create flow failed.",
+      })
+    );
   });
 
   it("rejects create requests that do not resolve a runtime image", async () => {
@@ -256,18 +434,51 @@ describe("AksOrchestrationAdapter create flow", () => {
     );
   });
 
+  it("prefers payload.image over AKS_RUNTIME_IMAGE and ABRA_RUNTIME_IMAGE", async () => {
+    const originalAksImage = process.env.AKS_RUNTIME_IMAGE;
+    const originalAbraImage = process.env.ABRA_RUNTIME_IMAGE;
+
+    process.env.AKS_RUNTIME_IMAGE = "ghcr.io/abra/runtime:aks";
+    process.env.ABRA_RUNTIME_IMAGE = "ghcr.io/abra/runtime:legacy";
+
+    try {
+      const adapter = new AksOrchestrationAdapter({
+        operationStore: store as never,
+        now: nextTimestamp,
+        createOperationId: () => "op-create-5",
+      });
+
+      const operation = await adapter.create(
+        createInput({
+          payload: {
+            name: "Abra runtime",
+            image: "ghcr.io/abra/runtime:payload",
+          },
+        })
+      );
+
+      expect(operation.payload.image).toBe("ghcr.io/abra/runtime:payload");
+    } finally {
+      if (originalAksImage === undefined) {
+        delete process.env.AKS_RUNTIME_IMAGE;
+      } else {
+        process.env.AKS_RUNTIME_IMAGE = originalAksImage;
+      }
+
+      if (originalAbraImage === undefined) {
+        delete process.env.ABRA_RUNTIME_IMAGE;
+      } else {
+        process.env.ABRA_RUNTIME_IMAGE = originalAbraImage;
+      }
+    }
+  });
+
   it("increments config revision and patches the StatefulSet during update", async () => {
-    const resourceClient = {
+    const resourceClient = createResourceClient({
       ensurePersistentVolumeClaim: vi.fn(async () => "existing" as const),
       ensureService: vi.fn(async () => "existing" as const),
       ensureStatefulSet: vi.fn(async () => "existing" as const),
-      readStatefulSet: vi.fn(async () => ({ status: { readyReplicas: 1, replicas: 1 } })),
-      readPodReadiness: vi.fn(async () => ({ found: true, ready: true, phase: "Running" })),
-      patchStatefulSet: vi.fn(async () => undefined),
-      deleteStatefulSet: vi.fn(async () => undefined),
-      deleteService: vi.fn(async () => undefined),
-      deletePersistentVolumeClaim: vi.fn(async () => undefined),
-    };
+    });
 
     const adapter = new AksOrchestrationAdapter({
       operationStore: store as never,
@@ -320,17 +531,11 @@ describe("AksOrchestrationAdapter create flow", () => {
   });
 
   it("patches the StatefulSet for restart without deleting the PVC", async () => {
-    const resourceClient = {
+    const resourceClient = createResourceClient({
       ensurePersistentVolumeClaim: vi.fn(async () => "existing" as const),
       ensureService: vi.fn(async () => "existing" as const),
       ensureStatefulSet: vi.fn(async () => "existing" as const),
-      readStatefulSet: vi.fn(async () => ({ status: { readyReplicas: 1, replicas: 1 } })),
-      readPodReadiness: vi.fn(async () => ({ found: true, ready: true, phase: "Running" })),
-      patchStatefulSet: vi.fn(async () => undefined),
-      deleteStatefulSet: vi.fn(async () => undefined),
-      deleteService: vi.fn(async () => undefined),
-      deletePersistentVolumeClaim: vi.fn(async () => undefined),
-    };
+    });
 
     const adapter = new AksOrchestrationAdapter({
       operationStore: store as never,
@@ -381,17 +586,11 @@ describe("AksOrchestrationAdapter create flow", () => {
     const previousRetention = process.env.AKS_PVC_RETENTION_DAYS;
     delete process.env.AKS_PVC_RETENTION_DAYS;
 
-    const resourceClient = {
+    const resourceClient = createResourceClient({
       ensurePersistentVolumeClaim: vi.fn(async () => "existing" as const),
       ensureService: vi.fn(async () => "existing" as const),
       ensureStatefulSet: vi.fn(async () => "existing" as const),
-      readStatefulSet: vi.fn(async () => ({ status: { readyReplicas: 1, replicas: 1 } })),
-      readPodReadiness: vi.fn(async () => ({ found: true, ready: true, phase: "Running" })),
-      patchStatefulSet: vi.fn(async () => undefined),
-      deleteStatefulSet: vi.fn(async () => undefined),
-      deleteService: vi.fn(async () => undefined),
-      deletePersistentVolumeClaim: vi.fn(async () => undefined),
-    };
+    });
 
     try {
       const adapter = new AksOrchestrationAdapter({
@@ -429,6 +628,14 @@ describe("AksOrchestrationAdapter create flow", () => {
         "abra",
         "abra-account-1-deployment-1-svc"
       );
+      expect(resourceClient.deleteConfigMap).toHaveBeenCalledWith(
+        "abra",
+        "abra-account-1-deployment-1-config"
+      );
+      expect(resourceClient.deleteSecret).toHaveBeenCalledWith(
+        "abra",
+        "abra-account-1-deployment-1-secrets"
+      );
       expect(resourceClient.deletePersistentVolumeClaim).not.toHaveBeenCalled();
     } finally {
       if (previousRetention === undefined) {
@@ -443,17 +650,11 @@ describe("AksOrchestrationAdapter create flow", () => {
     const previousRetention = process.env.AKS_PVC_RETENTION_DAYS;
     process.env.AKS_PVC_RETENTION_DAYS = "0";
 
-    const resourceClient = {
+    const resourceClient = createResourceClient({
       ensurePersistentVolumeClaim: vi.fn(async () => "existing" as const),
       ensureService: vi.fn(async () => "existing" as const),
       ensureStatefulSet: vi.fn(async () => "existing" as const),
-      readStatefulSet: vi.fn(async () => ({ status: { readyReplicas: 1, replicas: 1 } })),
-      readPodReadiness: vi.fn(async () => ({ found: true, ready: true, phase: "Running" })),
-      patchStatefulSet: vi.fn(async () => undefined),
-      deleteStatefulSet: vi.fn(async () => undefined),
-      deleteService: vi.fn(async () => undefined),
-      deletePersistentVolumeClaim: vi.fn(async () => undefined),
-    };
+    });
 
     try {
       const adapter = new AksOrchestrationAdapter({
@@ -478,6 +679,14 @@ describe("AksOrchestrationAdapter create flow", () => {
       expect(resourceClient.deletePersistentVolumeClaim).toHaveBeenCalledWith(
         "abra",
         "abra-account-1-deployment-1-data"
+      );
+      expect(resourceClient.deleteConfigMap).toHaveBeenCalledWith(
+        "abra",
+        "abra-account-1-deployment-1-config"
+      );
+      expect(resourceClient.deleteSecret).toHaveBeenCalledWith(
+        "abra",
+        "abra-account-1-deployment-1-secrets"
       );
     } finally {
       if (previousRetention === undefined) {

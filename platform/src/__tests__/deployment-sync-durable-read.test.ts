@@ -1,5 +1,15 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 
+const getAdapterStatusMock = vi.fn();
+const orchestrationAdapterMock = {
+  name: "mock",
+  create: vi.fn(),
+  update: vi.fn(),
+  restart: vi.fn(),
+  destroy: vi.fn(),
+  getStatus: getAdapterStatusMock,
+};
+
 // Mock dependencies BEFORE importing deployments
 vi.mock("@/lib/firebase/admin", () => ({
   getAdminFirestore: vi.fn(() => ({
@@ -38,6 +48,11 @@ vi.mock("@/lib/orchestration/firestore-operation-store", () => ({
   },
 }));
 
+vi.mock("@/lib/orchestration", () => ({
+  getOrchestrationAdapter: vi.fn(() => orchestrationAdapterMock),
+  dispatchOrchestrationAction: vi.fn(),
+}));
+
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import type { OrchestrationOperation } from "@/lib/orchestration/types";
 import { syncDeploymentStatusForUser } from "@/lib/deployments";
@@ -62,6 +77,8 @@ describe("Deployment Sync - Durable Operation Reads", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (firestoreOperationStore.getStatus as any).mockReturnValue(Promise.resolve(null));
+    getAdapterStatusMock.mockResolvedValue(null);
+    orchestrationAdapterMock.name = "mock";
   });
 
   function setupMockFirestoreDoc(deploymentData: any) {
@@ -241,7 +258,132 @@ describe("Deployment Sync - Durable Operation Reads", () => {
   });
 
   describe("syncDeploymentStatusForUser with non-mock adapter", () => {
+    it("should refresh a missing AKS operation from the live adapter and persist it", async () => {
+      orchestrationAdapterMock.name = "aks";
+      const liveOperation: OrchestrationOperation = {
+        operationId: "op-123",
+        adapter: "aks",
+        action: "create",
+        requestId: "req-456",
+        target: {
+          accountId: "account-1",
+          agentId: null,
+          deploymentId: "deploy-1",
+        },
+        payload: {
+          name: "Test Deployment",
+          environment: "preview",
+          sourceRef: "test-ref",
+          notes: "",
+        },
+        status: "running",
+        createdAt: new Date("2026-01-01T00:00:00Z").toISOString(),
+        updatedAt: new Date("2026-01-01T00:02:00Z").toISOString(),
+        completedAt: null,
+        pollAfterMs: 500,
+        steps: [
+          {
+            status: "queued",
+            at: new Date("2026-01-01T00:00:00Z").toISOString(),
+            summary: "Queued",
+          },
+          {
+            status: "running",
+            at: new Date("2026-01-01T00:02:00Z").toISOString(),
+            summary: "Reconciling resources",
+          },
+        ],
+        error: null,
+        result: {
+          message: "Runtime is still reconciling.",
+          resourceHandle: "aks-runtime/abra/runtime-1",
+        },
+      };
+
+      getAdapterStatusMock.mockResolvedValue(liveOperation);
+
+      setupMockFirestoreDoc({
+        id: "deploy-1",
+        account_id: "account-1",
+        agent_id: null,
+        requestPayload: {
+          request: {
+            name: "Test Deployment",
+            environment: "preview",
+            sourceRef: "test-ref",
+            notes: "",
+            mockOutcome: "succeeded",
+          },
+          orchestration: {
+            requestId: "req-456",
+            operationId: "op-123",
+            adapter: "aks",
+            pollAfterMs: 5000,
+            lastKnownStatus: "queued",
+            lastSyncedAt: new Date("2026-01-01T00:00:00Z").toISOString(),
+          },
+        },
+        status: "queued",
+        errorMessage: null,
+        resultUrl: null,
+        createdAt: new Date("2026-01-01T00:00:00Z").toISOString(),
+        updatedAt: new Date("2026-01-01T00:00:00Z").toISOString(),
+      });
+
+      const result = await syncDeploymentStatusForUser("user-1", "deploy-1");
+
+      expect(getAdapterStatusMock).toHaveBeenCalledWith("op-123");
+      expect(firestoreOperationStore.create).toHaveBeenCalledWith(liveOperation);
+      expect(result?.status).toBe("running");
+      expect(result?.resultUrl).toBe("aks-runtime/abra/runtime-1");
+      expect(result?.orchestration?.lastKnownStatus).toBe("running");
+    });
+
+    it("should persist a failed deployment when live AKS polling throws", async () => {
+      orchestrationAdapterMock.name = "aks";
+      getAdapterStatusMock.mockRejectedValue(
+        new Error("Azure Workload Identity is not configured for Kubernetes bootstrap."),
+      );
+
+      setupMockFirestoreDoc({
+        id: "deploy-1",
+        account_id: "account-1",
+        agent_id: null,
+        requestPayload: {
+          request: {
+            name: "Test Deployment",
+            environment: "preview",
+            sourceRef: "test-ref",
+            notes: "",
+            mockOutcome: "succeeded",
+          },
+          orchestration: {
+            requestId: "req-456",
+            operationId: "op-123",
+            adapter: "aks",
+            pollAfterMs: 5000,
+            lastKnownStatus: "queued",
+            lastSyncedAt: new Date("2026-01-01T00:00:00Z").toISOString(),
+          },
+        },
+        status: "queued",
+        errorMessage: null,
+        resultUrl: null,
+        createdAt: new Date("2026-01-01T00:00:00Z").toISOString(),
+        updatedAt: new Date("2026-01-01T00:00:00Z").toISOString(),
+      });
+
+      const result = await syncDeploymentStatusForUser("user-1", "deploy-1");
+
+      expect(result?.status).toBe("failed");
+      expect(result?.errorMessage).toBe(
+        "Azure Workload Identity is not configured for Kubernetes bootstrap.",
+      );
+      expect(result?.orchestration?.lastKnownStatus).toBe("failed");
+    });
+
     it("should return failure when operation not found in durable store for non-mock adapter", async () => {
+      orchestrationAdapterMock.name = "aks";
       (firestoreOperationStore.getStatus as any).mockReturnValue(
         Promise.resolve(null),
       );

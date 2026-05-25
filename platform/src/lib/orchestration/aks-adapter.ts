@@ -6,7 +6,7 @@ import {
   type AkSKubernetesClient,
 } from "./aks-k8s-bootstrap";
 import { firestoreOperationStore } from "./firestore-operation-store";
-import { generateKubernetesManifests } from "./manifest-generator";
+import { generateKubernetesManifests, type ManifestInput } from "./manifest-generator";
 import type {
   AdapterMetadata,
   OrchestrationAdapter,
@@ -36,6 +36,8 @@ interface CreateFlowMetadata {
   phase: CreateFlowPhase;
   order: ["storage", "service", "workload"];
   createdResources?: {
+    configMap?: boolean;
+    secret?: boolean;
     service?: boolean;
     workload?: boolean;
   };
@@ -50,6 +52,10 @@ interface PodReadiness {
 }
 
 interface AksRuntimeResourceClient {
+  ensureNamespace(name: string): Promise<"created" | "existing">;
+  ensureServiceAccount(namespace: string, manifest: unknown): Promise<"created" | "existing">;
+  ensureConfigMap(namespace: string, manifest: unknown): Promise<"created" | "existing">;
+  ensureSecret(namespace: string, manifest: unknown): Promise<"created" | "existing">;
   ensurePersistentVolumeClaim(namespace: string, manifest: unknown): Promise<"created" | "existing">;
   ensureService(namespace: string, manifest: unknown): Promise<"created" | "existing">;
   ensureStatefulSet(namespace: string, manifest: unknown): Promise<"created" | "existing">;
@@ -58,6 +64,8 @@ interface AksRuntimeResourceClient {
   patchStatefulSet(namespace: string, name: string, patch: Record<string, unknown>): Promise<void>;
   deleteStatefulSet(namespace: string, name: string): Promise<void>;
   deleteService(namespace: string, name: string): Promise<void>;
+  deleteConfigMap(namespace: string, name: string): Promise<void>;
+  deleteSecret(namespace: string, name: string): Promise<void>;
   deletePersistentVolumeClaim(namespace: string, name: string): Promise<void>;
 }
 
@@ -83,6 +91,30 @@ function readRequiredString(value: unknown, fieldName: string): string {
 
 function readOptionalString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+
+function readOptionalBoolean(value: unknown): boolean | undefined {
+  return typeof value === "boolean" ? value : undefined;
+}
+
+function buildManifestInput(input: {
+  accountId: string;
+  deploymentId: string;
+  payload: Record<string, unknown>;
+  image: string;
+  configRevision: number;
+}): ManifestInput {
+  const serviceAccountName = readOptionalString(input.payload.serviceAccountName) ?? undefined;
+  const useServiceAccount = readOptionalBoolean(input.payload.useServiceAccount);
+
+  return {
+    accountId: input.accountId,
+    deploymentId: input.deploymentId,
+    image: input.image,
+    configRevision: input.configRevision,
+    ...(serviceAccountName ? { serviceAccountName } : {}),
+    ...(useServiceAccount !== undefined ? { useServiceAccount } : {}),
+  };
 }
 
 function resolveRuntimeImage(payload: Record<string, unknown>): string {
@@ -156,6 +188,15 @@ function appendStep(
   return [...operation.steps, { status, at, summary }];
 }
 
+function wrapReconcileError(resourceKind: string, resourceName: string, error: unknown): Error {
+  const classified = classifyKubernetesError(error);
+  const wrappedError = new Error(
+    `Failed to reconcile ${resourceKind} ${resourceName}: ${classified.message}`
+  ) as Error & { code?: string };
+  wrappedError.code = classified.code;
+  return wrappedError;
+}
+
 function isTerminal(operation: OrchestrationOperation): boolean {
   return operation.status === "succeeded" || operation.status === "failed";
 }
@@ -182,6 +223,8 @@ function getCreateFlowMetadata(operation: OrchestrationOperation): CreateFlowMet
 
   const createdResources = isRecord(metadata.createFlow.createdResources)
     ? {
+        configMap: metadata.createFlow.createdResources.configMap === true,
+        secret: metadata.createFlow.createdResources.secret === true,
         service: metadata.createFlow.createdResources.service === true,
         workload: metadata.createFlow.createdResources.workload === true,
       }
@@ -201,6 +244,8 @@ function updateRuntimeMetadata(
     podName?: string;
     gatewayRoute?: string;
     createdResources?: {
+      configMap?: boolean;
+      secret?: boolean;
       service?: boolean;
       workload?: boolean;
     };
@@ -224,6 +269,14 @@ function updateRuntimeMetadata(
       phase,
       order: ["storage", "service", "workload"],
       createdResources: {
+        configMap:
+          additions?.createdResources?.configMap
+          ?? getCreateFlowMetadata(operation)?.createdResources?.configMap
+          ?? false,
+        secret:
+          additions?.createdResources?.secret
+          ?? getCreateFlowMetadata(operation)?.createdResources?.secret
+          ?? false,
         service:
           additions?.createdResources?.service
           ?? getCreateFlowMetadata(operation)?.createdResources?.service
@@ -304,6 +357,96 @@ function createDefaultResourceClient(client: AkSKubernetesClient): AksRuntimeRes
   const appsApi = client.kubeConfig.makeApiClient(AppsV1Api);
 
   return {
+    async ensureNamespace(name) {
+      try {
+        await coreApi.readNamespace({ name });
+        return "existing";
+      } catch (error) {
+        const classified = classifyKubernetesError(error);
+        if (!classified.notFound) {
+          throw error;
+        }
+      }
+
+      await coreApi.createNamespace({
+        body: {
+          apiVersion: "v1",
+          kind: "Namespace",
+          metadata: { name },
+        } as never,
+      });
+      return "created";
+    },
+
+    async ensureServiceAccount(namespace, manifest) {
+      const name = (manifest as { metadata?: { name?: string } }).metadata?.name;
+      if (!name) {
+        throw new Error("ServiceAccount manifest metadata.name is required.");
+      }
+
+      try {
+        await coreApi.readNamespacedServiceAccount({ name, namespace });
+        return "existing";
+      } catch (error) {
+        const classified = classifyKubernetesError(error);
+        if (!classified.notFound) {
+          throw error;
+        }
+      }
+
+      await coreApi.createNamespacedServiceAccount({
+        namespace,
+        body: manifest as never,
+      });
+      return "created";
+    },
+
+    async ensureConfigMap(namespace, manifest) {
+      const name = (manifest as { metadata?: { name?: string } }).metadata?.name;
+      if (!name) {
+        throw new Error("ConfigMap manifest metadata.name is required.");
+      }
+
+      try {
+        await coreApi.readNamespacedConfigMap({ name, namespace });
+        return "existing";
+      } catch (error) {
+        const classified = classifyKubernetesError(error);
+        if (!classified.notFound) {
+          throw error;
+        }
+      }
+
+      await coreApi.createNamespacedConfigMap({
+        namespace,
+        body: manifest as never,
+      });
+      return "created";
+    },
+
+    async ensureSecret(namespace, manifest) {
+      const name = (manifest as { metadata?: { name?: string } }).metadata?.name;
+      if (!name) {
+        throw new Error("Secret manifest metadata.name is required.");
+      }
+
+      try {
+        await coreApi.readNamespacedSecret({ name, namespace });
+        return "existing";
+      } catch (error) {
+        const classified = classifyKubernetesError(error);
+        if (!classified.notFound) {
+          throw error;
+        }
+      }
+
+      await coreApi.createNamespacedSecret({
+        namespace,
+        body: manifest as never,
+      });
+      return "created";
+    },
+
     async ensurePersistentVolumeClaim(namespace, manifest) {
       const name = (manifest as { metadata?: { name?: string } }).metadata?.name;
       if (!name) {
@@ -454,6 +597,28 @@ function createDefaultResourceClient(client: AkSKubernetesClient): AksRuntimeRes
       }
     },
 
+    async deleteConfigMap(namespace, name) {
+      try {
+        await coreApi.deleteNamespacedConfigMap({ name, namespace });
+      } catch (error) {
+        const classified = classifyKubernetesError(error);
+        if (!classified.notFound) {
+          throw error;
+        }
+      }
+    },
+
+    async deleteSecret(namespace, name) {
+      try {
+        await coreApi.deleteNamespacedSecret({ name, namespace });
+      } catch (error) {
+        const classified = classifyKubernetesError(error);
+        if (!classified.notFound) {
+          throw error;
+        }
+      }
+    },
+
     async deletePersistentVolumeClaim(namespace, name) {
       try {
         await coreApi.deleteNamespacedPersistentVolumeClaim({ name, namespace });
@@ -494,12 +659,13 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
     const deploymentId = readRequiredString(input.target.deploymentId, "target.deploymentId");
     const payload = isRecord(input.payload) ? { ...input.payload } : {};
     const image = resolveRuntimeImage(payload);
-    const manifests = generateKubernetesManifests({
+    const manifests = generateKubernetesManifests(buildManifestInput({
       accountId,
       deploymentId,
+      payload,
       image,
       configRevision: DEFAULT_CONFIG_REVISION,
-    });
+    }));
     const now = this.dependencies.now();
     const resourceHandle = buildResourceHandle(manifests.names);
 
@@ -536,6 +702,9 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
         metadata: {
           aks: {
             namespace: manifests.names.namespace,
+            configMapName: manifests.names.configMapName,
+            secretName: manifests.names.secretName,
+            serviceAccountName: manifests.names.serviceAccountName,
             statefulSetName: manifests.names.statefulSetName,
             pvcName: manifests.names.pvcName,
             serviceName: manifests.names.serviceName,
@@ -546,6 +715,9 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       runtimeMetadata: {
         aks: {
           namespace: manifests.names.namespace,
+          configMapName: manifests.names.configMapName,
+          secretName: manifests.names.secretName,
+          serviceAccountName: manifests.names.serviceAccountName,
           statefulSetName: manifests.names.statefulSetName,
           pvcName: manifests.names.pvcName,
           serviceName: manifests.names.serviceName,
@@ -555,6 +727,8 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
           phase: "create_created",
           order: ["storage", "service", "workload"],
           createdResources: {
+            configMap: false,
+            secret: false,
             service: false,
             workload: false,
           },
@@ -572,12 +746,13 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
     const accountId = readRequiredString(input.target.accountId, "target.accountId");
     const image = resolveRuntimeImage(payload);
     const nextRevision = resolveConfigRevision(payload) + 1;
-    const manifests = generateKubernetesManifests({
+    const manifests = generateKubernetesManifests(buildManifestInput({
       accountId,
       deploymentId,
+      payload,
       image,
       configRevision: nextRevision,
-    });
+    }));
     const operation = await this.createActionOperation({
       input,
       payload: {
@@ -591,6 +766,9 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
         "AKS update request persisted. Config revision reconciliation will start immediately.",
       aksMetadata: {
         namespace: manifests.names.namespace,
+        configMapName: manifests.names.configMapName,
+        secretName: manifests.names.secretName,
+        serviceAccountName: manifests.names.serviceAccountName,
         statefulSetName: manifests.names.statefulSetName,
         pvcName: manifests.names.pvcName,
         serviceName: manifests.names.serviceName,
@@ -653,12 +831,13 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
     const accountId = readRequiredString(input.target.accountId, "target.accountId");
     const image = resolveRuntimeImage(payload);
     const currentRevision = resolveConfigRevision(payload);
-    const manifests = generateKubernetesManifests({
+    const manifests = generateKubernetesManifests(buildManifestInput({
       accountId,
       deploymentId,
+      payload,
       image,
       configRevision: currentRevision,
-    });
+    }));
     const operation = await this.createActionOperation({
       input,
       payload: {
@@ -671,6 +850,9 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       stepSummary: "AKS restart request persisted. StatefulSet restart will start immediately.",
       aksMetadata: {
         namespace: manifests.names.namespace,
+        configMapName: manifests.names.configMapName,
+        secretName: manifests.names.secretName,
+        serviceAccountName: manifests.names.serviceAccountName,
         statefulSetName: manifests.names.statefulSetName,
         pvcName: manifests.names.pvcName,
         serviceName: manifests.names.serviceName,
@@ -736,12 +918,13 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       ?? readOptionalString(process.env.ABRA_RUNTIME_IMAGE)
       ?? "destroy-placeholder";
     const currentRevision = resolveConfigRevision(payload);
-    const manifests = generateKubernetesManifests({
+    const manifests = generateKubernetesManifests(buildManifestInput({
       accountId,
       deploymentId,
+      payload,
       image,
       configRevision: currentRevision,
-    });
+    }));
     const retentionDays = resolvePvcRetentionDays();
     const operation = await this.createActionOperation({
       input,
@@ -754,6 +937,9 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       stepSummary: "AKS destroy request persisted. Compute cleanup will start immediately.",
       aksMetadata: {
         namespace: manifests.names.namespace,
+        configMapName: manifests.names.configMapName,
+        secretName: manifests.names.secretName,
+        serviceAccountName: manifests.names.serviceAccountName,
         statefulSetName: manifests.names.statefulSetName,
         pvcName: manifests.names.pvcName,
         serviceName: manifests.names.serviceName,
@@ -780,6 +966,8 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
 
       await client.deleteStatefulSet(manifests.names.namespace, manifests.names.statefulSetName);
       await client.deleteService(manifests.names.namespace, manifests.names.serviceName);
+      await client.deleteConfigMap(manifests.names.namespace, manifests.names.configMapName);
+      await client.deleteSecret(manifests.names.namespace, manifests.names.secretName);
 
       let summary = `Runtime compute resources removed. PVC retained for ${retentionDays} day${retentionDays === 1 ? "" : "s"}.`;
       let resultMessage = "AKS runtime destroyed. Persistent storage retained.";
@@ -840,24 +1028,66 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       const payload = isRecord(operation.payload) ? operation.payload : {};
       const image = resolveRuntimeImage(payload);
       const deploymentId = readRequiredString(operation.target.deploymentId, "target.deploymentId");
-      const manifests = generateKubernetesManifests({
+      const manifests = generateKubernetesManifests(buildManifestInput({
         accountId: operation.target.accountId,
         deploymentId,
+        payload,
         image,
         configRevision: operation.runtimeMetadata?.aks?.configRevision ?? DEFAULT_CONFIG_REVISION,
-      });
+      }));
       client = this.dependencies.createResourceClient(
         await this.dependencies.loadKubernetesClient()
       );
+      const createdResources = getCreateFlowMetadata(operation)?.createdResources;
 
       switch (flow.phase) {
         case "create_created": {
-          await client.ensurePersistentVolumeClaim(manifests.names.namespace, manifests.pvc);
+          let configMapResult: "created" | "existing" = "existing";
+          let secretResult: "created" | "existing" = "existing";
+
+          try {
+            await client.ensureNamespace(manifests.names.namespace);
+          } catch (error) {
+            throw wrapReconcileError("Namespace", manifests.names.namespace, error);
+          }
+
+          if (manifests.serviceAccount && manifests.names.serviceAccountName) {
+            try {
+              await client.ensureServiceAccount(manifests.names.namespace, manifests.serviceAccount);
+            } catch (error) {
+              throw wrapReconcileError("ServiceAccount", manifests.names.serviceAccountName, error);
+            }
+          }
+
+          try {
+            configMapResult = await client.ensureConfigMap(manifests.names.namespace, manifests.configMap);
+          } catch (error) {
+            throw wrapReconcileError("ConfigMap", manifests.names.configMapName, error);
+          }
+
+          try {
+            secretResult = await client.ensureSecret(manifests.names.namespace, manifests.secret);
+          } catch (error) {
+            throw wrapReconcileError("Secret", manifests.names.secretName, error);
+          }
+
+          try {
+            await client.ensurePersistentVolumeClaim(manifests.names.namespace, manifests.pvc);
+          } catch (error) {
+            throw wrapReconcileError("PersistentVolumeClaim", manifests.names.pvcName, error);
+          }
+
           return this.persistOperationUpdate(operation, {
             status: "running",
             phase: "storage_reconciled",
             pollAfterMs: AKS_POLL_AFTER_MS.running,
-            summary: "Persistent storage reconciled for the runtime.",
+            summary: "Runtime namespace, configuration, and persistent storage reconciled.",
+            createdResources: {
+              configMap: configMapResult === "created",
+              secret: secretResult === "created",
+              service: createdResources?.service ?? false,
+              workload: createdResources?.workload ?? false,
+            },
           });
         }
 
@@ -869,7 +1099,10 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
             pollAfterMs: AKS_POLL_AFTER_MS.running,
             summary: "Runtime service reconciled and ready for workload binding.",
             createdResources: {
+              configMap: createdResources?.configMap ?? false,
+              secret: createdResources?.secret ?? false,
               service: serviceResult === "created",
+              workload: createdResources?.workload ?? false,
             },
           });
         }
@@ -887,7 +1120,9 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
             summary: "Runtime workload reconciled. Waiting for hydration and readiness.",
             podName: manifests.names.podName,
             createdResources: {
-              service: getCreateFlowMetadata(operation)?.createdResources?.service ?? false,
+              configMap: createdResources?.configMap ?? false,
+              secret: createdResources?.secret ?? false,
+              service: createdResources?.service ?? false,
               workload: workloadResult === "created",
             },
           });
@@ -956,6 +1191,8 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       gatewayRoute?: string;
       completed?: boolean;
       createdResources?: {
+        configMap?: boolean;
+        secret?: boolean;
         service?: boolean;
         workload?: boolean;
       };
@@ -1159,6 +1396,14 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
 
         if (flow?.createdResources?.service) {
           await client.deleteService(runtimeMetadata.aks.namespace, runtimeMetadata.aks.serviceName);
+        }
+
+        if (flow?.createdResources?.configMap && runtimeMetadata.aks.configMapName) {
+          await client.deleteConfigMap(runtimeMetadata.aks.namespace, runtimeMetadata.aks.configMapName);
+        }
+
+        if (flow?.createdResources?.secret && runtimeMetadata.aks.secretName) {
+          await client.deleteSecret(runtimeMetadata.aks.namespace, runtimeMetadata.aks.secretName);
         }
       } catch (cleanupError) {
         const classifiedCleanup = classifyKubernetesError(cleanupError);

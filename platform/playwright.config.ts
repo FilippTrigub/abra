@@ -1,4 +1,8 @@
+import path from "node:path";
+
 import { defineConfig, devices } from "@playwright/test";
+
+const githubStorageState = path.resolve(__dirname, "../playwright/.auth/github.json");
 
 export default defineConfig({
   testDir: "src/__e2e__",
@@ -22,6 +26,14 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "chromium-github",
+      testIgnore: ["**/sign-in.spec.ts"],
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: githubStorageState,
+      },
     },
   ],
   webServer: {

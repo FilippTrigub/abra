@@ -361,6 +361,26 @@ describe("StatefulSet manifest", () => {
     expect(openclawContainer.resources.limits.cpu).toBe("500m");
     expect(openclawContainer.resources.limits.memory).toBe("512Mi");
   });
+
+  test("binds the configured service account when requested", () => {
+    const manifests = generateKubernetesManifests({
+      ...BASE_INPUT,
+      useServiceAccount: true,
+      serviceAccountName: "abra-runtime-sa",
+    });
+
+    expect((manifests.statefulset.spec as any).template.spec.serviceAccountName).toBe(
+      "abra-runtime-sa"
+    );
+    expect(manifests.serviceAccount).toEqual(
+      expect.objectContaining({
+        kind: "ServiceAccount",
+        metadata: expect.objectContaining({
+          name: "abra-runtime-sa",
+        }),
+      })
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -468,6 +488,56 @@ describe("PVC manifest", () => {
   });
 });
 
+describe("Runtime prerequisite manifests", () => {
+  test("generates a namespace manifest for the runtime envelope", () => {
+    const manifests = generateKubernetesManifests(BASE_INPUT);
+
+    expect(manifests.namespace).toEqual(
+      expect.objectContaining({
+        apiVersion: "v1",
+        kind: "Namespace",
+        metadata: expect.objectContaining({
+          name: getRuntimeNamespace(),
+        }),
+      })
+    );
+  });
+
+  test("generates a config map with openclaw.json for hydration", () => {
+    const manifests = generateKubernetesManifests(BASE_INPUT);
+
+    expect(manifests.configMap).toEqual(
+      expect.objectContaining({
+        apiVersion: "v1",
+        kind: "ConfigMap",
+        metadata: expect.objectContaining({
+          name: "abra-user123-abra-main-config",
+        }),
+        data: expect.objectContaining({
+          "openclaw.json": expect.any(String),
+        }),
+      })
+    );
+  });
+
+  test("generates a secret with env content for hydration", () => {
+    const manifests = generateKubernetesManifests(BASE_INPUT);
+
+    expect(manifests.secret).toEqual(
+      expect.objectContaining({
+        apiVersion: "v1",
+        kind: "Secret",
+        metadata: expect.objectContaining({
+          name: "abra-user123-abra-main-secrets",
+        }),
+        stringData: expect.objectContaining({
+          env: expect.any(String),
+        }),
+      })
+    );
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Names consistency tests
 // ---------------------------------------------------------------------------
@@ -509,6 +579,14 @@ describe("Names consistency", () => {
     expect(manifests.names.podName).toBe(
       getPodName(TEST_ACCOUNT_ID, TEST_DEPLOYMENT_ID)
     );
+  });
+
+  test("runtime prerequisite names are deterministic", () => {
+    const manifests = generateKubernetesManifests(BASE_INPUT);
+
+    expect(manifests.names.configMapName).toBe("abra-user123-abra-main-config");
+    expect(manifests.names.secretName).toBe("abra-user123-abra-main-secrets");
+    expect(manifests.names.serviceAccountName).toBeUndefined();
   });
 });
 
@@ -576,6 +654,15 @@ describe("Manifest validation", () => {
     (manifests.pvc as any).spec.accessModes = undefined;
     expect(() => validateGeneratedManifests(manifests)).toThrow(
       "PVC missing spec.accessModes"
+    );
+  });
+
+  test("throws error when generated config map loses openclaw.json", () => {
+    const manifests = generateKubernetesManifests(BASE_INPUT);
+    delete (manifests.configMap as any).data["openclaw.json"];
+
+    expect(() => validateGeneratedManifests(manifests)).toThrow(
+      "ConfigMap missing data.openclaw.json"
     );
   });
 });

@@ -52,6 +52,8 @@ export interface ManifestInput {
   serviceAccountName?: string;
 }
 
+const DEFAULT_SERVICE_ACCOUNT_NAME = "abra-openclaw-sa";
+
 /**
  * Kubernetes object base interface.
  */
@@ -79,6 +81,7 @@ interface StatefulSetSpec {
       labels: Record<string, string>;
     };
     spec: {
+      serviceAccountName?: string;
       initContainers?: Array<{
         name: string;
         image: string;
@@ -180,6 +183,14 @@ interface PVCSpec {
  * Contains all generated manifests as plain objects ready for serialization.
  */
 export interface KubernetesManifests {
+  /** Namespace manifest for the runtime envelope */
+  namespace: KubernetesObject;
+  /** Optional ServiceAccount manifest when the runtime uses a dedicated identity */
+  serviceAccount?: KubernetesObject;
+  /** ConfigMap consumed by init-hydration */
+  configMap: KubernetesObject & { data: Record<string, string> };
+  /** Secret consumed by init-hydration */
+  secret: KubernetesObject & { stringData: Record<string, string>; type: string };
   /** StatefulSet manifest for the Abra/OpenClaw runtime */
   statefulset: KubernetesObject & { spec: StatefulSetSpec };
   /** Service manifest for internal routing */
@@ -189,11 +200,30 @@ export interface KubernetesManifests {
   /** Computed resource names (for verification/debugging) */
   names: {
     namespace: string;
+    configMapName: string;
+    secretName: string;
+    serviceAccountName?: string;
     statefulSetName: string;
     serviceName: string;
     pvcName: string;
     podName: string;
   };
+}
+
+function getConfigMapName(accountId: string, deploymentId: string): string {
+  return `${getStatefulSetName(accountId, deploymentId)}-config`;
+}
+
+function getSecretName(accountId: string, deploymentId: string): string {
+  return `${getStatefulSetName(accountId, deploymentId)}-secrets`;
+}
+
+function resolveServiceAccountName(input: ManifestInput): string | undefined {
+  if (input.useServiceAccount !== true && !input.serviceAccountName?.trim()) {
+    return undefined;
+  }
+
+  return input.serviceAccountName?.trim() || DEFAULT_SERVICE_ACCOUNT_NAME;
 }
 
 /**
@@ -268,6 +298,9 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
   const pvcName = getPvcName(accountId, deploymentId);
   const podName = getPodName(accountId, deploymentId);
   const namespace = getRuntimeNamespace();
+  const configMapName = getConfigMapName(accountId, deploymentId);
+  const secretName = getSecretName(accountId, deploymentId);
+  const serviceAccountName = resolveServiceAccountName(input);
 
   // Build container resources if provided
   type ContainerResources = {
@@ -347,6 +380,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
           },
         },
         spec: {
+          ...(serviceAccountName ? { serviceAccountName } : {}),
           initContainers: [
             {
               name: "init-hydration",
@@ -423,13 +457,13 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
             {
               name: "config-volume",
               configMap: {
-                name: `${statefulSetName}-config`,
+                name: configMapName,
               },
             },
             {
               name: "secrets-volume",
               secret: {
-                secretName: `${statefulSetName}-secrets`,
+                secretName: secretName,
               },
             },
           ],
@@ -440,6 +474,89 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
   };
 
   return manifest;
+}
+
+function generateNamespace(): KubernetesObject {
+  return {
+    apiVersion: "v1",
+    kind: "Namespace",
+    metadata: {
+      name: getRuntimeNamespace(),
+      labels: {
+        app: "abra",
+      },
+    },
+  };
+}
+
+function generateServiceAccount(input: ManifestInput): KubernetesObject | undefined {
+  const serviceAccountName = resolveServiceAccountName(input);
+  if (!serviceAccountName) {
+    return undefined;
+  }
+
+  const { accountId, deploymentId } = input;
+  return {
+    apiVersion: "v1",
+    kind: "ServiceAccount",
+    metadata: {
+      name: serviceAccountName,
+      namespace: getRuntimeNamespace(),
+      labels: {
+        app: "abra",
+        "abra.io/account-id": accountId,
+        "abra.io/deployment-id": deploymentId,
+      },
+    },
+  };
+}
+
+function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Record<string, string> } {
+  const { accountId, deploymentId } = input;
+  const namespace = getRuntimeNamespace();
+
+  return {
+    apiVersion: "v1",
+    kind: "ConfigMap",
+    metadata: {
+      name: getConfigMapName(accountId, deploymentId),
+      namespace,
+      labels: {
+        app: "abra",
+        "abra.io/account-id": accountId,
+        "abra.io/deployment-id": deploymentId,
+      },
+    },
+    data: {
+      "openclaw.json": "{}\n",
+    },
+  };
+}
+
+function generateSecret(input: ManifestInput): KubernetesObject & {
+  stringData: Record<string, string>;
+  type: string;
+} {
+  const { accountId, deploymentId } = input;
+  const namespace = getRuntimeNamespace();
+
+  return {
+    apiVersion: "v1",
+    kind: "Secret",
+    metadata: {
+      name: getSecretName(accountId, deploymentId),
+      namespace,
+      labels: {
+        app: "abra",
+        "abra.io/account-id": accountId,
+        "abra.io/deployment-id": deploymentId,
+      },
+    },
+    type: "Opaque",
+    stringData: {
+      env: "",
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -563,6 +680,10 @@ export function generateKubernetesManifests(input: ManifestInput): KubernetesMan
   const { accountId, deploymentId } = input;
 
   // Generate all manifests
+  const namespace = generateNamespace();
+  const serviceAccount = generateServiceAccount(input);
+  const configMap = generateConfigMap(input);
+  const secret = generateSecret(input);
   const statefulset = generateStatefulSet(input);
   const service = generateService(input);
   const pvc = generatePVC(input);
@@ -570,6 +691,9 @@ export function generateKubernetesManifests(input: ManifestInput): KubernetesMan
   // Compute resource names for reference
   const names = {
     namespace: getRuntimeNamespace(),
+    configMapName: getConfigMapName(accountId, deploymentId),
+    secretName: getSecretName(accountId, deploymentId),
+    serviceAccountName: resolveServiceAccountName(input),
     statefulSetName: getStatefulSetName(accountId, deploymentId),
     serviceName: getServiceName(accountId, deploymentId),
     pvcName: getPvcName(accountId, deploymentId),
@@ -577,6 +701,10 @@ export function generateKubernetesManifests(input: ManifestInput): KubernetesMan
   };
 
   return {
+    namespace,
+    serviceAccount,
+    configMap,
+    secret,
     statefulset,
     service,
     pvc,
@@ -647,9 +775,48 @@ export function serializeManifestsToYaml(manifests: KubernetesManifests): {
  * @returns true if valid, throws error if invalid
  */
 export function validateGeneratedManifests(manifests: KubernetesManifests): void {
+  const namespace = manifests.namespace;
+  const configMap = manifests.configMap;
+  const secret = manifests.secret;
   const statefulset = manifests.statefulset;
   const service = manifests.service;
   const pvc = manifests.pvc;
+
+  if (namespace.apiVersion !== "v1") {
+    throw new Error("Namespace apiVersion mismatch");
+  }
+  if (namespace.kind !== "Namespace") {
+    throw new Error("Namespace kind mismatch");
+  }
+  if (!namespace.metadata?.name) {
+    throw new Error("Namespace missing metadata.name");
+  }
+
+  if (configMap.apiVersion !== "v1") {
+    throw new Error("ConfigMap apiVersion mismatch");
+  }
+  if (configMap.kind !== "ConfigMap") {
+    throw new Error("ConfigMap kind mismatch");
+  }
+  if (!configMap.metadata?.name) {
+    throw new Error("ConfigMap missing metadata.name");
+  }
+  if (!configMap.data || typeof configMap.data["openclaw.json"] !== "string") {
+    throw new Error("ConfigMap missing data.openclaw.json");
+  }
+
+  if (secret.apiVersion !== "v1") {
+    throw new Error("Secret apiVersion mismatch");
+  }
+  if (secret.kind !== "Secret") {
+    throw new Error("Secret kind mismatch");
+  }
+  if (!secret.metadata?.name) {
+    throw new Error("Secret missing metadata.name");
+  }
+  if (!secret.stringData || typeof secret.stringData.env !== "string") {
+    throw new Error("Secret missing stringData.env");
+  }
 
   // Check StatefulSet
   if (statefulset.apiVersion !== "apps/v1") {
@@ -702,5 +869,11 @@ export function validateGeneratedManifests(manifests: KubernetesManifests): void
   }
   if (manifests.names.pvcName !== (pvc.metadata as any).name) {
     throw new Error("Names mismatch: pvc");
+  }
+  if (manifests.names.configMapName !== (configMap.metadata as any).name) {
+    throw new Error("Names mismatch: configMap");
+  }
+  if (manifests.names.secretName !== (secret.metadata as any).name) {
+    throw new Error("Names mismatch: secret");
   }
 }

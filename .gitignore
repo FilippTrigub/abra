@@ -84,3 +84,17 @@ schedules/
 
 # Sisyphus
 .sisyphus/
+
+# playwright
+.playwright-mcp/*
+.playwright-cli/*
+playwright/*
+platform/.playwright-mcp/*
+
+# terraform
+*.tfstate
+terraform/bootstrap/.terraform/*
+terraform/environments/prod/.terraform/*
+
+# testing
+input/

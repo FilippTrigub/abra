@@ -76,6 +76,12 @@ export interface OrchestrationAdapter {
 export interface AkRuntimeMetadata {
   /** Kubernetes namespace where the runtime is deployed */
   namespace: string;
+  /** Name of the ConfigMap mounted for runtime configuration */
+  configMapName?: string;
+  /** Name of the Secret mounted for runtime environment */
+  secretName?: string;
+  /** Optional ServiceAccount name bound to the runtime pod */
+  serviceAccountName?: string;
   /** Name of the StatefulSet workload */
   statefulSetName: string;
   /** Name of the PVC backing ~/.openclaw */
