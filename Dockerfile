@@ -1,6 +1,7 @@
 # ── extra builders ────────────────────────────────────────────────────
 FROM golang:1.25-alpine AS go-builder
-RUN apk add --no-cache git
+RUN apk add --no-cache build-base git
+ENV CGO_ENABLED=1
 
 # wacli
 WORKDIR /build/wacli

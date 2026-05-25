@@ -14,6 +14,11 @@ output "container_registry_id" {
   value       = azurerm_container_registry.this.id
 }
 
+output "container_registry_name" {
+  description = "Name of the ACR"
+  value       = azurerm_container_registry.this.name
+}
+
 output "container_registry_login_server" {
   description = "Fully qualified login server for the ACR"
   value       = azurerm_container_registry.this.login_server
@@ -22,6 +27,11 @@ output "container_registry_login_server" {
 output "key_vault_id" {
   description = "Resource ID of the Key Vault"
   value       = azurerm_key_vault.this.id
+}
+
+output "key_vault_name" {
+  description = "Name of the Key Vault"
+  value       = azurerm_key_vault.this.name
 }
 
 output "key_vault_uri" {
@@ -42,6 +52,11 @@ output "kubernetes_cluster_id" {
 output "kubernetes_cluster_name" {
   description = "Name of the AKS cluster"
   value       = azurerm_kubernetes_cluster.this.name
+}
+
+output "kubernetes_cluster_kubelet_identity_object_id" {
+  description = "Object ID of the AKS kubelet identity used for image pulls"
+  value       = azurerm_kubernetes_cluster.this.kubelet_identity[0].object_id
 }
 
 output "kubernetes_cluster_node_resource_group" {
@@ -95,7 +110,7 @@ output "service_bus_job_dispatch_queue_name" {
 }
 
 output "service_bus_namespace" {
-  description = "Fully qualified Service Bus namespace endpoint"
+  description = "Primary connection string for the Service Bus namespace"
   value       = azurerm_servicebus_namespace.this.default_primary_connection_string
   sensitive   = true
 }
@@ -103,6 +118,11 @@ output "service_bus_namespace" {
 output "service_bus_namespace_id" {
   description = "Resource ID of the Service Bus namespace"
   value       = azurerm_servicebus_namespace.this.id
+}
+
+output "service_bus_namespace_name" {
+  description = "Name of the Service Bus namespace"
+  value       = azurerm_servicebus_namespace.this.name
 }
 
 output "storage_account_id" {

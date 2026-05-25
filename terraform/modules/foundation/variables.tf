@@ -66,7 +66,7 @@ variable "api_server_authorized_ip_ranges" {
 variable "kubernetes_version" {
   description = "Kubernetes version for the AKS cluster"
   type        = string
-  default     = "1.30.0"
+  default     = "1.34.7"
 }
 
 variable "location" {
