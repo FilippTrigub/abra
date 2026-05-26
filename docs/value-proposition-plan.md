@@ -350,3 +350,9 @@ The current landing page is an expression of this guide, not the permanent templ
 - The product should feel like a content operator for experts, not a toolkit for engineers.
 - Human review should be framed as a strength because this ICP is reputation-sensitive.
 - The simplest demo should be: upload one call recording or voice note, get several post drafts back, approve one, schedule it.
+
+## TODO follow-up
+
+- Adjust the dashboard UI to match this positioning direction more closely.
+- The dashboard should move away from warm, playful SaaS cues and feel sharper, more minimal, and more operational.
+- Prioritize the same user feeling across product surfaces: credible, controlled, expert, and built around useful source material becoming reviewable output.
