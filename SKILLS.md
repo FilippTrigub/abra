@@ -155,6 +155,23 @@ uv run python scripts/generate.py --prompt "professional headshot" --output ./ou
 
 ---
 
+### video-generator — Multi-Model Cloud Video (Higgsfield)
+
+**What it does:** Generates video clips from text prompts or input images using Higgsfield’s cloud platform. Supports multiple models and presets, and auto-detects text-to-video vs. image-to-video.
+
+**Models:** Kling, Sora, Veo, Wan, Seedance, MiniMax
+
+**Requires:** `uv`, `HF_KEY` or `HF_API_KEY` + `HF_API_SECRET`
+
+**Usage:**
+```bash
+cd skills/video-generator && uv sync
+export HF_KEY="your-api-key:your-api-secret"
+uv run python scripts/generate.py --config config.json
+```
+
+---
+
 ### animate-image — Image to Video (Cloud)
 
 **What it does:** Animates a still image into a short video clip using fal.ai's LTX-2.3 Fast model in the cloud. No local GPU required — everything runs on fal.ai serverless infrastructure.
@@ -269,6 +286,23 @@ Output:
   "caption": "Morning rituals ☕ #coffeetime",
   "tags": ["portrait", "coffee", "indoor"]
 }
+```
+
+---
+
+### media-analyzer — Visual Intelligence
+
+**What it does:** Analyzes images and videos with vision-language models, returning structured observations for composition, engagement potential, motion, and brand alignment.
+
+**Modes:** local GPU inference or cloud inference via HuggingFace API
+
+**Requires:** `uv`, `ffmpeg`, GPU recommended (30GB VRAM for local mode) or `HF_TOKEN` for cloud mode
+
+**Usage:**
+```bash
+cd skills/media-analyzer && uv sync
+uv run python scripts/analyze.py --input photo.jpg --output results/
+uv run python scripts/analyze.py --input video.mp4 --output results/ --mode cloud --provider huggingface
 ```
 
 ---
@@ -569,6 +603,23 @@ uv run python scripts/posts.py create \
   --channel-id CHANNEL_ID \
   --text "Post caption" \
   --mode addToQueue
+```
+
+---
+
+### social-analytics — Social Post Analytics
+
+**What it does:** Fetches engagement and performance metrics for your own posts across major social platforms via the SociaVault API.
+
+**Platforms:** Instagram, LinkedIn, TikTok, YouTube, Twitter/X, Facebook, Reddit, Threads
+
+**Requires:** `uv`, `SOCIAVAULT_API_KEY`
+
+**Usage:**
+```bash
+cd skills/social-analytics && uv sync
+export SOCIAVAULT_API_KEY="sk_live_your_api_key_here"
+uv run python scripts/linkedin_post.py --url "https://linkedin.com/posts/..." --output ./output
 ```
 
 ---

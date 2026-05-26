@@ -22,7 +22,7 @@ Transform articles, notes, ideas, and meeting recordings into ready-to-publish c
 
 ## 🎨 Skills & Tools
 
-Abra includes 30 specialized skills for personal brand management:
+Abra includes 31 specialized skills for personal brand management:
 
 ### Creative & Media Skills
 
@@ -37,13 +37,17 @@ Abra includes 30 specialized skills for personal brand management:
 | **audio-splitter** | video/audio | Separate vocals from music | ~2 GB |
 | **music-generator** | prompt / video | Generate brand background music | ~3 GB |
 | **animate-image** | images | Image → animated video clip | ~8 GB |
+| **video-generator** | prompt / images | Generate videos from text or images via Higgsfield | cloud |
 | **video-editor** | video | Edit / inpaint video regions via prompt | ~8 GB |
+| **media-analyzer** | images / videos | Analyze visual content with vision-language models | ~30 GB GPU |
 | **giphy** | videos | Overlay animated GIF stickers from GIPHY with optional SFX | 0 GB |
 | **freesound** | videos | Mix Freesound sound effects into videos with optional GIF overlays | 0 GB |
 | **pixabay** | videos | Overlay royalty-free Pixabay images and video clips | 0 GB |
 | **video-enhancer** | videos | Sharpen, colour grade, normalise audio | 0 GB |
 | **video-captioner** | videos | Whisper transcription + animated caption burn-in | 0 GB |
 | **remotion-video** | render spec / assets | Render one branded video with Remotion, MP4 + thumbnail + manifest | 0 GB |
+| **visual-hook** | images/videos | Add bold hook text overlays in social-safe zones | 0 GB |
+| **end-cta** | images/videos | Apply branded end-card CTAs and overlays | 0 GB |
 
 ### Marketing & Growth Skills
 
@@ -56,6 +60,7 @@ Abra includes 30 specialized skills for personal brand management:
 | **email-campaigner** | root | Email marketing campaigns with Resend, Mailchimp, SendGrid, Kit |
 | **ads-manager** | root | Paid advertising management for Google Ads campaigns |
 | **revenue-manager** | root | CRM integration and revenue operations with HubSpot, Salesforce, Close |
+| **social-analytics** | root | Social post analytics and performance reporting via SociaVault |
 
 **Core Skills:** brand-manager, audio-transcriber, video-cutter, image-generator, video-enhancer, video-captioner, remotion-video, social-resizer, post-scheduler, canva-connector
 
@@ -313,7 +318,7 @@ claw-parade/
 │   ├── social-resizer/   # Image resize and filtering
 │   ├── post-scheduler/   # Schedule and publish posts
 │   ├── _providers/      # Marketing CLI wrappers
-│   └── + 18 more skills        # AI enhancement + social media tools
+│   └── + 21 more skills        # AI enhancement + social media tools
 ├── input/               # Raw input files (staging for processing)
 │   └── staging/         # Temporary staging area
 ├── output/              # Processed content organized by workflow/date
