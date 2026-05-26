@@ -1,26 +1,26 @@
 import { Button } from "@/components/ui/button";
 
 const triggers = [
-  "You finish a client call with a sharp answer worth reusing",
-  "You record a voice note before the insight disappears",
-  "You write a rough draft that is useful but not post-ready",
+  "A client call says something worth posting",
+  "A voice note captures a useful idea",
+  "A rough draft needs to become a post",
 ];
 
 const steps = [
   {
     label: "01 ingest",
     title: "Drop in the raw material",
-    body: "Use a call recording, note, article, transcript, or rough idea. Start from something you actually said or wrote.",
+    body: "Use a call, note, article, or rough draft.",
   },
   {
     label: "02 extract",
     title: "Abra finds the signal",
-    body: "It pulls out the strongest moments, objections, stories, and opinions, then drafts posts in your voice.",
+    body: "It turns your real words into post drafts in your voice.",
   },
   {
     label: "03 review",
     title: "Review and schedule",
-    body: "You keep control. Edit what matters, approve what works, and schedule the finished posts when you are ready.",
+    body: "You review, edit, and schedule what works.",
   },
 ];
 
@@ -37,21 +37,9 @@ const differentiators = [
   },
   {
     label: "03",
-    title: "Built for trust-based selling",
-    body: "The output is meant to sound credible before a buyer ever books the call.",
-  },
-  {
-    label: "04",
     title: "Human review stays in the loop",
     body: "Abra drafts and organizes. You approve what goes live.",
   },
-];
-
-const useCases = [
-  "Turn the best answer from a client call into five LinkedIn post drafts.",
-  "Convert a raw voice note into a polished opinion post.",
-  "Turn an article into a week of platform-native social content.",
-  "Upload a workshop recording and pull out follow-up posts worth publishing.",
 ];
 
 export default function MarketingPage() {
@@ -72,7 +60,7 @@ export default function MarketingPage() {
         <div className="relative mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div>
             <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-[#7CFFB2]">
-              For independent experts who sell through trust
+              For independent experts
             </p>
 
             <h1 className="mt-6 max-w-4xl text-display font-display font-extrabold tracking-[-0.04em] text-white">
@@ -80,9 +68,8 @@ export default function MarketingPage() {
             </h1>
 
             <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-300 sm:text-xl">
-              Finish a useful call, voice note, article, or recording. Abra
-              finds the good parts and turns them into drafts you can review,
-              edit, and schedule.
+              Drop in a call, note, or recording. Abra turns it into post
+              drafts ready to review.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -103,8 +90,7 @@ export default function MarketingPage() {
 
             <div className="mt-8 flex flex-wrap gap-3">
               {[
-                "Built for independent experts",
-                "Starts from calls, notes, and recordings",
+                "Starts from real source material",
                 "Review before anything publishes",
               ].map((item) => (
                 <span
@@ -115,10 +101,6 @@ export default function MarketingPage() {
                 </span>
               ))}
             </div>
-
-            <p className="mt-8 max-w-xl border-l border-[#7CFFB2]/40 pl-4 text-body text-zinc-400">
-              You already said the useful thing. Abra turns it into the post.
-            </p>
           </div>
 
           <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-6 shadow-2xl shadow-black/30 sm:p-8">
@@ -129,66 +111,27 @@ export default function MarketingPage() {
                   Capture to post
                 </p>
                 <p className="mt-2 text-h5 font-display font-bold text-white">
-                  One useful moment becomes a content batch.
+                  One useful moment becomes ready-to-review drafts.
                 </p>
               </div>
-              <span className="rounded-full border border-[#7CFFB2]/25 bg-[#7CFFB2]/10 px-3 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-[#9CFFC3]">
-                Live workflow
-              </span>
             </div>
 
-            <div className="mt-5 grid gap-4">
-              <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                  Input queue
-                </p>
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center justify-between rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2">
-                    <span className="text-sm text-zinc-200">Client call - pricing objections</span>
-                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[#7CFFB2]">Audio</span>
-                  </div>
-                  <div className="flex items-center justify-between rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2">
-                    <span className="text-sm text-zinc-200">Voice note - point of view</span>
-                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-400">Note</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-black/20 p-4">
-                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                  Extraction
-                </p>
-                <ul className="mt-3 space-y-2 text-sm text-zinc-300">
-                  <li className="flex gap-3">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#7CFFB2]" />
-                    Repeated buyer objection spotted
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#7CFFB2]" />
-                    Clear opinion with founder voice
-                  </li>
-                  <li className="flex gap-3">
-                    <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#7CFFB2]" />
-                    Strong hook + 3 draft angles
-                  </li>
-                </ul>
-              </div>
-
-              <div className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-                <div className="flex items-center justify-between">
-                  <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                    Draft output
-                  </p>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-400">
-                    Review required
+            <div className="mt-5 grid gap-3">
+              {[
+                ["Input", "Call, note, recording, or draft"],
+                ["Output", "Post drafts in your voice"],
+                ["Control", "Review before anything publishes"],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-4 py-3"
+                >
+                  <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+                    {label}
                   </span>
+                  <span className="text-sm text-zinc-100">{value}</span>
                 </div>
-                <p className="mt-3 text-base leading-7 text-zinc-100">
-                  Most experts do not need more ideas. They need a reliable way
-                  to turn the useful things they already say into posts worth
-                  publishing.
-                </p>
-              </div>
+              ))}
             </div>
           </div>
         </div>
@@ -201,31 +144,16 @@ export default function MarketingPage() {
               The problem
             </p>
             <h2 className="mt-4 max-w-xl text-h2 font-display font-bold tracking-[-0.03em] text-white">
-              Your best content is already happening. It just disappears after the call.
+              Your best content already happened on the call.
             </h2>
+            <p className="mt-4 max-w-lg text-body leading-8 text-zinc-300">
+              The bottleneck is not ideas. It is turning raw material into
+              something ready to post.
+            </p>
           </div>
 
-          <div className="grid gap-5 md:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                Before Abra
-              </p>
-              <p className="mt-4 text-lg leading-8 text-zinc-200">
-                &ldquo;That was a useful conversation. I should turn it into
-                content later.&rdquo;
-              </p>
-            </div>
-            <div className="rounded-2xl border border-[#7CFFB2]/20 bg-[#7CFFB2]/[0.06] p-6">
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[#9CFFC3]">
-                After Abra
-              </p>
-              <p className="mt-4 text-lg leading-8 text-white">
-                &ldquo;Drop the call into Abra. Review the posts. Schedule the
-                ones I like.&rdquo;
-              </p>
-            </div>
-            <div className="md:col-span-2 rounded-2xl border border-white/10 bg-black/20 p-6">
-              <ul className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-6">
+              <ul className="grid gap-4">
                 {triggers.map((trigger) => (
                   <li key={trigger} className="flex gap-3 text-body text-zinc-300">
                     <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#7CFFB2]" />
@@ -233,7 +161,6 @@ export default function MarketingPage() {
                   </li>
                 ))}
               </ul>
-            </div>
           </div>
         </div>
       </section>
@@ -277,11 +204,11 @@ export default function MarketingPage() {
               Why Abra
             </p>
             <h2 className="mt-4 text-h2 font-display font-bold tracking-[-0.03em] text-white">
-              It starts from what you already said.
+              Clear input. Useful output. You stay in control.
             </h2>
           </div>
 
-          <div className="mt-10 grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-10 grid gap-5 md:grid-cols-3">
             {differentiators.map((item) => (
               <div
                 key={item.title}
@@ -302,42 +229,12 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section className="border-b border-white/10 px-4 py-16 sm:py-20">
-        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.8fr_1.2fr]">
-          <div>
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-[#7CFFB2]">
-              Use cases
-            </p>
-            <h2 className="mt-4 text-h2 font-display font-bold tracking-[-0.03em] text-white">
-              Useful work moments in. Credible drafts out.
-            </h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            {useCases.map((item) => (
-              <div
-                key={item}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-body leading-relaxed text-zinc-300"
-              >
-                {item}
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="px-4 py-20 sm:py-24">
         <div className="mx-auto max-w-5xl rounded-[1.75rem] border border-white/10 bg-white/[0.04] px-6 py-12 sm:px-10 sm:py-16">
           <div className="max-w-3xl">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-[#7CFFB2]">
-              Final CTA
-            </p>
             <h2 className="mt-4 text-h2 font-display font-bold tracking-[-0.03em] text-white">
               Stop losing your best ideas after the call ends.
             </h2>
-            <p className="mt-4 max-w-2xl text-body leading-8 text-zinc-300">
-              Finish useful work, send the raw material to Abra, review the
-              drafts, and schedule the ones that sound like you.
-            </p>
           </div>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -348,9 +245,6 @@ export default function MarketingPage() {
             >
               Create my first content batch
             </Button>
-            <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-              Review before anything publishes
-            </span>
           </div>
         </div>
       </section>
