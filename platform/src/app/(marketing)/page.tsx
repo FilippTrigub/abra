@@ -59,7 +59,7 @@ export default function MarketingPage() {
 
         <div className="relative mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
           <div>
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-[#7CFFB2]">
+            <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[#7CFFB2] sm:text-[13px]">
               For independent experts
             </p>
 
@@ -67,7 +67,7 @@ export default function MarketingPage() {
               Turn raw expertise into ready-to-post content.
             </h1>
 
-            <p className="mt-6 max-w-2xl text-lg leading-8 text-zinc-300 sm:text-xl">
+            <p className="mt-6 max-w-2xl text-xl leading-9 text-zinc-200 sm:text-[1.65rem] sm:leading-10">
               Drop in a call, note, or recording. Abra turns it into post
               drafts ready to review.
             </p>
@@ -82,7 +82,7 @@ export default function MarketingPage() {
               </Button>
               <a
                 href="#how-it-works"
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-white/12 bg-white/5 px-5 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-200 transition-colors duration-150 hover:border-white/25 hover:bg-white/10 hover:text-white focus-ring-brand"
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-white/12 bg-white/5 px-5 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-100 transition-colors duration-150 hover:border-white/25 hover:bg-white/10 hover:text-white focus-ring-brand sm:text-[13px]"
               >
                 See how it works
               </a>
@@ -95,7 +95,7 @@ export default function MarketingPage() {
               ].map((item) => (
                 <span
                   key={item}
-                  className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-300"
+                  className="rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-2 text-sm font-medium text-zinc-100"
                 >
                   {item}
                 </span>
@@ -107,10 +107,10 @@ export default function MarketingPage() {
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[#7CFFB2] to-transparent opacity-70" />
             <div className="flex items-center justify-between border-b border-white/10 pb-4">
               <div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-zinc-500">
+                <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-zinc-400 sm:text-[13px]">
                   Capture to post
                 </p>
-                <p className="mt-2 text-h5 font-display font-bold text-white">
+                <p className="mt-3 text-h4 font-display font-bold text-white sm:text-h3">
                   One useful moment becomes ready-to-review drafts.
                 </p>
               </div>
@@ -126,10 +126,10 @@ export default function MarketingPage() {
                   key={label}
                   className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-4 py-3"
                 >
-                  <span className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+                  <span className="font-mono text-[12px] uppercase tracking-[0.14em] text-zinc-400 sm:text-[13px]">
                     {label}
                   </span>
-                  <span className="text-sm text-zinc-100">{value}</span>
+                  <span className="text-base leading-7 text-zinc-100 sm:text-lg">{value}</span>
                 </div>
               ))}
             </div>
@@ -140,13 +140,13 @@ export default function MarketingPage() {
       <section className="border-b border-white/10 px-4 py-16 sm:py-20">
         <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.92fr_1.08fr] lg:items-start">
           <div>
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-[#7CFFB2]">
+            <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[#7CFFB2] sm:text-[13px]">
               The problem
             </p>
             <h2 className="mt-4 max-w-xl text-h2 font-display font-bold tracking-[-0.03em] text-white">
               Your best content already happened on the call.
             </h2>
-            <p className="mt-4 max-w-lg text-body leading-8 text-zinc-300">
+            <p className="mt-4 max-w-lg text-lg leading-8 text-zinc-200 sm:text-xl sm:leading-9">
               The bottleneck is not ideas. It is turning raw material into
               something ready to post.
             </p>
@@ -155,7 +155,7 @@ export default function MarketingPage() {
           <div className="rounded-2xl border border-white/10 bg-black/20 p-6">
               <ul className="grid gap-4">
                 {triggers.map((trigger) => (
-                  <li key={trigger} className="flex gap-3 text-body text-zinc-300">
+                  <li key={trigger} className="flex gap-3 text-lg leading-8 text-zinc-100 sm:text-[1.2rem]">
                     <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[#7CFFB2]" />
                     <span>{trigger}</span>
                   </li>
@@ -168,7 +168,7 @@ export default function MarketingPage() {
       <section id="how-it-works" className="border-b border-white/10 px-4 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-[#7CFFB2]">
+            <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[#7CFFB2] sm:text-[13px]">
               How it works
             </p>
             <h2 className="mt-4 text-h2 font-display font-bold tracking-[-0.03em] text-white">
@@ -182,13 +182,13 @@ export default function MarketingPage() {
                 key={step.title}
                 className="rounded-2xl border border-white/10 bg-white/[0.03] p-6"
               >
-                <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#7CFFB2]">
+                <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-[#7CFFB2] sm:text-[13px]">
                   {step.label}
                 </p>
-                <h3 className="mt-5 text-h5 font-display font-bold text-white">
+                <h3 className="mt-5 text-h4 font-display font-bold text-white">
                   {step.title}
                 </h3>
-                <p className="mt-3 text-body leading-relaxed text-zinc-300">
+                <p className="mt-4 text-lg leading-8 text-zinc-200">
                   {step.body}
                 </p>
               </div>
@@ -200,7 +200,7 @@ export default function MarketingPage() {
       <section className="border-b border-white/10 px-4 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
           <div className="max-w-2xl">
-            <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.28em] text-[#7CFFB2]">
+            <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[#7CFFB2] sm:text-[13px]">
               Why Abra
             </p>
             <h2 className="mt-4 text-h2 font-display font-bold tracking-[-0.03em] text-white">
@@ -214,13 +214,13 @@ export default function MarketingPage() {
                 key={item.title}
                 className="rounded-2xl border border-white/10 bg-black/20 p-5"
               >
-                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+                <p className="font-mono text-[12px] uppercase tracking-[0.14em] text-zinc-400 sm:text-[13px]">
                   {item.label}
                 </p>
-                <h3 className="mt-4 text-h6 font-display font-bold text-white">
+                <h3 className="mt-4 text-h5 font-display font-bold text-white">
                   {item.title}
                 </h3>
-                <p className="mt-3 text-body leading-relaxed text-zinc-300">
+                <p className="mt-4 text-lg leading-8 text-zinc-200">
                   {item.body}
                 </p>
               </div>
