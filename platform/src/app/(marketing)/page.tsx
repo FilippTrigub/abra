@@ -27,7 +27,7 @@ const steps = [
 export default function MarketingPage() {
   return (
     <div className="overflow-hidden bg-[#05070b] text-white">
-      <section className="relative border-b border-white/10 px-4 py-24 sm:py-32 md:py-36">
+      <section className="relative flex min-h-[calc(100svh-4.5rem)] items-center border-b border-white/10 px-4 py-8 sm:py-10 md:py-12">
         <div
           aria-hidden
           className="absolute inset-0 opacity-40"
@@ -39,21 +39,21 @@ export default function MarketingPage() {
           }}
         />
 
-        <div className="relative mx-auto grid max-w-6xl gap-10 lg:grid-cols-2 lg:items-stretch">
-          <div className="flex flex-col justify-center border border-white/10 bg-white/[0.02] px-6 py-8 sm:px-10 sm:py-12 lg:min-h-[32rem]">
+        <div className="relative mx-auto grid max-w-6xl gap-6 lg:grid-cols-2 lg:items-stretch">
+          <div className="flex flex-col justify-center border border-white/10 bg-white/[0.02] px-6 py-7 sm:px-8 sm:py-8 lg:min-h-[26rem] lg:px-10 lg:py-10">
             <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[#7CFFB2] sm:text-[13px]">
               For independent experts
             </p>
 
-            <h1 className="mt-6 max-w-4xl text-[4.25rem] leading-[0.96] font-display font-extrabold tracking-[-0.05em] text-white sm:text-[5rem]">
+            <h1 className="mt-5 max-w-4xl text-[3.5rem] leading-[0.96] font-display font-extrabold tracking-[-0.05em] text-white sm:text-[4.25rem] lg:text-[4.6rem]">
               Turn raw expertise into ready-to-post content.
             </h1>
 
-            <p className="mt-8 max-w-xl text-[1.45rem] leading-[1.35] text-zinc-200 sm:text-[1.7rem]">
+            <p className="mt-6 max-w-xl text-[1.25rem] leading-[1.35] text-zinc-200 sm:text-[1.45rem] lg:text-[1.55rem]">
               Drop in a call, note, or recording. Get drafts back to review.
             </p>
 
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
               <Button
                 href="/sign-in"
                 size="lg"
@@ -69,14 +69,14 @@ export default function MarketingPage() {
               </a>
             </div>
 
-            <div className="mt-10 grid gap-3 sm:grid-cols-2">
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
               {[
                 "Starts from real source material",
                 "Review before anything publishes",
               ].map((item) => (
                 <span
                   key={item}
-                  className="border border-white/10 bg-white/[0.03] px-4 py-3 text-base leading-7 text-zinc-100"
+                  className="border border-white/10 bg-white/[0.03] px-4 py-3 text-[0.95rem] leading-6 text-zinc-100 sm:text-base"
                 >
                   {item}
                 </span>
@@ -84,19 +84,19 @@ export default function MarketingPage() {
             </div>
           </div>
 
-          <div className="relative flex min-h-[32rem] flex-col justify-center border border-white/10 bg-white/[0.02] p-6 sm:p-10">
+          <div className="relative flex flex-col justify-center border border-white/10 bg-white/[0.02] p-6 sm:p-8 lg:min-h-[26rem] lg:p-10">
             <div className="flex items-center justify-between border-b border-white/10 pb-5">
               <div>
                 <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-zinc-400 sm:text-[13px]">
                   Capture to post
                 </p>
-                <p className="mt-4 max-w-md text-[2rem] leading-[1.08] font-display font-bold tracking-[-0.04em] text-white sm:text-[2.5rem]">
+                <p className="mt-3 max-w-md text-[1.75rem] leading-[1.08] font-display font-bold tracking-[-0.04em] text-white sm:text-[2rem] lg:text-[2.25rem]">
                   One useful moment becomes a small batch of drafts.
                 </p>
               </div>
             </div>
 
-            <div className="mt-8 grid gap-4">
+            <div className="mt-6 grid gap-3">
               {[
                 ["Input", "Call, note, recording, or draft"],
                 ["Output", "Post drafts in your voice"],
@@ -104,12 +104,12 @@ export default function MarketingPage() {
               ].map(([label, value]) => (
                 <div
                   key={label}
-                  className="grid gap-2 border border-white/10 bg-black/10 px-5 py-5 sm:grid-cols-[7rem_minmax(0,1fr)] sm:items-center"
+                  className="grid gap-2 border border-white/10 bg-black/10 px-4 py-4 sm:grid-cols-[6.5rem_minmax(0,1fr)] sm:items-center sm:px-5 sm:py-5"
                 >
                   <span className="font-mono text-[12px] uppercase tracking-[0.14em] text-zinc-400 sm:text-[13px]">
                     {label}
                   </span>
-                  <span className="text-lg leading-8 text-zinc-100 sm:text-[1.25rem]">{value}</span>
+                  <span className="text-[1.05rem] leading-7 text-zinc-100 sm:text-[1.15rem] lg:text-[1.2rem]">{value}</span>
                 </div>
               ))}
             </div>
