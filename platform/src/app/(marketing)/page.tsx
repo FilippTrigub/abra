@@ -1,26 +1,26 @@
 import { Button } from "@/components/ui/button";
 
 const triggers = [
-  "A client call lands a sharp point",
-  "A voice note catches an idea",
-  "A rough draft needs a finish",
+  "A client call gives you a line worth posting",
+  "A voice note catches a point worth sharing",
+  "A rough draft sits unfinished",
 ];
 
 const steps = [
   {
     label: "01 ingest",
     title: "Drop it in",
-    body: "Call, note, recording, or draft.",
+    body: "Call, note, or draft.",
   },
   {
     label: "02 extract",
     title: "Abra drafts",
-    body: "It turns your words into posts that sound like you.",
+    body: "Drafts in your voice.",
   },
   {
     label: "03 review",
     title: "You review",
-    body: "Edit, approve, and schedule what stays.",
+    body: "Keep, edit, schedule.",
   },
 ];
 
@@ -42,41 +42,41 @@ export default function MarketingPage() {
         <div className="relative mx-auto grid max-w-6xl gap-6 lg:grid-cols-2 lg:items-stretch">
           <div className="flex flex-col justify-center border border-white/10 bg-white/[0.02] px-6 py-7 sm:px-8 sm:py-8 lg:min-h-[26rem] lg:px-10 lg:py-10">
             <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[#7CFFB2] sm:text-[13px]">
-              For independent experts
+              For busy experts
             </p>
 
             <h1 className="mt-5 max-w-4xl text-[3.5rem] leading-[0.96] font-display font-extrabold tracking-[-0.05em] text-white sm:text-[4.25rem] lg:text-[4.6rem]">
-              Turn raw expertise into ready-to-post content.
+              Stay visible without finding time to post.
             </h1>
 
             <p className="mt-6 max-w-xl text-[1.25rem] leading-[1.35] text-zinc-200 sm:text-[1.45rem] lg:text-[1.55rem]">
-              Drop in a call, note, or recording. Get drafts back to review.
+              Drop in a call or note. Abra drafts the post.
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="mt-8 grid gap-3 sm:max-w-[30rem] sm:grid-cols-2">
               <Button
                 href="/sign-in"
                 size="lg"
-                className="rounded-sm border border-white bg-white px-7 text-black shadow-none hover:bg-zinc-200"
+                className="w-full rounded-sm border border-white bg-white px-7 text-center text-black shadow-none hover:bg-zinc-200"
               >
-                Create my first content batch
+                Create my draft
               </Button>
               <a
                 href="#how-it-works"
-                className="inline-flex min-h-11 items-center justify-center rounded-sm border border-white/12 bg-transparent px-5 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-100 transition-colors duration-150 hover:border-white/25 hover:bg-white/6 hover:text-white focus-ring-brand sm:text-[13px]"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-sm border border-white/12 bg-transparent px-5 py-3 text-center font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-100 transition-colors duration-150 hover:border-white/25 hover:bg-white/6 hover:text-white focus-ring-brand sm:text-[13px]"
               >
-                See how it works
+                See the flow
               </a>
             </div>
 
             <div className="mt-8 grid gap-3 sm:grid-cols-2">
               {[
-                "Starts from real source material",
-                "Review before anything publishes",
+                "Built from real work",
+                "You review first",
               ].map((item) => (
                 <span
                   key={item}
-                  className="border border-white/10 bg-white/[0.03] px-4 py-3 text-[0.95rem] leading-6 text-zinc-100 sm:text-base"
+                  className="flex min-h-[4rem] items-center border border-white/10 bg-white/[0.03] px-4 py-3 text-[0.95rem] leading-6 text-zinc-100 sm:text-base"
                 >
                   {item}
                 </span>
@@ -88,19 +88,19 @@ export default function MarketingPage() {
             <div className="flex items-center justify-between border-b border-white/10 pb-5">
               <div>
                 <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-zinc-400 sm:text-[13px]">
-                  Capture to post
+                  From work to post
                 </p>
                 <p className="mt-3 max-w-md text-[1.75rem] leading-[1.08] font-display font-bold tracking-[-0.04em] text-white sm:text-[2rem] lg:text-[2.25rem]">
-                  One useful moment becomes a small batch of drafts.
+                  Work in. Drafts out.
                 </p>
               </div>
             </div>
 
             <div className="mt-6 grid gap-3">
               {[
-                ["Input", "Call, note, recording, or draft"],
-                ["Output", "Post drafts in your voice"],
-                ["Control", "Review before anything publishes"],
+                ["Input", "Call, note, or recording"],
+                ["Output", "A small batch of drafts"],
+                ["Control", "You review before it goes live"],
               ].map(([label, value]) => (
                 <div
                   key={label}
@@ -121,13 +121,13 @@ export default function MarketingPage() {
         <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-2 lg:items-stretch">
           <div className="flex flex-col justify-center border border-white/10 bg-white/[0.02] px-6 py-8 sm:px-10 sm:py-10">
             <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[#7CFFB2] sm:text-[13px]">
-              The problem
+              The pain
             </p>
             <h2 className="mt-5 max-w-xl text-[2.75rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.4rem]">
-              The useful part already happened.
+              You know you should post. You do not have time.
             </h2>
             <p className="mt-6 max-w-lg text-[1.35rem] leading-[1.4] text-zinc-200 sm:text-[1.55rem]">
-              The hard part is not thinking. It is turning real work into a post.
+              The idea happens in the work. Posting still feels like another job.
             </p>
           </div>
 
@@ -155,7 +155,7 @@ export default function MarketingPage() {
               How it works
             </p>
             <h2 className="mt-5 text-[2.75rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.5rem]">
-              Three steps. No blank page.
+              Three steps. Still your voice.
             </h2>
           </div>
 

@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { Navbar } from "./components/navbar";
 
 export const metadata: Metadata = {
-  title: "Abra - Turn raw expertise into ready-to-post content",
+  title: "Abra - Stay visible without finding time to post",
   description:
-    "Finish a useful call, note, or recording. Abra turns the useful parts into ready-to-post content you can review, edit, and schedule.",
+    "Drop in a call or note. Abra drafts the post so busy experts can stay visible without making content another job.",
 };
 
 export default function MarketingLayout({
