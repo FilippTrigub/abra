@@ -125,16 +125,16 @@ export function DeploymentConsole({
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-      <Card>
+      <Card className="border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-caption font-semibold uppercase tracking-wide text-brand-500">
+            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--color-shell-signal)]">
               Deployment request
             </p>
-            <h2 className="mt-2 text-h4 font-display font-bold text-content-100">
+            <h2 className="mt-4 text-h4 font-display font-bold text-white">
               Queue a new rollout
             </h2>
-            <p className="mt-2 max-w-2xl text-body text-content-500">
+            <p className="mt-3 max-w-2xl text-body leading-7 text-zinc-300">
               Persist the request first, then hand orchestration off to the background adapter. The dashboard keeps polling the mock contract until the rollout settles.
             </p>
           </div>
@@ -166,7 +166,7 @@ export function DeploymentConsole({
           </Panel>
         )}
 
-        <form action={formAction} className="mt-6 space-y-5">
+        <form action={formAction} className="mt-8 space-y-5">
           <div className="grid gap-5 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="deployment-name">Deployment name</Label>
@@ -242,12 +242,12 @@ export function DeploymentConsole({
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border-subtle bg-surface-muted px-4 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
             <div>
-              <p className="text-caption font-semibold uppercase tracking-wide text-content-500">
+              <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                 Delivery contract
               </p>
-              <p className="mt-1 text-body text-content-600">
+              <p className="mt-1 text-body text-zinc-300">
                 Request → durable row → async dispatch → status polling
               </p>
             </div>
@@ -257,13 +257,13 @@ export function DeploymentConsole({
       </Card>
 
       <div className="space-y-6">
-        <Card>
+        <Card className="border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-caption font-semibold uppercase tracking-wide text-content-500">
+              <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                 Deployment feed
               </p>
-              <h3 className="mt-2 text-h5 font-display font-bold text-content-100">
+              <h3 className="mt-4 text-h5 font-display font-bold text-white">
                 Latest request states
               </h3>
             </div>
@@ -287,11 +287,11 @@ export function DeploymentConsole({
                 const badge = STATUS_BADGES[deployment.status];
 
                 return (
-                  <Panel key={deployment.id} bordered muted className="space-y-4">
+                  <Panel key={deployment.id} bordered className="space-y-4 border-white/10 bg-black/10 text-[var(--color-shell-text-strong)]">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
-                          <h4 className="text-body font-semibold text-content-100">
+                          <h4 className="text-body font-semibold text-white">
                             {deployment.request.name}
                           </h4>
                           <Badge variant={badge.variant}>{badge.label}</Badge>
@@ -302,40 +302,40 @@ export function DeploymentConsole({
                             <Badge variant="warning">Fallback store</Badge>
                           )}
                         </div>
-                        <p className="mt-2 text-caption text-content-500">
+                        <p className="mt-2 text-caption text-zinc-400">
                           {deployment.request.sourceRef} · requested {formatTimestamp(deployment.createdAt)}
                         </p>
                       </div>
-                      <div className="text-right text-caption text-content-500">
+                      <div className="text-right text-caption text-zinc-500">
                         <p>Request ID</p>
-                        <p className="mt-1 font-mono text-[11px] text-content-600">
+                        <p className="mt-1 font-mono text-[11px] text-zinc-300">
                           {deployment.orchestration?.requestId ?? "pending"}
                         </p>
                       </div>
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-xl bg-surface-default px-3 py-2">
-                        <p className="text-[11px] uppercase tracking-wide text-content-500">
+                      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                           Dispatch
                         </p>
-                        <p className="mt-1 text-caption text-content-100">
+                        <p className="mt-2 text-caption text-white">
                           {deployment.orchestration?.operationId ? "Scheduled" : "Persisted only"}
                         </p>
                       </div>
-                      <div className="rounded-xl bg-surface-default px-3 py-2">
-                        <p className="text-[11px] uppercase tracking-wide text-content-500">
+                      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                           Adapter
                         </p>
-                        <p className="mt-1 text-caption text-content-100">
+                        <p className="mt-2 text-caption text-white">
                           {deployment.orchestration?.adapter ?? "pending"}
                         </p>
                       </div>
-                      <div className="rounded-xl bg-surface-default px-3 py-2">
-                        <p className="text-[11px] uppercase tracking-wide text-content-500">
+                      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
+                        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                           Next poll
                         </p>
-                        <p className="mt-1 text-caption text-content-100">
+                        <p className="mt-2 text-caption text-white">
                           {deployment.status === "queued" || deployment.status === "running"
                             ? `${deployment.orchestration?.pollAfterMs ?? 0} ms`
                             : "settled"}
@@ -344,11 +344,11 @@ export function DeploymentConsole({
                     </div>
 
                     {deployment.request.notes && (
-                      <div className="rounded-2xl border border-border-subtle bg-surface-default px-4 py-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-content-500">
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                           Rollout notes
                         </p>
-                        <p className="mt-2 text-caption leading-6 text-content-600">
+                        <p className="mt-2 text-caption leading-6 text-zinc-300">
                           {deployment.request.notes}
                         </p>
                       </div>

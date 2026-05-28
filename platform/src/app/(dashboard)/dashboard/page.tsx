@@ -60,86 +60,98 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="relative overflow-hidden rounded-2xl border border-border-subtle bg-gradient-to-br from-brand-50 via-secondary-50 to-accent-50 p-8 md:p-12">
-        <div
-          aria-hidden
-          className="absolute -top-12 -right-12 h-48 w-48 shape-abstract-blob opacity-40 blur-xl"
-        />
-        <div
-          aria-hidden
-          className="absolute -bottom-16 -left-8 h-56 w-56 shape-abstract-petal opacity-30 blur-lg"
-        />
-        <div
-          aria-hidden
-          className="absolute top-1/2 right-1/4 h-24 w-24 shape-abstract-ring opacity-20 blur-sm"
-        />
+      <section className="overflow-hidden rounded-[1.75rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-canvas)] text-[var(--color-shell-text-strong)]">
+        <div className="grid gap-8 px-8 py-8 md:grid-cols-[minmax(0,1.2fr)_minmax(17rem,0.8fr)] md:px-10 md:py-10">
+          <div>
+            <span className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--color-shell-signal)] sm:text-[13px]">
+              Welcome back
+            </span>
+            <h1 className="mt-5 max-w-3xl text-[2.75rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white md:text-[3.5rem]">
+              Your brand command center
+            </h1>
+            <p className="mt-5 max-w-2xl text-[1.05rem] leading-7 text-zinc-300 md:text-[1.15rem]">
+              Queue deployment requests, hand them off to the orchestration adapter, and track the lifecycle from queued to terminal state without blocking the dashboard response.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <Button variant="primary" href="#deployment-request">
+                Request deployment
+              </Button>
+              <Button
+                variant="ghost"
+                href="/dashboard/settings"
+                className="border border-white/12 bg-white/[0.03] text-zinc-100 hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
+              >
+                Settings
+              </Button>
+              <Badge variant={activeCount > 0 ? "info" : "success"}>
+                {activeCount > 0
+                  ? `${activeCount} active rollout${activeCount > 1 ? "s" : ""}`
+                  : "All quiet"}
+              </Badge>
+            </div>
+          </div>
 
-        <div className="relative">
-          <span className="text-caption font-semibold uppercase tracking-wide text-brand-500">
-            Welcome back
-          </span>
-          <h1 className="mt-2 text-h2 font-display font-extrabold text-content-100 md:text-h1">
-            Your brand command center
-          </h1>
-          <p className="mt-3 max-w-2xl text-body text-content-500">
-            Queue deployment requests, hand them off to the orchestration adapter, and track the lifecycle from queued to terminal state without blocking the dashboard response.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <Button variant="primary" href="#deployment-request">
-              Request deployment
-            </Button>
-            <Button variant="ghost" href="/dashboard/settings">
-              Settings
-            </Button>
-            <Badge variant={activeCount > 0 ? "info" : "success"}>
-              {activeCount > 0 ? `${activeCount} active rollout${activeCount > 1 ? "s" : ""}` : "All quiet"}
-            </Badge>
+          <div className="grid gap-3 self-start border border-white/10 bg-white/[0.03] p-5 sm:grid-cols-2 md:grid-cols-1">
+            {[
+              ["Deployments", `${deploymentCount}`],
+              ["Active queue", `${activeCount}`],
+              ["Latest outcome", latestDeployment ? latestDeployment.request.name : "No requests yet"],
+            ].map(([label, value]) => (
+              <div key={label} className="border border-white/10 bg-black/10 px-4 py-4">
+                <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+                  {label}
+                </p>
+                <p className="mt-3 text-[1.2rem] leading-6 font-semibold text-white md:text-[1.35rem]">
+                  {value}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card interactive>
+        <Card interactive className="border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-caption font-semibold uppercase tracking-wide text-content-500">
+              <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                 Deployments
               </p>
-              <p className="mt-1 text-h2 font-display font-bold text-content-100">
+              <p className="mt-3 text-h2 font-display font-bold text-white">
                 {deploymentCount}
               </p>
-              <p className="mt-1 text-caption text-content-600">
+              <p className="mt-2 text-caption text-zinc-400">
                 Durable request records in your dashboard feed
               </p>
             </div>
-            <span className="text-3xl opacity-40">🚀</span>
+            <span className="text-3xl opacity-60">🚀</span>
           </div>
         </Card>
 
-        <Card interactive>
+        <Card interactive className="border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-caption font-semibold uppercase tracking-wide text-content-500">
+              <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                 Active queue
               </p>
-              <p className="mt-1 text-h2 font-display font-bold text-content-100">
+              <p className="mt-3 text-h2 font-display font-bold text-white">
                 {activeCount}
               </p>
-              <p className="mt-1 text-caption text-content-600">
+              <p className="mt-2 text-caption text-zinc-400">
                 Requests currently queued or running
               </p>
             </div>
-            <span className="text-3xl opacity-40">⏱️</span>
+            <span className="text-3xl opacity-60">⏱️</span>
           </div>
         </Card>
 
-        <Card interactive>
+        <Card interactive className="border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-caption font-semibold uppercase tracking-wide text-content-500">
+              <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                 Latest outcome
               </p>
-              <p className="mt-1 text-h5 font-display font-bold text-content-100">
+              <p className="mt-3 text-h5 font-display font-bold text-white">
                 {latestDeployment ? latestDeployment.request.name : "No requests yet"}
               </p>
               <div className="mt-2">
@@ -160,7 +172,7 @@ export default async function DashboardPage() {
                 </Badge>
               </div>
             </div>
-            <span className="text-3xl opacity-40">📈</span>
+            <span className="text-3xl opacity-60">📈</span>
           </div>
         </Card>
       </div>
@@ -176,13 +188,18 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <Panel bordered muted>
-        <h3 className="mb-4 text-h6 font-display font-bold text-content-100">
+      <Panel bordered className="border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)]">
+        <h3 className="mb-4 text-h6 font-display font-bold text-white">
           Quick access
         </h3>
         <div className="flex flex-wrap gap-3">
           {NAV_LINKS.map((link) => (
-            <Button key={link.href} variant="ghost" href={link.href}>
+            <Button
+              key={link.href}
+              variant="ghost"
+              href={link.href}
+              className="border border-white/12 bg-white/[0.03] text-zinc-100 hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
+            >
               {link.label}
             </Button>
           ))}
@@ -191,7 +208,7 @@ export default async function DashboardPage() {
 
       <div className="section-divider" />
       <div className="flex items-center justify-between text-caption text-content-600">
-        <span>Claw Parade · Platform</span>
+        <span>Abra · Platform</span>
         <span>{new Date().getFullYear()}</span>
       </div>
     </div>
