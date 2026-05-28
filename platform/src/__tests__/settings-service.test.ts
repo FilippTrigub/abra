@@ -27,6 +27,19 @@ import { loadSettings, saveSettings, revertSettings, getSettingsSnapshot } from 
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import * as admin from "firebase-admin";
 
+function createDocRef(overrides: {
+  get?: ReturnType<typeof vi.fn>;
+  set?: ReturnType<typeof vi.fn>;
+  update?: ReturnType<typeof vi.fn>;
+} = {}) {
+  return {
+    get: vi.fn(),
+    set: vi.fn(),
+    update: vi.fn(),
+    ...overrides,
+  };
+}
+
 const mockFirestore = {
   doc: vi.fn(() => ({
     get: vi.fn(),
@@ -35,7 +48,9 @@ const mockFirestore = {
   })),
 };
 
-vi.mocked(getAdminFirestore).mockReturnValue(mockFirestore as any);
+vi.mocked(getAdminFirestore).mockReturnValue(
+  mockFirestore as unknown as ReturnType<typeof getAdminFirestore>,
+);
 
 describe("settings service - Firestore migration", () => {
   beforeEach(() => {
@@ -44,7 +59,7 @@ describe("settings service - Firestore migration", () => {
 
   describe("loadSettings", () => {
     it("should return settings from Firestore when doc exists", async () => {
-      mockFirestore.doc.mockReturnValue({
+      mockFirestore.doc.mockReturnValue(createDocRef({
         get: vi.fn().mockResolvedValue({
           exists: true,
           data: () => ({
@@ -53,7 +68,7 @@ describe("settings service - Firestore migration", () => {
             updatedAt: admin.firestore.Timestamp.now(),
           }),
         }),
-      } as any);
+      }));
 
       const result = await loadSettings("user-123");
 
@@ -65,10 +80,10 @@ describe("settings service - Firestore migration", () => {
 
     it("should create and return default settings when Firestore doc does not exist", async () => {
       const set = vi.fn().mockResolvedValue(undefined);
-      mockFirestore.doc.mockReturnValue({
+      mockFirestore.doc.mockReturnValue(createDocRef({
         get: vi.fn().mockResolvedValue({ exists: false }),
         set,
-      } as any);
+      }));
 
       const result = await loadSettings("user-456");
 
@@ -84,14 +99,14 @@ describe("settings service - Firestore migration", () => {
     });
 
     it("should return defaults when Firestore throws an error", async () => {
-      mockFirestore.doc.mockReturnValue({
+      mockFirestore.doc.mockReturnValue(createDocRef({
         get: vi.fn().mockRejectedValue(new Error("Firestore error")),
-      } as any);
+      }));
 
       const result = await loadSettings("user-789");
 
       expect(result.persistence).toBe("memory");
-      expect(result.warning).toBe("Firestore storage is unavailable. Showing default values.");
+      expect(result.warning).toBe("Firestore storage is unavailable. Showing in-memory defaults.");
     });
   });
 
@@ -107,20 +122,16 @@ describe("settings service - Firestore migration", () => {
     } as const;
 
     it("should save a single key and merge with existing values", async () => {
-      const mockDocRef = {
+      const mockDocRef = createDocRef({
         get: vi.fn().mockResolvedValue({
           exists: true,
           data: () => ({ values: fullValues }),
         }),
         update: vi.fn().mockResolvedValue(undefined),
-      };
-      mockFirestore.doc.mockReturnValue(mockDocRef as any);
+      });
+      mockFirestore.doc.mockReturnValue(mockDocRef);
 
-      const result = await saveSettings(
-        "user-123",
-        { key: "mockOutcome", value: "failed" },
-        fullValues
-      );
+      const result = await saveSettings("user-123", { key: "mockOutcome", value: "failed" });
 
       expect(result.success).toBe(true);
       expect(result.snapshot?.values.mockOutcome).toBe("failed");
@@ -130,81 +141,66 @@ describe("settings service - Firestore migration", () => {
     });
 
     it("should persist full snapshot when existing document is read", async () => {
-      const mockDocRef = {
+      const mockDocRef = createDocRef({
         get: vi.fn().mockResolvedValue({
           exists: true,
           data: () => ({ values: fullValues }),
         }),
         update: vi.fn().mockResolvedValue(undefined),
-      };
-      mockFirestore.doc.mockReturnValue(mockDocRef as any);
+      });
+      mockFirestore.doc.mockReturnValue(mockDocRef);
 
-      const result = await saveSettings(
-        "user-123",
-        { key: "brandAccentColor", value: "violet" },
-        fullValues
-      );
+      const result = await saveSettings("user-123", { key: "brandAccentColor", value: "violet" });
 
       expect(result.snapshot?.values.brandAccentColor).toBe("violet");
       expect(result.snapshot?.values.defaultEnvironment).toBe("preview");
     });
 
     it("should trigger restartRequired when defaultEnvironment changes", async () => {
-      const mockDocRef = {
+      const mockDocRef = createDocRef({
         get: vi.fn().mockResolvedValue({ exists: true, data: () => ({ values: fullValues }) }),
         update: vi.fn().mockResolvedValue(undefined),
-      };
-      mockFirestore.doc.mockReturnValue(mockDocRef as any);
+      });
+      mockFirestore.doc.mockReturnValue(mockDocRef);
 
-      const result = await saveSettings(
-        "user-123",
-        { key: "defaultEnvironment", value: "production" },
-        fullValues
-      );
+      const result = await saveSettings("user-123", { key: "defaultEnvironment", value: "production" });
 
       expect(result.restartRequired).toBe(true);
     });
 
     it("should build defaults when existing document does not exist", async () => {
-      mockFirestore.doc.mockReturnValue({
+      mockFirestore.doc.mockReturnValue(createDocRef({
         get: vi.fn().mockResolvedValue({ exists: false }),
         set: vi.fn().mockResolvedValue(undefined),
-      } as any);
+      }));
 
-      const result = await saveSettings(
-        "user-123",
-        { key: "mockOutcome", value: "failed" },
-        fullValues
-      );
+      const result = await saveSettings("user-123", { key: "mockOutcome", value: "failed" });
 
       expect(result.snapshot?.values.mockOutcome).toBe("failed");
       expect(result.snapshot?.values.defaultEnvironment).toBe("preview");
+      expect(result.snapshot?.values.brandAccentColor).toBe("coral");
     });
 
     it("should return local save warning when Firestore throws error", async () => {
-      mockFirestore.doc.mockReturnValue({
+      mockFirestore.doc.mockReturnValue(createDocRef({
         get: vi.fn().mockRejectedValue(new Error("Firestore error")),
         set: vi.fn().mockRejectedValue(new Error("Firestore error")),
         update: vi.fn().mockRejectedValue(new Error("Firestore error")),
-      } as any);
+      }));
 
-      const result = await saveSettings(
-        "user-123",
-        { key: "mockOutcome", value: "failed" },
-        fullValues
-      );
+      const result = await saveSettings("user-123", { key: "mockOutcome", value: "failed" });
 
       expect(result.success).toBe(true);
       expect(result.snapshot).toBeNull();
-      expect(result.warning).toBe("Settings saved locally. Firestore storage was unavailable.");
+      expect(result.warning).toBe("Firestore storage is unavailable. Changes are only reflected in memory.");
     });
   });
 
   describe("revertSettings", () => {
     it("should revert to default values", async () => {
-      mockFirestore.doc.mockReturnValue({
+      mockFirestore.doc.mockReturnValue(createDocRef({
         set: vi.fn().mockResolvedValue(undefined),
-      } as any);
+      }));
 
       const result = await revertSettings("user-123");
 
@@ -215,21 +211,21 @@ describe("settings service - Firestore migration", () => {
     });
 
     it("should return local revert warning when Firestore throws error", async () => {
-      mockFirestore.doc.mockReturnValue({
+      mockFirestore.doc.mockReturnValue(createDocRef({
         set: vi.fn().mockRejectedValue(new Error("Firestore error")),
-      } as any);
+      }));
 
       const result = await revertSettings("user-456");
 
       expect(result.success).toBe(true);
       expect(result.snapshot).toBeNull();
-      expect(result.warning).toBe("Defaults restored locally. Firestore storage was unavailable.");
+      expect(result.warning).toBe("Firestore storage is unavailable. Defaults were restored in memory.");
     });
   });
 
   describe("getSettingsSnapshot", () => {
     it("should return snapshot when Firestore doc exists", async () => {
-      mockFirestore.doc.mockReturnValue({
+      mockFirestore.doc.mockReturnValue(createDocRef({
         get: vi.fn().mockResolvedValue({
           exists: true,
           data: () => ({
@@ -238,7 +234,7 @@ describe("settings service - Firestore migration", () => {
             updatedAt: admin.firestore.Timestamp.now(),
           }),
         }),
-      } as any);
+      }));
 
       const result = await getSettingsSnapshot("user-123");
 
@@ -248,9 +244,9 @@ describe("settings service - Firestore migration", () => {
     });
 
     it("should return null when Firestore doc does not exist", async () => {
-      mockFirestore.doc.mockReturnValue({
+      mockFirestore.doc.mockReturnValue(createDocRef({
         get: vi.fn().mockResolvedValue({ exists: false }),
-      } as any);
+      }));
 
       const result = await getSettingsSnapshot("user-456");
 
@@ -258,9 +254,9 @@ describe("settings service - Firestore migration", () => {
     });
 
     it("should return null when Firestore throws an error", async () => {
-      mockFirestore.doc.mockReturnValue({
+      mockFirestore.doc.mockReturnValue(createDocRef({
         get: vi.fn().mockRejectedValue(new Error("Firestore error")),
-      } as any);
+      }));
 
       const result = await getSettingsSnapshot("user-789");
 

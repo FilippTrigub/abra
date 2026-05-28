@@ -83,14 +83,13 @@ export async function loadSettings(authUserId: string): Promise<SettingsResponse
     },
     definitions: SETTINGS_DEFINITIONS,
     persistence: "memory",
-    warning: "Firestore storage is unavailable. Showing default values.",
+    warning: "Firestore storage is unavailable. Showing in-memory defaults.",
   };
 }
 
 export async function saveSettings(
   authUserId: string,
   payload: SettingsUpdatePayload,
-  _currentValues?: ConfigSnapshot["values"],
 ): Promise<SettingsUpdateResult> {
   const validation = validateSetting(payload.key, payload.value);
   if (validation.errors.length > 0) {
@@ -148,7 +147,7 @@ export async function saveSettings(
     snapshot: null,
     errors: [],
     restartRequired: payload.key === "defaultEnvironment",
-    warning: "Settings saved locally. Firestore storage was unavailable.",
+    warning: "Firestore storage is unavailable. Changes are only reflected in memory.",
   };
 }
 
@@ -182,7 +181,7 @@ export async function revertSettings(authUserId: string): Promise<SettingsUpdate
     snapshot: null,
     errors: [],
     restartRequired: false,
-    warning: "Defaults restored locally. Firestore storage was unavailable.",
+    warning: "Firestore storage is unavailable. Defaults were restored in memory.",
   };
 }
 

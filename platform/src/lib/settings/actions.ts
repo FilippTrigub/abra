@@ -44,7 +44,6 @@ export async function loadUserSettings(): Promise<SettingsResponse> {
 
 export async function updateUserSetting(
   payload: SettingsUpdatePayload,
-  currentValues: Record<string, unknown>,
 ): Promise<SettingsUpdateResult> {
   const authResult = await requireApiAuth();
   if ("error" in authResult) {
@@ -57,7 +56,7 @@ export async function updateUserSetting(
     };
   }
 
-  return dbSaveSettings(authResult.user.id, payload, currentValues as ConfigSnapshot["values"]);
+  return dbSaveSettings(authResult.user.id, payload);
 }
 
 export async function revertToDefaults(): Promise<SettingsUpdateResult> {

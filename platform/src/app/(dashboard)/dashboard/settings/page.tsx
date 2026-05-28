@@ -18,6 +18,7 @@ import {
   getSettingsBySection,
   getSectionOrder,
   getSectionLabel,
+  getDefinitionByKey,
 } from "@/lib/settings/definitions";
 
 type FieldState = Record<SettingsKey, SettingValue>;
@@ -171,6 +172,7 @@ function RestartBanner({ visible }: { visible: boolean }) {
 }
 
 export default function SettingsPage() {
+  const defaultEnvironmentDefinition = getDefinitionByKey("defaultEnvironment");
   const [settingsData, setSettingsData] = useState<SettingsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -218,6 +220,10 @@ export default function SettingsPage() {
     }, 0);
   }
 
+  function clearAllFieldErrors() {
+    setFieldErrors({} as FieldErrors);
+  }
+
   function onChange(key: SettingsKey, value: SettingValue) {
     setFieldState((prev) => ({ ...prev, [key]: value }));
     setFieldErrors((prev) => ({ ...prev, [key]: "" }));
@@ -228,12 +234,31 @@ export default function SettingsPage() {
     setSaveStatus("saving");
     setSaveMessage("");
 
-    let hadError = false;
+    const dirtyKeys = (Object.keys(fieldState) as SettingsKey[]).filter(
+      (key) => previousValues[key] !== fieldState[key],
+    );
 
-    for (const key of Object.keys(fieldState) as SettingsKey[]) {
+    let hadError = false;
+    let restartRequiredChanged = false;
+    let nextRestartRequired = restartRequired;
+    let saveWarning: string | null = null;
+
+    function syncPersistenceState(result: { snapshot: ConfigSnapshot | null; warning: string | null }) {
+      setSettingsData((prev) =>
+        prev
+          ? {
+              ...prev,
+              persistence: result.snapshot ? "database" : result.warning ? "memory" : prev.persistence,
+              warning: result.warning,
+            }
+          : prev,
+      );
+    }
+
+    for (const key of dirtyKeys) {
       const current = fieldState[key];
       try {
-        const result = await updateUserSetting({ key, value: current }, previousValues);
+        const result = await updateUserSetting({ key, value: current });
         if (!result.success) {
           setFieldErrors((prev) => ({
             ...prev,
@@ -241,7 +266,20 @@ export default function SettingsPage() {
           }));
           hadError = true;
         } else {
-          setPreviousValues((prev) => ({ ...prev, [key]: current }));
+          setFieldErrors((prev) => ({ ...prev, [key]: "" }));
+          if (result.snapshot) {
+            setPreviousValues((prev) => ({ ...prev, [key]: current }));
+            setLastSnapshot(result.snapshot);
+          }
+          syncPersistenceState(result);
+          saveWarning = result.warning ?? saveWarning;
+          if (key === "defaultEnvironment") {
+            const persistedDefaultEnvironment =
+              result.snapshot?.values.defaultEnvironment ?? current;
+            nextRestartRequired =
+              persistedDefaultEnvironment !== defaultEnvironmentDefinition?.defaultValue;
+            restartRequiredChanged = true;
+          }
         }
       } catch {
         setFieldErrors((prev) => ({
@@ -252,16 +290,16 @@ export default function SettingsPage() {
       }
     }
 
-    setPreviousValues({ ...fieldState });
-
     if (hadError) {
       setSaveStatus("error");
       setSaveMessage("Some settings could not be saved.");
     } else {
       setSaveStatus("success");
-      setSaveMessage("Settings saved successfully.");
+      setSaveMessage(saveWarning ?? "Settings saved successfully.");
     }
-    setRestartRequired(false);
+    if (restartRequiredChanged) {
+      setRestartRequired(nextRestartRequired);
+    }
 
     setTimeout(() => {
       setSaveStatus("idle");
@@ -276,12 +314,26 @@ export default function SettingsPage() {
 
     try {
       const result = await revertToDefaults();
-      if (result.success && result.snapshot) {
+      if (result.success) {
         const state = initialFieldState(result.snapshot);
         setFieldState(state);
-        setPreviousValues(state);
+        clearAllFieldErrors();
+        if (result.snapshot) {
+          setPreviousValues(state);
+          setLastSnapshot(result.snapshot);
+        }
+        setSettingsData((prev) =>
+          prev
+            ? {
+                ...prev,
+                persistence: result.snapshot ? "database" : result.warning ? "memory" : prev.persistence,
+                warning: result.warning,
+              }
+            : prev,
+        );
+        setRestartRequired(result.restartRequired);
         setSaveStatus("success");
-        setSaveMessage("Defaults restored.");
+        setSaveMessage(result.warning ?? "Defaults restored.");
       } else {
         setSaveStatus("error");
         setSaveMessage(result.errors[0]?.message ?? "Could not restore defaults.");
@@ -350,42 +402,49 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="relative overflow-hidden rounded-2xl border border-border-subtle bg-gradient-to-br from-brand-50 via-secondary-50 to-accent-50 p-8 md:p-10">
-        <div
-          aria-hidden
-          className="absolute -top-12 -right-12 h-48 w-48 shape-abstract-blob opacity-40 blur-xl"
-        />
-        <div
-          aria-hidden
-          className="absolute -bottom-16 -left-8 h-56 w-56 shape-abstract-petal opacity-30 blur-lg"
-        />
-        <div className="relative">
-          <span className="text-caption font-semibold uppercase tracking-wide text-brand-500">
-            Configuration
-          </span>
-          <h1 className="mt-2 text-h2 font-display font-extrabold text-content-100 md:text-h1">
-            Dashboard settings
-          </h1>
-          <p className="mt-3 max-w-2xl text-body text-content-500">
-            Manage your user-editable configuration. Changes are persisted
-            securely and applied immediately — except where noted.
-          </p>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
+      <section className="overflow-hidden rounded-[1.75rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-canvas)] text-[var(--color-shell-text-strong)]">
+        <div className="grid gap-8 px-8 py-8 md:grid-cols-[minmax(0,1.2fr)_minmax(16rem,0.8fr)] md:px-10 md:py-10">
+          <div>
+            <span className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--color-shell-signal)] sm:text-[13px]">
+              Configuration
+            </span>
+            <h1 className="mt-5 text-[2.75rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white md:text-[3.4rem]">
+              Dashboard settings
+            </h1>
+            <p className="mt-5 max-w-2xl text-[1.05rem] leading-7 text-zinc-300 md:text-[1.15rem]">
+              Manage your user-editable configuration. Changes are persisted securely and applied immediately — except where noted.
+            </p>
+          </div>
+
+          <div className="grid gap-3 self-start border border-white/10 bg-white/[0.03] p-5">
             {lastSnapshot && (
-              <Badge variant="default">
-                Last updated {formatTimestamp(lastSnapshot.updatedAt)}
-              </Badge>
+              <div className="border border-white/10 bg-black/10 px-4 py-4">
+                <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+                  Last updated
+                </p>
+                <p className="mt-3 text-base font-semibold text-white">
+                  {formatTimestamp(lastSnapshot.updatedAt)}
+                </p>
+              </div>
             )}
-            {settingsData?.persistence === "memory" && (
-              <Badge variant="warning">Local storage</Badge>
-            )}
-            {settingsData?.persistence === "database" && (
-              <Badge variant="success">Database</Badge>
-            )}
+
+            <div className="border border-white/10 bg-black/10 px-4 py-4">
+              <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+                Persistence
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {settingsData?.persistence === "memory" && (
+                  <Badge variant="warning">In-memory fallback</Badge>
+                )}
+                {settingsData?.persistence === "database" && (
+                  <Badge variant="success">Database</Badge>
+                )}
+                {!settingsData?.persistence && <Badge variant="default">Unknown</Badge>}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
       {/* Status messages */}
       {saveStatus === "success" && (
@@ -419,13 +478,13 @@ export default function SettingsPage() {
           if (definitions.length === 0) return null;
 
           return (
-            <Card key={section}>
+            <Card key={section} className="border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
               <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <p className="text-caption font-semibold uppercase tracking-wide text-brand-500">
+                  <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--color-shell-signal)]">
                     {getSectionLabel(section)}
                   </p>
-                  <h2 className="mt-1 text-h5 font-display font-bold text-content-100">
+                  <h2 className="mt-3 text-h5 font-display font-bold text-white">
                     {getSectionLabel(section)} settings
                   </h2>
                 </div>
@@ -456,16 +515,16 @@ export default function SettingsPage() {
         })}
 
         {/* Action bar */}
-        <Panel bordered>
+        <Panel bordered className="border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)]">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-caption font-semibold uppercase tracking-wide text-content-500">
+              <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
                 Pending changes
               </p>
-              <p className="mt-1 text-body text-content-600">
+              <p className="mt-2 text-body text-zinc-300">
                 {hasDirtyState
                   ? `${dc} setting${dc > 1 ? "s" : ""} unsaved`
-                  : "All settings saved"}
+                  : settingsData?.warning ?? "All settings saved"}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -474,6 +533,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={handleRevert}
                 disabled={saveStatus === "saving"}
+                className="border border-white/12 bg-white/[0.03] text-zinc-100 hover:border-white/25 hover:bg-white/[0.08] hover:text-white"
               >
                 Reset to defaults
               </Button>
@@ -491,7 +551,7 @@ export default function SettingsPage() {
 
       <div className="section-divider" />
       <div className="flex items-center justify-between text-caption text-content-600">
-        <span>Claw Parade · Settings</span>
+        <span>Abra · Settings</span>
         <span>{new Date().getFullYear()}</span>
       </div>
     </div>

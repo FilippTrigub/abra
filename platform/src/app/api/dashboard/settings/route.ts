@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const result = await dbSaveSettings(authResult.user.id, body, undefined);
+  const result = await dbSaveSettings(authResult.user.id, body);
   return NextResponse.json(result);
 }
 
