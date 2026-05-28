@@ -92,37 +92,56 @@
    Nav link base styles (used by NavItem primitive)
    ═══════════════════════════════════════════════════════ */
 .nav-link {
+  position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--s-2);
-  padding: var(--s-2) var(--s-3);
+  min-height: calc(var(--s-8) + var(--s-2));
+  padding: var(--s-2) var(--s-4);
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
-  color: var(--color-content-500);
+  background-color: transparent;
+  color: color-mix(in srgb, var(--color-shell-text-strong) 68%, transparent);
   text-decoration: none;
-  font-size: var(--text-body);
-  line-height: var(--text-body);
-  font-family: var(--font-body);
+  font-size: var(--text-caption);
+  line-height: var(--text-caption);
+  font-family: var(--font-mono);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
   transition: background-color var(--motion-fast) var(--ease-smooth),
-              color var(--motion-fast) var(--ease-smooth);
+              border-color var(--motion-fast) var(--ease-smooth),
+              color var(--motion-fast) var(--ease-smooth),
+              box-shadow var(--motion-fast) var(--ease-smooth);
 }
 
 .nav-link:hover {
-  background-color: var(--color-surface-100);
-  color: var(--color-content-100);
+  background-color: var(--color-shell-panel);
+  border-color: var(--color-shell-border-strong);
+  color: var(--color-shell-text-strong);
+}
+
+.nav-link:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-shell-canvas),
+              0 0 0 4px var(--color-shell-signal);
+  border-color: var(--color-shell-signal);
 }
 
 .nav-link.active {
-  color: var(--color-brand-500);
+  background-color: var(--color-shell-panel);
+  border-color: var(--color-shell-border-strong);
+  color: var(--color-shell-text-strong);
   font-weight: 600;
-  background-color: var(--color-brand-50);
 }
 
 .nav-link.active::after {
   content: '';
-  display: block;
+  position: absolute;
+  left: var(--s-4);
+  right: var(--s-4);
+  bottom: var(--s-1);
   height: 2px;
-  width: calc(100% - var(--s-2));
-  margin: 0 auto;
-  background-color: var(--color-brand-500);
+  background-color: var(--color-shell-signal);
   border-radius: var(--radius-full);
 }

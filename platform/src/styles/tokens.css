@@ -113,6 +113,15 @@
   --color-content-900: #A8A8B4;
 
   /* ═══════════════════════════════════════════════════════
+     DARK SHELL — Landing-derived support surfaces
+     ═══════════════════════════════════════════════════════ */
+  --color-shell-950: #05070B;
+  --color-shell-900: rgb(255 255 255 / 0.03);
+  --color-shell-800: rgb(255 255 255 / 0.10);
+  --color-shell-100: #FFFFFF;
+  --color-shell-signal-400: #7CFFB2;
+
+  /* ═══════════════════════════════════════════════════════
      SEMANTIC — success / warning / danger / info
      ═══════════════════════════════════════════════════════ */
   --color-success-50: #F0FFF4;
@@ -233,6 +242,13 @@
   --color-surface-muted: var(--color-surface-100);
   --color-border-default: var(--color-surface-300);
   --color-border-subtle: var(--color-surface-200);
+
+  /* Dark shell aliases */
+  --color-shell-canvas: var(--color-shell-950);
+  --color-shell-panel: var(--color-shell-900);
+  --color-shell-border-strong: var(--color-shell-800);
+  --color-shell-text-strong: var(--color-shell-100);
+  --color-shell-signal: var(--color-shell-signal-400);
 
   /* Semantic actions */
   --color-success-action: var(--color-success-500);
