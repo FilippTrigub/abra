@@ -18,7 +18,6 @@ import {
   getPvcName,
   getPodName,
   getRuntimeNamespace,
-  type NamingInput,
 } from "./naming-helpers";
 
 // ---------------------------------------------------------------------------
@@ -296,7 +295,6 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
 
   const statefulSetName = getStatefulSetName(accountId, deploymentId);
   const pvcName = getPvcName(accountId, deploymentId);
-  const podName = getPodName(accountId, deploymentId);
   const namespace = getRuntimeNamespace();
   const configMapName = getConfigMapName(accountId, deploymentId);
   const secretName = getSecretName(accountId, deploymentId);
@@ -861,19 +859,19 @@ export function validateGeneratedManifests(manifests: KubernetesManifests): void
   }
 
   // Check names consistency
-  if (manifests.names.statefulSetName !== (statefulset.metadata as any).name) {
+  if (manifests.names.statefulSetName !== statefulset.metadata.name) {
     throw new Error("Names mismatch: statefulset");
   }
-  if (manifests.names.serviceName !== (service.metadata as any).name) {
+  if (manifests.names.serviceName !== service.metadata.name) {
     throw new Error("Names mismatch: service");
   }
-  if (manifests.names.pvcName !== (pvc.metadata as any).name) {
+  if (manifests.names.pvcName !== pvc.metadata.name) {
     throw new Error("Names mismatch: pvc");
   }
-  if (manifests.names.configMapName !== (configMap.metadata as any).name) {
+  if (manifests.names.configMapName !== configMap.metadata.name) {
     throw new Error("Names mismatch: configMap");
   }
-  if (manifests.names.secretName !== (secret.metadata as any).name) {
+  if (manifests.names.secretName !== secret.metadata.name) {
     throw new Error("Names mismatch: secret");
   }
 }

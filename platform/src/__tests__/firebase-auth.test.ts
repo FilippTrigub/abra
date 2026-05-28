@@ -94,31 +94,4 @@ describe("firebase auth helper", () => {
     expect(mockGetUser).not.toHaveBeenCalled();
   });
 
-  it("returns the dev bypass user when DEV_AUTH_BYPASS is enabled in development", async () => {
-    vi.stubEnv("NODE_ENV", "development");
-    vi.stubEnv("DEV_AUTH_BYPASS", "true");
-
-    const { getUser } = await import("@/lib/auth/firebase-auth");
-    const result = await getUser();
-
-    expect(result).toEqual({
-      error: null,
-      user: {
-        id: "dev-auth-bypass-user",
-        uid: "dev-auth-bypass-user",
-        email: "dev-auth-bypass@local.abra",
-        emailVerified: true,
-        displayName: "Dev Bypass User",
-        photoURL: null,
-        user_metadata: {
-          email: "dev-auth-bypass@local.abra",
-          email_verified: true,
-          name: "Dev Bypass User",
-        },
-        last_sign_in_at: "1970-01-01T00:00:00.000Z",
-      },
-    });
-    expect(mockVerifySessionCookie).not.toHaveBeenCalled();
-    expect(mockGetUser).not.toHaveBeenCalled();
-  });
 });

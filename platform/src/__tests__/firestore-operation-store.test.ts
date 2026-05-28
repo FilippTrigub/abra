@@ -14,7 +14,6 @@ vi.mock("@/lib/firebase/admin", () => ({
 import { firestoreOperationStore } from "@/lib/orchestration/firestore-operation-store";
 import type { OrchestrationOperation } from "@/lib/orchestration/types";
 import { getAdminFirestore } from "@/lib/firebase/admin";
-import * as admin from "firebase-admin";
 
 const mockFirestore = {
   collection: vi.fn(() => ({
@@ -25,7 +24,9 @@ const mockFirestore = {
   })),
 };
 
-vi.mocked(getAdminFirestore).mockReturnValue(mockFirestore as any);
+vi.mocked(getAdminFirestore).mockReturnValue(
+  mockFirestore as unknown as ReturnType<typeof getAdminFirestore>,
+);
 
 describe("FirestoreOperationStore - Durable Operation Persistence", () => {
   beforeEach(() => {
@@ -66,7 +67,7 @@ describe("FirestoreOperationStore - Durable Operation Persistence", () => {
       const set = vi.fn().mockResolvedValue(undefined);
       mockFirestore.collection.mockReturnValue({
         doc: vi.fn(() => ({ set })),
-      } as any);
+      });
 
       const result = await firestoreOperationStore.create(baseOperation);
 
@@ -94,7 +95,7 @@ describe("FirestoreOperationStore - Durable Operation Persistence", () => {
       };
       mockFirestore.collection.mockReturnValue({
         doc: vi.fn(() => docRef),
-      } as any);
+      });
 
       const result = await firestoreOperationStore.getStatus("op-123");
 
@@ -109,7 +110,7 @@ describe("FirestoreOperationStore - Durable Operation Persistence", () => {
         doc: vi.fn(() => ({
           get: vi.fn().mockResolvedValue({ exists: false }),
         })),
-      } as any);
+      });
 
       const result = await firestoreOperationStore.getStatus("non-existent");
 
@@ -121,7 +122,7 @@ describe("FirestoreOperationStore - Durable Operation Persistence", () => {
         doc: vi.fn(() => ({
           get: vi.fn().mockResolvedValue({ exists: true, data: () => null }),
         })),
-      } as any);
+      });
 
       const result = await firestoreOperationStore.getStatus("no-data");
 
@@ -148,7 +149,7 @@ describe("FirestoreOperationStore - Durable Operation Persistence", () => {
       const set = vi.fn().mockResolvedValue(undefined);
       mockFirestore.collection.mockReturnValue({
         doc: vi.fn(() => ({ set })),
-      } as any);
+      });
 
       const result = await firestoreOperationStore.update(updatedOperation);
 
@@ -165,7 +166,7 @@ describe("FirestoreOperationStore - Durable Operation Persistence", () => {
       const set = vi.fn().mockResolvedValue(undefined);
       mockFirestore.collection.mockReturnValue({
         doc: vi.fn(() => ({ set })),
-      } as any);
+      });
 
       await firestoreOperationStore.update({
         ...baseOperation,
@@ -220,7 +221,7 @@ describe("FirestoreOperationStore - Durable Operation Persistence", () => {
       const set = vi.fn().mockResolvedValue(undefined);
       mockFirestore.collection.mockReturnValue({
         doc: vi.fn(() => ({ set })),
-      } as any);
+      });
 
       await firestoreOperationStore.create(operationWithMetadata);
 
@@ -257,7 +258,7 @@ describe("FirestoreOperationStore - Durable Operation Persistence", () => {
             data: () => operationWithMetadata,
           }),
         })),
-      } as any);
+      });
 
       const result = await firestoreOperationStore.getStatus("op-123");
 

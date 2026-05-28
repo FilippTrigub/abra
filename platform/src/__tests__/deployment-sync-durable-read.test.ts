@@ -71,24 +71,28 @@ const mockFirestore = {
   },
 };
 
-vi.mocked(getAdminFirestore).mockReturnValue(mockFirestore as any);
+vi.mocked(getAdminFirestore).mockReturnValue(
+  mockFirestore as unknown as ReturnType<typeof getAdminFirestore>,
+);
+
+const mockedGetStatus = vi.mocked(firestoreOperationStore.getStatus);
 
 describe("Deployment Sync - Durable Operation Reads", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (firestoreOperationStore.getStatus as any).mockReturnValue(Promise.resolve(null));
+    mockedGetStatus.mockReturnValue(Promise.resolve(null));
     getAdapterStatusMock.mockResolvedValue(null);
     orchestrationAdapterMock.name = "mock";
   });
 
-  function setupMockFirestoreDoc(deploymentData: any) {
+  function setupMockFirestoreDoc(deploymentData: Record<string, unknown>) {
     mockFirestore.collection.mockReturnValue({
       orderBy: vi.fn(() => ({
         limit: vi.fn(() => ({
           get: vi.fn().mockResolvedValue({ docs: [] }),
         })),
       })),
-    } as any);
+    });
 
     mockFirestore.doc.mockReturnValue({
       get: vi.fn().mockResolvedValue({
@@ -97,7 +101,7 @@ describe("Deployment Sync - Durable Operation Reads", () => {
       }),
       set: vi.fn().mockResolvedValue(undefined),
       update: vi.fn().mockResolvedValue(undefined),
-    } as any);
+    });
   }
 
   describe("syncDeploymentStatusForUser with mock adapter", () => {
@@ -139,9 +143,7 @@ describe("Deployment Sync - Durable Operation Reads", () => {
         result: null,
       };
 
-      (firestoreOperationStore.getStatus as any).mockReturnValue(
-        Promise.resolve(durableOperation),
-      );
+      mockedGetStatus.mockReturnValue(Promise.resolve(durableOperation));
 
       setupMockFirestoreDoc({
         id: "deploy-1",
@@ -217,9 +219,7 @@ describe("Deployment Sync - Durable Operation Reads", () => {
     });
 
     it("should persist mock operation to durable store for future reads", async () => {
-      (firestoreOperationStore.getStatus as any).mockReturnValue(
-        Promise.resolve(null),
-      );
+      mockedGetStatus.mockReturnValue(Promise.resolve(null));
 
       setupMockFirestoreDoc({
         id: "deploy-1",
@@ -384,9 +384,7 @@ describe("Deployment Sync - Durable Operation Reads", () => {
 
     it("should return failure when operation not found in durable store for non-mock adapter", async () => {
       orchestrationAdapterMock.name = "aks";
-      (firestoreOperationStore.getStatus as any).mockReturnValue(
-        Promise.resolve(null),
-      );
+      mockedGetStatus.mockReturnValue(Promise.resolve(null));
 
       setupMockFirestoreDoc({
         id: "deploy-1",

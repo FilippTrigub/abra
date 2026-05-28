@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { redirect } from "next/navigation";
-import { NextResponse } from "next/server";
 
 import { requireAuth, requireApiAuth, requireOwnership, checkOwnershipJson } from "@/lib/auth/session";
 import { getUser } from "@/lib/auth/firebase-auth";

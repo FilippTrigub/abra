@@ -7,11 +7,11 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { Timestamp } from "firebase-admin/firestore";
 import { getAdminFirestore } from "@/lib/firebase/admin";
-import {
-  ensurePlatformAccount,
-  getPlatformAccount,
-  getSubscriptionInfo,
-} from "@/lib/platform-account";
+import { getSubscriptionInfo, ensurePlatformAccount, getPlatformAccount } from "@/lib/platform-account";
+
+function expectDefined<T>(value: T | null | undefined, message: string): asserts value is T {
+  expect(value, message).toBeDefined();
+}
 
 describe("platform-account Firestore integration", () => {
   const emulatorHost = process.env.FIREBASE_EMULATOR_HOST;
@@ -21,16 +21,11 @@ describe("platform-account Firestore integration", () => {
     return;
   }
 
-  let firestore: ReturnType<(typeof import("@/lib/firebase/admin"))["getAdminFirestore"]>;
-  let ensurePlatformAccount: (authUserId: string) => Promise<{ account: any; booted: boolean }>;
-  let getPlatformAccount: (authUserId: string) => Promise<any>;
+  let firestore: ReturnType<typeof getAdminFirestore>;
   let testUid: string;
 
   beforeAll(async () => {
-    const accountMod = await import("@/lib/platform-account");
     const adminMod = await import("@/lib/firebase/admin");
-    ensurePlatformAccount = accountMod.ensurePlatformAccount;
-    getPlatformAccount = accountMod.getPlatformAccount;
     firestore = adminMod.getAdminFirestore();
     // Generate a unique test UID
     testUid = `test_user_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -55,7 +50,7 @@ describe("platform-account Firestore integration", () => {
       const result = await ensurePlatformAccount(testUid);
 
       expect(result.booted).toBe(true);
-      expect(result.account).toBeDefined();
+      expectDefined(result.account, "account should be created");
       expect(result.account.id).toBe(testUid);
       expect(result.account.subscription_plan).toBe("free");
       expect(result.account.subscription_status).toBe("active");
@@ -70,6 +65,7 @@ describe("platform-account Firestore integration", () => {
       const result = await ensurePlatformAccount(testUid);
 
       expect(result.booted).toBe(false);
+      expectDefined(result.account, "account should exist on repeat call");
       expect(result.account.id).toBe(testUid);
     });
 
@@ -82,8 +78,9 @@ describe("platform-account Firestore integration", () => {
       // Verify account still has defaults
       const account = await getPlatformAccount(testUid);
 
-      expect(account?.subscriptionPlan).toBe("free");
-      expect(account?.subscriptionStatus).toBe("active");
+      expectDefined(account, "account should be loaded");
+      expect(account.subscriptionPlan).toBe("free");
+      expect(account.subscriptionStatus).toBe("active");
     });
 
     it("should create default settings for a newly bootstrapped account", async () => {
@@ -111,7 +108,7 @@ describe("platform-account Firestore integration", () => {
 
       const account = await getPlatformAccount(testUid);
 
-      expect(account).toBeDefined();
+      expectDefined(account, "account should be loaded");
       expect(account.id).toBe(testUid);
       expect(account.authUserId).toBe(testUid);
       expect(account.subscriptionPlan).toBe("free");
@@ -126,6 +123,7 @@ describe("platform-account Firestore integration", () => {
 
       const account = await getPlatformAccount(testUid);
 
+      expectDefined(account, "account should be loaded");
       expect(account.createdAt).toBeDefined();
       expect(account.updatedAt).toBeDefined();
     });

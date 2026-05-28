@@ -2,7 +2,7 @@
  * Tests for Kubernetes client bootstrap and Azure Workload Identity validation.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import {
   getAzureWorkloadIdentityConfig,
   isInClusterEnvironment,

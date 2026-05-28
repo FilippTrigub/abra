@@ -4,7 +4,6 @@ import { after } from "next/server";
 import {
   createDeploymentRecord,
   dispatchDeploymentRequest,
-  type DashboardDeployment,
   type DeploymentEnvironment,
 } from "@/lib/deployments";
 import { getUser } from "@/lib/auth/firebase-auth";

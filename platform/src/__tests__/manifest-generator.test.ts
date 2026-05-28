@@ -9,7 +9,7 @@
  * - Manifest structure validation
  */
 
-import { describe, test, expect, beforeEach, afterEach } from "vitest";
+import { describe, test, expect } from "vitest";
 import {
   generateKubernetesManifests,
   serializeManifestsToYaml,
@@ -23,6 +23,10 @@ import {
   getPodName,
   getRuntimeNamespace,
 } from "@/lib/orchestration/naming-helpers";
+
+function expectDefined<T>(value: T | null | undefined, message: string): asserts value is T {
+  expect(value, message).toBeDefined();
+}
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -130,7 +134,7 @@ describe("StatefulSet manifest", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
 
-    expect((statefulset.metadata as any).name).toBe(
+    expect(statefulset.metadata.name).toBe(
       getStatefulSetName(TEST_ACCOUNT_ID, TEST_DEPLOYMENT_ID)
     );
   });
@@ -139,21 +143,21 @@ describe("StatefulSet manifest", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
 
-    expect((statefulset.metadata as any).namespace).toBe(getRuntimeNamespace());
+    expect(statefulset.metadata.namespace).toBe(getRuntimeNamespace());
   });
 
   test("has replicas set to 1", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
 
-    expect((statefulset.spec as any).replicas).toBe(1);
+    expect(statefulset.spec.replicas).toBe(1);
   });
 
   test("has serviceName pointing to correct service", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
 
-    expect((statefulset.spec as any).serviceName).toBe(
+    expect(statefulset.spec.serviceName).toBe(
       getServiceName(TEST_ACCOUNT_ID, TEST_DEPLOYMENT_ID)
     );
   });
@@ -161,7 +165,7 @@ describe("StatefulSet manifest", () => {
   test("has correct selector labels", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
-    const selector = (statefulset.spec as any).selector;
+    const selector = statefulset.spec.selector;
 
     expect(selector.matchLabels.app).toBe("abra");
     expect(selector.matchLabels["abra.io/deployment-id"]).toBe(TEST_DEPLOYMENT_ID);
@@ -170,44 +174,48 @@ describe("StatefulSet manifest", () => {
   test("has main openclaw container with correct image", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
-    const spec = statefulset.spec as any;
+    const spec = statefulset.spec;
     const containers = spec.template.spec.containers;
 
     const openclawContainer = containers.find(
-      (c: any) => c.name === "openclaw"
+      (c) => c.name === "openclaw"
     );
-    expect(openclawContainer).toBeDefined();
+    expectDefined(openclawContainer, "openclaw container should exist");
     expect(openclawContainer.image).toBe(TEST_IMAGE);
   });
 
   test("has init-hydration container", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
-    const spec = statefulset.spec as any;
+    const spec = statefulset.spec;
     const initContainers = spec.template.spec.initContainers;
 
+    expectDefined(initContainers, "init containers should exist");
     const initContainer = initContainers.find(
-      (c: any) => c.name === "init-hydration"
+      (c) => c.name === "init-hydration"
     );
-    expect(initContainer).toBeDefined();
+    expectDefined(initContainer, "init hydration container should exist");
     expect(initContainer.image).toBe("bitnami/kubectl:latest");
   });
 
   test("init-hydration container mounts config-volume", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
-    const spec = statefulset.spec as any;
+    const spec = statefulset.spec;
     const initContainers = spec.template.spec.initContainers;
 
+    expectDefined(initContainers, "init containers should exist");
     const initContainer = initContainers.find(
-      (c: any) => c.name === "init-hydration"
+      (c) => c.name === "init-hydration"
     );
+    expectDefined(initContainer, "init hydration container should exist");
     const volumeMounts = initContainer.volumeMounts;
+    expectDefined(volumeMounts, "init hydration volume mounts should exist");
 
     const configMount = volumeMounts.find(
-      (m: any) => m.name === "config-volume"
+      (m) => m.name === "config-volume"
     );
-    expect(configMount).toBeDefined();
+    expectDefined(configMount, "config volume mount should exist");
     expect(configMount.mountPath).toBe("/config");
     expect(configMount.readOnly).toBe(true);
   });
@@ -215,18 +223,21 @@ describe("StatefulSet manifest", () => {
   test("init-hydration container mounts secrets-volume", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
-    const spec = statefulset.spec as any;
+    const spec = statefulset.spec;
     const initContainers = spec.template.spec.initContainers;
 
+    expectDefined(initContainers, "init containers should exist");
     const initContainer = initContainers.find(
-      (c: any) => c.name === "init-hydration"
+      (c) => c.name === "init-hydration"
     );
+    expectDefined(initContainer, "init hydration container should exist");
     const volumeMounts = initContainer.volumeMounts;
+    expectDefined(volumeMounts, "init hydration volume mounts should exist");
 
     const secretsMount = volumeMounts.find(
-      (m: any) => m.name === "secrets-volume"
+      (m) => m.name === "secrets-volume"
     );
-    expect(secretsMount).toBeDefined();
+    expectDefined(secretsMount, "secrets volume mount should exist");
     expect(secretsMount.mountPath).toBe("/secrets");
     expect(secretsMount.readOnly).toBe(true);
   });
@@ -234,49 +245,59 @@ describe("StatefulSet manifest", () => {
   test("init-hydration container mounts openclaw-home volume", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
-    const spec = statefulset.spec as any;
+    const spec = statefulset.spec;
     const initContainers = spec.template.spec.initContainers;
 
+    expectDefined(initContainers, "init containers should exist");
     const initContainer = initContainers.find(
-      (c: any) => c.name === "init-hydration"
+      (c) => c.name === "init-hydration"
     );
+    expectDefined(initContainer, "init hydration container should exist");
     const volumeMounts = initContainer.volumeMounts;
+    expectDefined(volumeMounts, "init hydration volume mounts should exist");
 
     const homeMount = volumeMounts.find(
-      (m: any) => m.name === "openclaw-home"
+      (m) => m.name === "openclaw-home"
     );
-    expect(homeMount).toBeDefined();
+    expectDefined(homeMount, "openclaw-home mount should exist");
     expect(homeMount.mountPath).toBe("/openclaw-home");
   });
 
   test("main openclaw container mounts openclaw-home", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
-    const spec = statefulset.spec as any;
+    const spec = statefulset.spec;
     const containers = spec.template.spec.containers;
 
     const openclawContainer = containers.find(
-      (c: any) => c.name === "openclaw"
+      (c) => c.name === "openclaw"
     );
+    expectDefined(openclawContainer, "openclaw container should exist");
     const volumeMounts = openclawContainer.volumeMounts;
+    expectDefined(volumeMounts, "openclaw volume mounts should exist");
 
     const homeMount = volumeMounts.find(
-      (m: any) => m.name === "openclaw-home"
+      (m) => m.name === "openclaw-home"
     );
-    expect(homeMount).toBeDefined();
+    expectDefined(homeMount, "openclaw-home mount should exist");
     expect(homeMount.mountPath).toBe("/openclaw-home");
   });
 
   test("mounts the adapter-managed PVC for persistent storage", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
-    const spec = statefulset.spec as any;
-    const openclawHomeVolume = spec.template.spec.volumes.find(
-      (volume: any) => volume.name === "openclaw-home"
+    const spec = statefulset.spec;
+    const volumes = spec.template.spec.volumes;
+    expectDefined(volumes, "volumes should exist");
+    const openclawHomeVolume = volumes.find(
+      (volume) => volume.name === "openclaw-home"
     );
 
-    expect(openclawHomeVolume).toBeDefined();
-    expect(openclawHomeVolume.persistentVolumeClaim).toBeDefined();
+    expectDefined(openclawHomeVolume, "openclaw home volume should exist");
+    expectDefined(
+      openclawHomeVolume.persistentVolumeClaim,
+      "openclaw home volume should use a PVC"
+    );
     expect(openclawHomeVolume.persistentVolumeClaim.claimName).toBe(
       getPvcName(TEST_ACCOUNT_ID, TEST_DEPLOYMENT_ID)
     );
@@ -285,13 +306,14 @@ describe("StatefulSet manifest", () => {
   test("has readiness probe configured", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
-    const spec = statefulset.spec as any;
+    const spec = statefulset.spec;
     const containers = spec.template.spec.containers;
 
     const openclawContainer = containers.find(
-      (c: any) => c.name === "openclaw"
+      (c) => c.name === "openclaw"
     );
-    expect(openclawContainer.readinessProbe).toBeDefined();
+    expectDefined(openclawContainer, "openclaw container should exist");
+    expectDefined(openclawContainer.readinessProbe, "readiness probe should exist");
     expect(openclawContainer.readinessProbe.httpGet.path).toBe("/health");
     expect(openclawContainer.readinessProbe.httpGet.port).toBe(3000);
   });
@@ -299,13 +321,14 @@ describe("StatefulSet manifest", () => {
   test("has liveness probe configured", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
-    const spec = statefulset.spec as any;
+    const spec = statefulset.spec;
     const containers = spec.template.spec.containers;
 
     const openclawContainer = containers.find(
-      (c: any) => c.name === "openclaw"
+      (c) => c.name === "openclaw"
     );
-    expect(openclawContainer.livenessProbe).toBeDefined();
+    expectDefined(openclawContainer, "openclaw container should exist");
+    expectDefined(openclawContainer.livenessProbe, "liveness probe should exist");
     expect(openclawContainer.livenessProbe.httpGet.path).toBe("/health");
     expect(openclawContainer.livenessProbe.httpGet.port).toBe(3000);
   });
@@ -313,12 +336,14 @@ describe("StatefulSet manifest", () => {
   test("has init-hydration command with hydration logic", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
-    const spec = statefulset.spec as any;
+    const spec = statefulset.spec;
     const initContainers = spec.template.spec.initContainers;
 
+    expectDefined(initContainers, "init containers should exist");
     const initContainer = initContainers.find(
-      (c: any) => c.name === "init-hydration"
+      (c) => c.name === "init-hydration"
     );
+    expectDefined(initContainer, "init hydration container should exist");
     const command = initContainer.command as string[];
 
     expect(command).toBeDefined();
@@ -332,12 +357,13 @@ describe("StatefulSet manifest", () => {
     const input: ManifestInput = { ...BASE_INPUT, imagePullPolicy: "Always" };
     const manifests = generateKubernetesManifests(input);
     const statefulset = manifests.statefulset;
-    const spec = statefulset.spec as any;
+    const spec = statefulset.spec;
     const containers = spec.template.spec.containers;
 
     const openclawContainer = containers.find(
-      (c: any) => c.name === "openclaw"
+      (c) => c.name === "openclaw"
     );
+    expectDefined(openclawContainer, "openclaw container should exist");
     expect(openclawContainer.imagePullPolicy).toBe("Always");
   });
 
@@ -351,13 +377,14 @@ describe("StatefulSet manifest", () => {
     };
     const manifests = generateKubernetesManifests(input);
     const statefulset = manifests.statefulset;
-    const spec = statefulset.spec as any;
+    const spec = statefulset.spec;
     const containers = spec.template.spec.containers;
 
     const openclawContainer = containers.find(
-      (c: any) => c.name === "openclaw"
+      (c) => c.name === "openclaw"
     );
-    expect(openclawContainer.resources).toBeDefined();
+    expectDefined(openclawContainer, "openclaw container should exist");
+    expectDefined(openclawContainer.resources, "resources should exist");
     expect(openclawContainer.resources.limits.cpu).toBe("500m");
     expect(openclawContainer.resources.limits.memory).toBe("512Mi");
   });
@@ -369,7 +396,7 @@ describe("StatefulSet manifest", () => {
       serviceAccountName: "abra-runtime-sa",
     });
 
-    expect((manifests.statefulset.spec as any).template.spec.serviceAccountName).toBe(
+    expect(manifests.statefulset.spec.template.spec.serviceAccountName).toBe(
       "abra-runtime-sa"
     );
     expect(manifests.serviceAccount).toEqual(
@@ -400,7 +427,7 @@ describe("Service manifest", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const service = manifests.service;
 
-    expect((service.metadata as any).name).toBe(
+    expect(service.metadata.name).toBe(
       getServiceName(TEST_ACCOUNT_ID, TEST_DEPLOYMENT_ID)
     );
   });
@@ -409,13 +436,13 @@ describe("Service manifest", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const service = manifests.service;
 
-    expect((service.metadata as any).namespace).toBe(getRuntimeNamespace());
+    expect(service.metadata.namespace).toBe(getRuntimeNamespace());
   });
 
   test("has type ClusterIP", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const service = manifests.service;
-    const spec = service.spec as any;
+    const spec = service.spec;
 
     expect(spec.type).toBe("ClusterIP");
   });
@@ -423,7 +450,7 @@ describe("Service manifest", () => {
   test("has correct port configuration", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const service = manifests.service;
-    const spec = service.spec as any;
+    const spec = service.spec;
 
     expect(spec.ports.length).toBe(1);
     expect(spec.ports[0].port).toBe(3000);
@@ -435,7 +462,7 @@ describe("Service manifest", () => {
   test("has correct selector labels", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const service = manifests.service;
-    const spec = service.spec as any;
+    const spec = service.spec;
 
     expect(spec.selector.app).toBe("abra");
     expect(spec.selector["abra.io/deployment-id"]).toBe(TEST_DEPLOYMENT_ID);
@@ -459,7 +486,7 @@ describe("PVC manifest", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const pvc = manifests.pvc;
 
-    expect((pvc.metadata as any).name).toBe(
+    expect(pvc.metadata.name).toBe(
       getPvcName(TEST_ACCOUNT_ID, TEST_DEPLOYMENT_ID)
     );
   });
@@ -468,13 +495,13 @@ describe("PVC manifest", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const pvc = manifests.pvc;
 
-    expect((pvc.metadata as any).namespace).toBe(getRuntimeNamespace());
+    expect(pvc.metadata.namespace).toBe(getRuntimeNamespace());
   });
 
   test("has correct access mode", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const pvc = manifests.pvc;
-    const spec = pvc.spec as any;
+    const spec = pvc.spec;
 
     expect(spec.accessModes).toContain("ReadWriteOnce");
   });
@@ -482,7 +509,7 @@ describe("PVC manifest", () => {
   test("has correct storage request", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const pvc = manifests.pvc;
-    const spec = pvc.spec as any;
+    const spec = pvc.spec;
 
     expect(spec.resources.requests.storage).toBe("1Gi");
   });
@@ -550,7 +577,7 @@ describe("Names consistency", () => {
     expect(manifests.names.statefulSetName).toBe(
       getStatefulSetName(TEST_ACCOUNT_ID, TEST_DEPLOYMENT_ID)
     );
-    expect((statefulset.metadata as any).name).toBe(manifests.names.statefulSetName);
+    expect(statefulset.metadata.name).toBe(manifests.names.statefulSetName);
   });
 
   test("Service name matches naming helper", () => {
@@ -560,7 +587,7 @@ describe("Names consistency", () => {
     expect(manifests.names.serviceName).toBe(
       getServiceName(TEST_ACCOUNT_ID, TEST_DEPLOYMENT_ID)
     );
-    expect((service.metadata as any).name).toBe(manifests.names.serviceName);
+    expect(service.metadata.name).toBe(manifests.names.serviceName);
   });
 
   test("PVC name matches naming helper", () => {
@@ -570,7 +597,7 @@ describe("Names consistency", () => {
     expect(manifests.names.pvcName).toBe(
       getPvcName(TEST_ACCOUNT_ID, TEST_DEPLOYMENT_ID)
     );
-    expect((pvc.metadata as any).name).toBe(manifests.names.pvcName);
+    expect(pvc.metadata.name).toBe(manifests.names.pvcName);
   });
 
   test("Pod name matches naming helper", () => {
@@ -635,7 +662,7 @@ describe("Manifest validation", () => {
 
   test("throws error for StatefulSet with wrong apiVersion", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
-    (manifests.statefulset as any).apiVersion = "v1";
+    manifests.statefulset.apiVersion = "v1";
     expect(() => validateGeneratedManifests(manifests)).toThrow(
       "StatefulSet apiVersion mismatch"
     );
@@ -643,7 +670,7 @@ describe("Manifest validation", () => {
 
   test("throws error for Service with wrong kind", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
-    (manifests.service as any).kind = "Deployment";
+    manifests.service.kind = "Deployment";
     expect(() => validateGeneratedManifests(manifests)).toThrow(
       "Service kind mismatch"
     );
@@ -651,7 +678,7 @@ describe("Manifest validation", () => {
 
   test("throws error for PVC with missing accessModes", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
-    (manifests.pvc as any).spec.accessModes = undefined;
+    delete (manifests.pvc.spec as { accessModes?: string[] }).accessModes;
     expect(() => validateGeneratedManifests(manifests)).toThrow(
       "PVC missing spec.accessModes"
     );
@@ -659,7 +686,7 @@ describe("Manifest validation", () => {
 
   test("throws error when generated config map loses openclaw.json", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
-    delete (manifests.configMap as any).data["openclaw.json"];
+    delete manifests.configMap.data["openclaw.json"];
 
     expect(() => validateGeneratedManifests(manifests)).toThrow(
       "ConfigMap missing data.openclaw.json"
