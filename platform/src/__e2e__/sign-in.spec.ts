@@ -1,6 +1,16 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Sign-in page", () => {
+  test("should render the landing page controls on /", async ({ page }) => {
+    await page.goto("/");
+
+    await expect(page).toHaveURL(/(?:\/en)?\/$/);
+    await expect(
+      page.getByRole("heading", { name: "Stay visible without finding time to post." }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Create my draft" })).toBeVisible();
+  });
+
   test("should show Google and GitHub provider buttons", async ({ page }) => {
     await page.goto("/sign-in");
 
@@ -16,6 +26,12 @@ test.describe("Sign-in page", () => {
   }) => {
     await page.goto("/dashboard");
 
-    await expect(page).toHaveURL(/.*\/sign-in.*/);
+    await expect(page).toHaveURL(/(?:\/en)?\/sign-in\?from=%2Fdashboard/);
+    await expect(
+      page.getByRole("heading", { name: "Sign In" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Continue with Google" }),
+    ).toBeVisible();
   });
 });

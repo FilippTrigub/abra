@@ -1,6 +1,5 @@
 import { getAdminAuth } from "@/lib/firebase/admin";
 import { SESSION_COOKIE_NAME, verifySessionCookie } from "@/lib/firebase/session";
-import { getDevBypassUser, isDevAuthBypassEnabled } from "./dev-bypass";
 
 export interface AuthenticatedUser {
   id: string;
@@ -42,10 +41,6 @@ function mapFirebaseUser(
 }
 
 export async function getUser(): Promise<{ user: AuthenticatedUser | null; error: string | null }> {
-  if (isDevAuthBypassEnabled()) {
-    return { user: getDevBypassUser(), error: null };
-  }
-
   try {
     const cookieStore = await import("next/headers").then((m) => m.cookies());
     const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value;

@@ -1,8 +1,4 @@
-import path from "node:path";
-
 import { defineConfig, devices } from "@playwright/test";
-
-const githubStorageState = path.resolve(__dirname, "../playwright/.auth/github.json");
 
 export default defineConfig({
   testDir: "src/__e2e__",
@@ -18,28 +14,26 @@ export default defineConfig({
     ? "list"
     : [["html", { outputFolder: "playwright-test-results" }]],
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://127.0.0.1:3978",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
   projects: [
     {
       name: "chromium",
+      testIgnore: ["**/dashboard-shell.spec.ts"],
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "chromium-github",
       testIgnore: ["**/sign-in.spec.ts"],
-      use: {
-        ...devices["Desktop Chrome"],
-        storageState: githubStorageState,
-      },
+      use: { ...devices["Desktop Chrome"] },
     },
   ],
   webServer: {
-    command: "pnpm dev",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
+    command: "pnpm exec next dev --hostname 127.0.0.1 --port 3978",
+    url: "http://127.0.0.1:3978",
+    reuseExistingServer: false,
     cwd: __dirname,
   },
 });
