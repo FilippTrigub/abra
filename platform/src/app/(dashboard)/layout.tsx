@@ -37,14 +37,16 @@ export default async function DashboardLayout({
   const hasAccount = !!account;
   const subInfo = getSubscriptionInfo(account);
   const shellBadgeClassName =
-    "border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)]";
+    "rounded-sm border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-shell-text-strong)]";
+  const navItemClassName =
+    "min-h-10 rounded-sm px-4 py-2 text-[11px] sm:text-[12px]";
 
   return (
-    <div className="min-h-full bg-[var(--color-shell-canvas)]">
+    <div className="min-h-full bg-[var(--color-shell-canvas)] text-[var(--color-shell-text-strong)]">
       {/* ── Top bar ─────────────────────────────────────── */}
-      <header className="sticky top-0 z-sticky border-b border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-canvas)_92%,transparent)] backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-screen-xl items-center justify-between px-6">
-          <div className="flex items-center gap-6">
+      <header className="sticky top-0 z-sticky border-b border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-canvas)_96%,transparent)] backdrop-blur">
+        <div className="mx-auto flex min-h-[4.5rem] max-w-screen-xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-3 text-[var(--color-shell-text-strong)]">
               <span className="flex h-9 w-9 items-center justify-center rounded-md border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-signal)]">
                 <svg
@@ -67,24 +69,28 @@ export default async function DashboardLayout({
                   />
                 </svg>
               </span>
-              <span className="text-h6 font-semibold tracking-[0.12em]">
-                Abra
+              <span className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-white sm:text-[13px]">
+                ABRA
               </span>
             </div>
-            <nav className="hidden items-center gap-2 rounded-full border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] p-1 sm:flex">
+            <nav className="hidden items-center gap-1 border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_86%,black)] p-1 sm:flex">
               {DASHBOARD_NAV_ITEMS.map((item) => (
-                <NavItem key={item.href} href={item.href}>
+                <NavItem
+                  key={item.href}
+                  href={item.href}
+                  className={navItemClassName}
+                >
                   {item.label}
                 </NavItem>
               ))}
             </nav>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {isNew && (
               <Badge
                 variant="brand"
-                className="border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-signal)]"
+                className="rounded-sm border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-shell-signal)]"
               >
                 Welcome aboard!
               </Badge>
@@ -112,20 +118,20 @@ export default async function DashboardLayout({
                 Initializing…
               </Badge>
             )}
-            <span className="hidden text-caption font-medium text-white/72 md:inline">
+            <span className="hidden font-mono text-[11px] uppercase tracking-[0.14em] text-white/54 lg:inline">
               {displayName}
             </span>
           </div>
         </div>
       </header>
 
-      <nav className="border-b border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-canvas)_94%,transparent)] px-4 py-3 sm:hidden">
-        <div className="mx-auto flex max-w-screen-xl items-center gap-2 rounded-[var(--radius-xl)] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] p-1">
+      <nav className="border-b border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-canvas)_96%,transparent)] px-4 py-3 sm:hidden">
+        <div className="mx-auto flex max-w-screen-xl items-center gap-1 border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_86%,black)] p-1">
           {DASHBOARD_NAV_ITEMS.map((item) => (
             <NavItem
               key={item.href}
               href={item.href}
-              className="flex-1 text-center"
+              className={`${navItemClassName} flex-1 text-center`}
             >
               {item.label}
             </NavItem>
@@ -153,13 +159,9 @@ export default async function DashboardLayout({
       )}
 
       {/* ── Main content ────────────────────────────────── */}
-      <div className="relative border-t border-white/5">
-        <div className="mx-auto max-w-screen-xl px-6 py-8">
-          <div className="rounded-[1.75rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] p-4 shadow-[0_24px_48px_rgba(0,0,0,0.28)] sm:p-5">
-            {children}
-          </div>
-        </div>
-      </div>
+      <main className="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 lg:px-8">
+        {children}
+      </main>
     </div>
   );
 }
