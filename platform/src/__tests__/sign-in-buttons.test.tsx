@@ -17,6 +17,10 @@ vi.mock("next/navigation", () => ({
   }),
 }));
 
+vi.mock("@/lib/firebase/browser-auth", () => ({
+  getFirebaseAuth: () => ({ name: "firebase-auth-instance" }),
+}));
+
 vi.mock("@/lib/firebase/client", () => ({
   auth: { name: "firebase-auth-instance" },
 }));
@@ -39,7 +43,19 @@ describe("SignInButtons", () => {
   it("renders the existing provider labels", async () => {
     const { SignInButtons } = await import("@/app/(auth)/sign-in/sign-in-buttons");
 
-    render(<SignInButtons />);
+    render(
+      <SignInButtons
+        firebaseConfig={{
+          apiKey: "api-key",
+          authDomain: "example.firebaseapp.com",
+          projectId: "project-id",
+          storageBucket: "bucket",
+          messagingSenderId: "sender-id",
+          appId: "app-id",
+          measurementId: "measurement-id",
+        }}
+      />,
+    );
 
     expect(screen.getByRole("button", { name: "Continue with Google" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Continue with GitHub" })).toBeTruthy();
@@ -60,7 +76,19 @@ describe("SignInButtons", () => {
 
     const { SignInButtons } = await import("@/app/(auth)/sign-in/sign-in-buttons");
 
-    render(<SignInButtons />);
+    render(
+      <SignInButtons
+        firebaseConfig={{
+          apiKey: "api-key",
+          authDomain: "example.firebaseapp.com",
+          projectId: "project-id",
+          storageBucket: "bucket",
+          messagingSenderId: "sender-id",
+          appId: "app-id",
+          measurementId: "measurement-id",
+        }}
+      />,
+    );
     fireEvent.click(screen.getByRole("button", { name: "Continue with Google" }));
 
     await waitFor(() => {

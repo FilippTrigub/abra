@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { ErrorState } from "@/components/ui/error-state";
+import type { FirebaseConfig } from "@/lib/firebase/env";
+import { getFirebaseAuth } from "@/lib/firebase/browser-auth";
 
 type AuthProviderName = "google" | "github";
 
@@ -31,20 +33,13 @@ function getSignInErrorMessage(error: unknown) {
   return error.message;
 }
 
-async function establishFirebaseSession(provider: AuthProviderName) {
-  const [{ auth }, firebaseAuthModule] = await Promise.all([
-    import("@/lib/firebase/client"),
-    import("firebase/auth"),
-  ]);
+async function establishFirebaseSession(
+  provider: AuthProviderName,
+  firebaseConfig: FirebaseConfig,
+) {
+  const { GithubAuthProvider, GoogleAuthProvider, inMemoryPersistence, setPersistence, signInWithPopup, signOut } = await import("firebase/auth");
 
-  const {
-    GithubAuthProvider,
-    GoogleAuthProvider,
-    inMemoryPersistence,
-    setPersistence,
-    signInWithPopup,
-    signOut,
-  } = firebaseAuthModule;
+  const auth = getFirebaseAuth(firebaseConfig);
 
   await setPersistence(auth, inMemoryPersistence);
 
@@ -81,7 +76,11 @@ async function establishFirebaseSession(provider: AuthProviderName) {
   }
 }
 
-export function SignInButtons() {
+export function SignInButtons({
+  firebaseConfig,
+}: {
+  firebaseConfig: FirebaseConfig;
+}) {
   const router = useRouter();
   const [activeProvider, setActiveProvider] = useState<AuthProviderName | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -94,7 +93,7 @@ export function SignInButtons() {
     setActiveProvider(provider);
 
     try {
-      await establishFirebaseSession(provider);
+      await establishFirebaseSession(provider, firebaseConfig);
       router.push("/dashboard");
       router.refresh();
     } catch (error) {

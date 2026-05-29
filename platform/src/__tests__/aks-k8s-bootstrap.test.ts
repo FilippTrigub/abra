@@ -168,9 +168,41 @@ describe("Kubernetes client bootstrap", () => {
     delete process.env.KUBERNETES_SERVICE_HOST;
     delete process.env.KUBERNETES_SERVICE_PORT;
     delete process.env.KUBECONFIG;
+    delete process.env.KUBECONFIG_B64;
   });
 
   describe("loadKubernetesClient", () => {
+    it("materializes inline kubeconfig content when KUBECONFIG_B64 is set", async () => {
+      const kubeconfig = [
+        "apiVersion: v1",
+        "kind: Config",
+        "clusters:",
+        "- name: abra-aks",
+        "  cluster:",
+        "    server: https://abra-aks.example.invalid",
+        "contexts:",
+        "- name: abra-aks-admin",
+        "  context:",
+        "    cluster: abra-aks",
+        "    user: abra-admin",
+        "current-context: abra-aks-admin",
+        "users:",
+        "- name: abra-admin",
+        "  user:",
+        "    token: fake-token",
+        "",
+      ].join("\n");
+
+      process.env.KUBECONFIG_B64 = Buffer.from(kubeconfig, "utf8").toString("base64");
+
+      const client = await loadKubernetesClient();
+
+      expect(process.env.KUBECONFIG).toBeTruthy();
+      expect(client.isInCluster).toBe(false);
+      expect(client.config.clusterName).toBe("abra-aks");
+      expect(client.config.apiUrl).toBe("https://abra-aks.example.invalid");
+    });
+
     it("returns client when in-cluster config is available", async () => {
       // In test environment, if in-cluster mounted, loadFromCluster will succeed
       // We test that the function returns a valid client structure

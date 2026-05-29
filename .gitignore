@@ -98,3 +98,4 @@ terraform/environments/prod/.terraform/*
 
 # testing
 input/
+.vercel

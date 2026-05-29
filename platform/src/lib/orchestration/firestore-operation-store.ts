@@ -29,6 +29,22 @@ interface FirestoreOperationRecord {
   runtimeMetadata?: Record<string, unknown>;
 }
 
+function stripUndefinedDeep<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((entry) => stripUndefinedDeep(entry)) as T;
+  }
+
+  if (value && typeof value === "object") {
+    const sanitizedEntries = Object.entries(value)
+      .filter(([, entryValue]) => entryValue !== undefined)
+      .map(([entryKey, entryValue]) => [entryKey, stripUndefinedDeep(entryValue)]);
+
+    return Object.fromEntries(sanitizedEntries) as T;
+  }
+
+  return value;
+}
+
 /**
  * Durable operation store using Firestore.
  *
@@ -92,18 +108,18 @@ class FirestoreOperationStore {
       adapter: operation.adapter,
       action: operation.action,
       requestId: operation.requestId,
-      target: operation.target,
-      payload: operation.payload,
+      target: stripUndefinedDeep(operation.target),
+      payload: stripUndefinedDeep(operation.payload),
       status: operation.status,
       createdAt: operation.createdAt,
       updatedAt: operation.updatedAt,
       completedAt: operation.completedAt,
       pollAfterMs: operation.pollAfterMs,
-      steps: operation.steps,
-      error: operation.error,
-      result: operation.result,
+      steps: stripUndefinedDeep(operation.steps),
+      error: operation.error ? stripUndefinedDeep(operation.error) : null,
+      result: operation.result ? stripUndefinedDeep(operation.result) : null,
       runtimeMetadata: operation.runtimeMetadata
-        ? this.serializeMetadata(operation.runtimeMetadata)
+        ? this.serializeMetadata(stripUndefinedDeep(operation.runtimeMetadata))
         : undefined,
     };
   }

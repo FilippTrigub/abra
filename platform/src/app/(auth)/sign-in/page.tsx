@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { ErrorState } from "@/components/ui/error-state";
+import { getFirebaseConfig } from "@/lib/firebase/env";
 
 import { SignInButtons } from "./sign-in-buttons";
 
@@ -10,6 +11,7 @@ export default function SignInPage({
 }: {
   searchParams?: Promise<{ error?: string }>;
 }) {
+  const firebaseConfig = getFirebaseConfig();
   const errorPromise = searchParams;
   return (
     <main className="flex min-h-screen items-center justify-center bg-shell-canvas px-4 py-12 text-shell-text-strong sm:py-20">
@@ -36,7 +38,7 @@ export default function SignInPage({
             </p>
           </div>
 
-          <SignInButtons />
+          <SignInButtons firebaseConfig={firebaseConfig} />
 
           <div className="flex items-center justify-center gap-2 border-t border-white/10 pt-4 text-caption text-zinc-400">
             <svg className="h-4 w-4" viewBox="0 0 28 28" fill="none">

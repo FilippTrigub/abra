@@ -5,6 +5,7 @@
  * with Azure Workload Identity support for Azure resource access.
  *
  * Authentication Strategy:
+ * - Explicit kubeconfig: Uses KUBECONFIG or KUBECONFIG_B64 when provided
  * - In-cluster: Uses mounted service account token automatically
  * - Local dev: Falls back to kubeconfig path from KUBECONFIG env var
  * - Azure resources: Uses Azure Workload Identity via environment variables
@@ -12,7 +13,46 @@
  * Does NOT require a checked-in kubeconfig file.
  */
 
+import { createHash } from "node:crypto";
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+
 import { KubeConfig } from "@kubernetes/client-node";
+
+const inlineKubeconfigPaths = new Map<string, string>();
+
+async function ensureKubeconfigPathFromEnv(): Promise<void> {
+  if (process.env.KUBECONFIG) {
+    return;
+  }
+
+  const inlineKubeconfig = process.env.KUBECONFIG_B64;
+  if (!inlineKubeconfig) {
+    return;
+  }
+
+  const kubeconfigContent = Buffer.from(inlineKubeconfig, "base64").toString("utf8").trim();
+  if (!kubeconfigContent) {
+    throw new Error("KUBECONFIG_B64 decoded to empty kubeconfig content.");
+  }
+
+  const kubeconfigHash = createHash("sha256").update(kubeconfigContent).digest("hex");
+  const existingPath = inlineKubeconfigPaths.get(kubeconfigHash);
+  if (existingPath) {
+    process.env.KUBECONFIG = existingPath;
+    return;
+  }
+
+  const kubeconfigDirectory = path.join(os.tmpdir(), "abra-kubeconfig");
+  await fs.mkdir(kubeconfigDirectory, { recursive: true });
+
+  const kubeconfigPath = path.join(kubeconfigDirectory, `${kubeconfigHash}.yaml`);
+  await fs.writeFile(kubeconfigPath, kubeconfigContent, { mode: 0o600 });
+
+  inlineKubeconfigPaths.set(kubeconfigHash, kubeconfigPath);
+  process.env.KUBECONFIG = kubeconfigPath;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,7 +97,8 @@ export interface AzureWorkloadIdentityConfig {
 /**
  * Loads Kubernetes client configuration from default sources.
  *
- * Prioritizes in-cluster config (for AKS pods) over kubeconfig files.
+ * Prioritizes explicit kubeconfig config over in-cluster config so hosted
+ * runtimes can override ambient cluster auth when needed.
  * Does NOT require a checked-in kubeconfig.
  *
  * @returns Kubernetes client with resolved configuration
@@ -65,6 +106,11 @@ export interface AzureWorkloadIdentityConfig {
  */
 export async function loadKubernetesClient(): Promise<AkSKubernetesClient> {
   const kubeConfig = new KubeConfig();
+  await ensureKubeconfigPathFromEnv();
+
+  if (process.env.KUBECONFIG) {
+    return loadKubeconfigClient(kubeConfig);
+  }
 
   // Try in-cluster config first (when running in AKS pod)
   try {
@@ -87,30 +133,34 @@ export async function loadKubernetesClient(): Promise<AkSKubernetesClient> {
 
   // Fall back to KUBECONFIG env var or default kubeconfig path
   try {
-    kubeConfig.loadFromDefault();
-    const currentCluster = kubeConfig.getCurrentCluster();
-    if (!currentCluster) {
-      throw new Error(
-        "No active cluster found in kubeconfig. Set KUBECONFIG or run in-cluster."
-      );
-    }
-
-    return {
-      kubeConfig,
-      config: {
-        apiUrl: currentCluster.server,
-        clusterName: currentCluster.name,
-        runtimeNamespace: getRuntimeNamespace(),
-        isInCluster: false,
-      },
-      isInCluster: false,
-    };
+    return loadKubeconfigClient(kubeConfig);
   } catch (error) {
     throw new Error(
       `Failed to load Kubernetes config: ${error instanceof Error ? error.message : "Unknown error"}. ` +
         "Either run in-cluster (service account token) or set KUBECONFIG environment variable."
     );
   }
+}
+
+function loadKubeconfigClient(kubeConfig: KubeConfig): AkSKubernetesClient {
+  kubeConfig.loadFromDefault();
+  const currentCluster = kubeConfig.getCurrentCluster();
+  if (!currentCluster) {
+    throw new Error(
+      "No active cluster found in kubeconfig. Set KUBECONFIG or run in-cluster."
+    );
+  }
+
+  return {
+    kubeConfig,
+    config: {
+      apiUrl: currentCluster.server,
+      clusterName: currentCluster.name,
+      runtimeNamespace: getRuntimeNamespace(),
+      isInCluster: false,
+    },
+    isInCluster: false,
+  };
 }
 
 /**

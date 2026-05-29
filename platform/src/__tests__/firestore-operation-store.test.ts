@@ -203,6 +203,62 @@ describe("FirestoreOperationStore - Durable Operation Persistence", () => {
   });
 
   describe("runtimeMetadata persistence", () => {
+    it("should strip nested undefined values before persisting", async () => {
+      const set = vi.fn().mockResolvedValue(undefined);
+      mockFirestore.collection.mockReturnValue({
+        doc: vi.fn(() => ({ set })),
+      });
+
+      await firestoreOperationStore.create({
+        ...baseOperation,
+        result: {
+          message: "Queued",
+          resourceHandle: "aks-runtime/abra/example",
+          metadata: {
+            aks: {
+              namespace: "abra",
+              statefulSetName: "agent-statefulset",
+              pvcName: "agent-pvc",
+              serviceName: "agent-service",
+              serviceAccountName: undefined,
+            },
+          },
+        },
+        runtimeMetadata: {
+          aks: {
+            namespace: "abra",
+            statefulSetName: "agent-statefulset",
+            pvcName: "agent-pvc",
+            serviceName: "agent-service",
+            podName: undefined,
+          },
+        },
+      });
+
+      expect(set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          result: expect.objectContaining({
+            metadata: {
+              aks: {
+                namespace: "abra",
+                statefulSetName: "agent-statefulset",
+                pvcName: "agent-pvc",
+                serviceName: "agent-service",
+              },
+            },
+          }),
+          runtimeMetadata: {
+            aks: {
+              namespace: "abra",
+              statefulSetName: "agent-statefulset",
+              pvcName: "agent-pvc",
+              serviceName: "agent-service",
+            },
+          },
+        }),
+      );
+    });
+
     it("should persist AkRuntimeMetadata inline", async () => {
       const operationWithMetadata: OrchestrationOperation = {
         ...baseOperation,
