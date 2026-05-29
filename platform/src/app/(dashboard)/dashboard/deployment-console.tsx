@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Button, Card, EmptyState, Input, Label, Panel, Select, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Input, Label, Panel, Select, Textarea } from "@/components/ui";
 import type { DashboardDeployment } from "@/lib/deployments";
 import { submitDeploymentRequest } from "./actions";
 import { initialDeploymentFormState } from "./deployment-form-state";
@@ -41,9 +41,21 @@ function formatTimestamp(value: string) {
   }).format(new Date(value));
 }
 
+const shellCardClassName =
+  "border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none";
+
+const shellInsetClassName =
+  "border border-[var(--color-shell-border-strong)] bg-black/20";
+
+const shellLabelClassName =
+  "font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500";
+
+const shellFieldClassName =
+  "rounded-sm border-[var(--color-shell-border-strong)] bg-black/20 text-white placeholder:text-zinc-500 hover:border-white/20 focus:border-brand-300";
+
 function SubmitButton({ pending }: { pending: boolean }) {
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" disabled={pending} className="rounded-sm shadow-none">
       {pending ? "Queueing request…" : "Request deployment"}
     </Button>
   );
@@ -125,8 +137,8 @@ export function DeploymentConsole({
 
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-      <Card className="border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
-        <div className="flex items-start justify-between gap-4">
+      <Card className={shellCardClassName}>
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-shell-border-strong)] pb-6">
           <div>
             <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--color-shell-signal)]">
               Deployment request
@@ -138,15 +150,24 @@ export function DeploymentConsole({
               Persist the request first, then hand orchestration off to the background adapter. The dashboard keeps polling the mock contract until the rollout settles.
             </p>
           </div>
-          <Badge variant="brand">Async dispatch</Badge>
+          <Badge
+            variant="default"
+            className="rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-300"
+          >
+            Async dispatch
+          </Badge>
         </div>
 
         {(persistenceWarning || state.warning) && (
-          <Panel bordered muted className="mt-6 border-warning-200 bg-warning-50/60 text-warning-900">
-            <p className="text-caption font-semibold uppercase tracking-wide">
+          <Panel
+            bordered
+            muted
+            className="mt-6 border-warning-300 bg-[color-mix(in_srgb,var(--color-warning-900)_30%,var(--color-shell-panel))]"
+          >
+            <p className="text-caption font-semibold uppercase tracking-wide text-warning-200">
               Resiliency mode
             </p>
-            <p className="mt-2 text-body text-warning-900">
+            <p className="mt-2 text-body text-warning-100/90">
               {state.warning ?? persistenceWarning}
             </p>
           </Panel>
@@ -158,17 +179,23 @@ export function DeploymentConsole({
             muted
             className={`mt-6 ${
               state.status === "success"
-                ? "border-success-200 bg-success-50/70"
-                : "border-danger-200 bg-danger-50/70"
+                ? "border-success-300 bg-[color-mix(in_srgb,var(--color-success-900)_30%,var(--color-shell-panel))]"
+                : "border-danger-300 bg-[color-mix(in_srgb,var(--color-danger-900)_28%,var(--color-shell-panel))]"
             }`}
           >
-            <p className="text-body font-medium text-content-100">{state.message}</p>
+            <p
+              className={`text-body font-medium ${
+                state.status === "success" ? "text-success-50" : "text-danger-50"
+              }`}
+            >
+              {state.message}
+            </p>
           </Panel>
         )}
 
         <form action={formAction} className="mt-8 space-y-5">
           <div className="grid gap-5 md:grid-cols-2">
-            <div className="space-y-2">
+            <div className={`space-y-2 px-4 py-4 ${shellInsetClassName}`}>
               <Label htmlFor="deployment-name">Deployment name</Label>
               <Input
                 id="deployment-name"
@@ -177,10 +204,11 @@ export function DeploymentConsole({
                 placeholder="Brand landing page"
                 variant={state.fieldErrors.name ? "error" : "default"}
                 errorText={state.fieldErrors.name}
+                className={shellFieldClassName}
               />
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 px-4 py-4 ${shellInsetClassName}`}>
               <Label htmlFor="deployment-environment">Environment</Label>
               <Select
                 id="deployment-environment"
@@ -193,10 +221,11 @@ export function DeploymentConsole({
                 ]}
                 variant={state.fieldErrors.environment ? "error" : "default"}
                 errorText={state.fieldErrors.environment}
+                className={shellFieldClassName}
               />
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 px-4 py-4 ${shellInsetClassName}`}>
               <Label htmlFor="deployment-source-ref">Branch / tag / version</Label>
               <Input
                 id="deployment-source-ref"
@@ -205,10 +234,11 @@ export function DeploymentConsole({
                 placeholder="main"
                 variant={state.fieldErrors.sourceRef ? "error" : "default"}
                 errorText={state.fieldErrors.sourceRef}
+                className={shellFieldClassName}
               />
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 px-4 py-4 ${shellInsetClassName}`}>
               <Label htmlFor="deployment-mock-outcome">Mock outcome</Label>
               <Select
                 id="deployment-mock-outcome"
@@ -220,11 +250,12 @@ export function DeploymentConsole({
                 ]}
                 variant={state.fieldErrors.mockOutcome ? "error" : "default"}
                 errorText={state.fieldErrors.mockOutcome}
+                className={shellFieldClassName}
               />
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className={`space-y-2 px-4 py-4 ${shellInsetClassName}`}>
             <Label htmlFor="deployment-notes">Rollout notes</Label>
             <Textarea
               id="deployment-notes"
@@ -239,12 +270,13 @@ export function DeploymentConsole({
                   ? undefined
                   : "Notes are stored with the durable request record before orchestration starts."
               }
+              className={shellFieldClassName}
             />
           </div>
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/10 px-4 py-3">
+          <div className={`flex flex-wrap items-center justify-between gap-4 px-4 py-4 ${shellInsetClassName}`}>
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+              <p className={shellLabelClassName}>
                 Delivery contract
               </p>
               <p className="mt-1 text-body text-zinc-300">
@@ -257,17 +289,22 @@ export function DeploymentConsole({
       </Card>
 
       <div className="space-y-6">
-        <Card className="border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
-          <div className="flex items-center justify-between gap-3">
+        <Card className={shellCardClassName}>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-shell-border-strong)] pb-5">
             <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+              <p className={shellLabelClassName}>
                 Deployment feed
               </p>
               <h3 className="mt-4 text-h5 font-display font-bold text-white">
                 Latest request states
               </h3>
             </div>
-            <Badge variant={activeDeployments.length > 0 ? "info" : "default"}>
+            <Badge
+              variant={activeDeployments.length > 0 ? "info" : "default"}
+              className={activeDeployments.length > 0
+                ? "rounded-sm border border-info-300 bg-[color-mix(in_srgb,var(--color-info-900)_28%,var(--color-shell-panel))] text-info-100"
+                : "rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 text-zinc-300"}
+            >
               {activeDeployments.length > 0
                 ? `${activeDeployments.length} active`
                 : "Idle"}
@@ -276,26 +313,36 @@ export function DeploymentConsole({
 
           <div className="mt-5 space-y-4">
             {deployments.length === 0 ? (
-              <EmptyState
-                variant="teaser"
-                icon="🚀"
-                title="No deployment requests yet"
-                description="Submit your first rollout from the form to see queued, running, and terminal states render here."
-              />
+              <div className={`px-5 py-6 ${shellInsetClassName}`}>
+                <p className={shellLabelClassName}>Awaiting requests</p>
+                <h4 className="mt-3 text-h6 font-display font-bold text-white">
+                  No deployment requests yet
+                </h4>
+                <p className="mt-2 text-body text-zinc-300">
+                  Submit your first rollout from the form to see queued, running, and terminal states render here.
+                </p>
+              </div>
             ) : (
               deployments.map((deployment) => {
                 const badge = STATUS_BADGES[deployment.status];
 
                 return (
-                  <Panel key={deployment.id} bordered className="space-y-4 border-white/10 bg-black/10 text-[var(--color-shell-text-strong)]">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                  <Panel
+                    key={deployment.id}
+                    bordered
+                    className="space-y-4 rounded-sm border-[var(--color-shell-border-strong)] bg-black/20 text-[var(--color-shell-text-strong)]"
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-shell-border-strong)] pb-4">
                       <div>
                         <div className="flex flex-wrap items-center gap-2">
                           <h4 className="text-body font-semibold text-white">
                             {deployment.request.name}
                           </h4>
                           <Badge variant={badge.variant}>{badge.label}</Badge>
-                          <Badge variant="default">
+                          <Badge
+                            variant="default"
+                            className="rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 text-zinc-300"
+                          >
                             {deployment.request.environment}
                           </Badge>
                           {deployment.persistence === "memory" && (
@@ -306,7 +353,7 @@ export function DeploymentConsole({
                           {deployment.request.sourceRef} · requested {formatTimestamp(deployment.createdAt)}
                         </p>
                       </div>
-                      <div className="text-right text-caption text-zinc-500">
+                      <div className={`px-3 py-3 text-right text-caption ${shellInsetClassName}`}>
                         <p>Request ID</p>
                         <p className="mt-1 font-mono text-[11px] text-zinc-300">
                           {deployment.orchestration?.requestId ?? "pending"}
@@ -315,24 +362,24 @@ export function DeploymentConsole({
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+                      <div className={`px-3 py-3 ${shellInsetClassName}`}>
+                        <p className={shellLabelClassName}>
                           Dispatch
                         </p>
                         <p className="mt-2 text-caption text-white">
                           {deployment.orchestration?.operationId ? "Scheduled" : "Persisted only"}
                         </p>
                       </div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+                      <div className={`px-3 py-3 ${shellInsetClassName}`}>
+                        <p className={shellLabelClassName}>
                           Adapter
                         </p>
                         <p className="mt-2 text-caption text-white">
                           {deployment.orchestration?.adapter ?? "pending"}
                         </p>
                       </div>
-                      <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
-                        <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">
+                      <div className={`px-3 py-3 ${shellInsetClassName}`}>
+                        <p className={shellLabelClassName}>
                           Next poll
                         </p>
                         <p className="mt-2 text-caption text-white">
@@ -344,7 +391,7 @@ export function DeploymentConsole({
                     </div>
 
                     {deployment.request.notes && (
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                      <div className={`px-4 py-4 ${shellInsetClassName}`}>
                         <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
                           Rollout notes
                         </p>
@@ -355,22 +402,22 @@ export function DeploymentConsole({
                     )}
 
                     {deployment.resultUrl && (
-                      <div className="rounded-2xl border border-success-200 bg-success-50/70 px-4 py-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-success-700">
+                      <div className="rounded-sm border border-success-300 bg-[color-mix(in_srgb,var(--color-success-900)_30%,var(--color-shell-panel))] px-4 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-success-200">
                           Result handle
                         </p>
-                        <p className="mt-2 break-all font-mono text-caption text-success-800">
+                        <p className="mt-2 break-all font-mono text-caption text-success-50">
                           {deployment.resultUrl}
                         </p>
                       </div>
                     )}
 
                     {deployment.errorMessage && (
-                      <div className="rounded-2xl border border-danger-200 bg-danger-50/70 px-4 py-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-wide text-danger-700">
+                      <div className="rounded-sm border border-danger-300 bg-[color-mix(in_srgb,var(--color-danger-900)_28%,var(--color-shell-panel))] px-4 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-danger-200">
                           Failure detail
                         </p>
-                        <p className="mt-2 text-caption text-danger-800">
+                        <p className="mt-2 text-caption text-danger-50">
                           {deployment.errorMessage}
                         </p>
                       </div>
