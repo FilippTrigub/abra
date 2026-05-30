@@ -72,6 +72,9 @@ export default async function DashboardPage() {
               ? "Deleted"
               : "Failed"
     : "Not deployed";
+  const primaryActionLabel = currentDeployment && currentDeployment.status !== "deleted"
+    ? "Stop"
+    : "Start";
   const shellGhostButtonClassName =
     "rounded-sm border border-white/12 bg-transparent font-mono text-[12px] uppercase tracking-[0.14em] text-zinc-100 shadow-none hover:border-white/25 hover:bg-white/[0.04] hover:text-white";
   const shellStatusBadgeClassName =
@@ -97,7 +100,7 @@ export default async function DashboardPage() {
                 href="#deployment-request"
                 className="rounded-sm border border-brand-400/40 shadow-none"
               >
-                Manage instance
+                {primaryActionLabel}
               </Button>
               <Button
                 variant="ghost"
