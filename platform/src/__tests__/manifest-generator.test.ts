@@ -362,8 +362,7 @@ describe("StatefulSet manifest", () => {
     );
     expectDefined(openclawContainer, "openclaw container should exist");
     expectDefined(openclawContainer.readinessProbe, "readiness probe should exist");
-    expect(openclawContainer.readinessProbe.httpGet.path).toBe("/health");
-    expect(openclawContainer.readinessProbe.httpGet.port).toBe(18789);
+    expect(openclawContainer.readinessProbe.exec.command).toEqual(["curl", "-sf", "http://localhost:18789/health"]);
   });
 
   test("has liveness probe configured", () => {
@@ -377,8 +376,7 @@ describe("StatefulSet manifest", () => {
     );
     expectDefined(openclawContainer, "openclaw container should exist");
     expectDefined(openclawContainer.livenessProbe, "liveness probe should exist");
-    expect(openclawContainer.livenessProbe.httpGet.path).toBe("/health");
-    expect(openclawContainer.livenessProbe.httpGet.port).toBe(18789);
+    expect(openclawContainer.livenessProbe.exec.command).toEqual(["curl", "-sf", "http://localhost:18789/health"]);
   });
 
   test("has init-hydration command with hydration logic", () => {

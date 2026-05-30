@@ -122,10 +122,7 @@ interface StatefulSetSpec {
           requests: Record<string, string>;
         };
         readinessProbe?: {
-          httpGet: {
-            path: string;
-            port: number;
-          };
+          exec: { command: string[] };
           initialDelaySeconds: number;
           periodSeconds: number;
           timeoutSeconds: number;
@@ -133,10 +130,7 @@ interface StatefulSetSpec {
           failureThreshold: number;
         };
         livenessProbe?: {
-          httpGet: {
-            path: string;
-            port: number;
-          };
+          exec: { command: string[] };
           initialDelaySeconds: number;
           periodSeconds: number;
           timeoutSeconds: number;
@@ -441,10 +435,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
               ],
               resources: containerResources,
               readinessProbe: {
-                httpGet: {
-                  path: "/health",
-                  port: 18789,
-                },
+                exec: { command: ["curl", "-sf", "http://localhost:18789/health"] },
                 initialDelaySeconds: 10,
                 periodSeconds: 5,
                 timeoutSeconds: 3,
@@ -452,10 +443,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
                 failureThreshold: 3,
               },
               livenessProbe: {
-                httpGet: {
-                  path: "/health",
-                  port: 18789,
-                },
+                exec: { command: ["curl", "-sf", "http://localhost:18789/health"] },
                 initialDelaySeconds: 30,
                 periodSeconds: 10,
                 timeoutSeconds: 5,
