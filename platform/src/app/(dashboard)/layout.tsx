@@ -8,6 +8,7 @@ import {
 
 const DASHBOARD_NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/dashboard/deployments", label: "Logs" },
   { href: "/dashboard/settings", label: "Settings" },
 ] as const;
 

@@ -5,6 +5,7 @@ import { DeploymentConsole } from "./deployment-console";
 
 const NAV_LINKS = [
   { label: "Abra instance", href: "#deployment-request" },
+  { label: "Logs", href: "/dashboard/deployments" },
   { label: "Settings", href: "/dashboard/settings" },
 ];
 
@@ -47,12 +48,10 @@ export default async function DashboardPage() {
 
   let feedWarning: string | null = null;
   let feedLoadError: string | null = null;
-  let deployments: Awaited<ReturnType<typeof getDeploymentFeed>>["deployments"] = [];
   let currentDeployment: Awaited<ReturnType<typeof getDeploymentFeed>>["currentDeployment"] = null;
 
   try {
     const feed = await getDeploymentFeed(user.id);
-    deployments = feed.deployments;
     currentDeployment = feed.currentDeployment;
     feedWarning = feed.warning;
   } catch (err) {
@@ -60,7 +59,6 @@ export default async function DashboardPage() {
   }
 
   const instanceStatus = currentDeployment?.status ?? "idle";
-  const historyCount = deployments.filter((deployment) => deployment.id !== currentDeployment?.id).length;
   const statusLabel = currentDeployment
     ? instanceStatus === "succeeded"
       ? "Ready"
@@ -121,7 +119,7 @@ export default async function DashboardPage() {
             {[
               ["Instance", currentDeployment ? currentDeployment.request.name : "Not deployed"],
               ["Status", statusLabel],
-              ["History", `${historyCount} log${historyCount === 1 ? "" : "s"}`],
+              ["Logs", "Header"],
             ].map(([label, value]) => (
               <div
                 key={label}
@@ -176,13 +174,13 @@ export default async function DashboardPage() {
           <div className="border-l border-[var(--color-shell-border-strong)] pl-4">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                History logs
+                Deployment logs
               </p>
               <p className="mt-3 text-h2 font-display font-bold text-white">
-                {historyCount}
+                ↗
               </p>
               <p className="mt-2 text-caption text-zinc-400">
-                Secondary deployment records for troubleshooting
+                Available from the header navigation
               </p>
             </div>
           </div>
@@ -196,7 +194,6 @@ export default async function DashboardPage() {
       <div id="deployment-request">
         <DeploymentConsole
           initialDeployment={currentDeployment}
-          deploymentHistory={deployments}
           persistenceWarning={feedWarning}
         />
       </div>

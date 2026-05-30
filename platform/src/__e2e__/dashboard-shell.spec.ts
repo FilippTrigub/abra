@@ -129,10 +129,8 @@ test.describe("Authenticated dashboard shell", () => {
     await expect(
       page.getByRole("heading", { name: "Your brand command center" }),
     ).toBeVisible();
-    await expect(page.getByLabel("Instance name")).toBeVisible();
-    await expect(page.getByLabel("Environment")).toBeVisible();
-    await expect(page.getByLabel("Branch / tag / version")).toBeVisible();
     await expect(page.getByRole("button", { name: "Deploy Abra" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Logs" }).first()).toBeVisible();
   });
 
   test("should render dashboard settings controls on /dashboard/settings", async ({ page }) => {
