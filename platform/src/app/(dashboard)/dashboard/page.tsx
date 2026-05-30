@@ -2,6 +2,7 @@ import { Badge, Button, Card, Panel } from "@/components/ui";
 import { getUser } from "@/lib/auth/firebase-auth";
 import { getDeploymentFeed } from "@/lib/deployments";
 import { DeploymentConsole } from "./deployment-console";
+import { startAbraInstance, stopAbraInstance } from "./actions";
 
 const NAV_LINKS = [
   { label: "Abra instance", href: "#deployment-request" },
@@ -72,9 +73,13 @@ export default async function DashboardPage() {
               ? "Deleted"
               : "Failed"
     : "Not deployed";
-  const primaryActionLabel = currentDeployment && currentDeployment.status !== "deleted"
-    ? "Stop"
-    : "Start";
+  const isStopAction = Boolean(
+    currentDeployment &&
+      currentDeployment.status !== "deleted" &&
+      !(currentDeployment.status === "failed" && currentDeployment.orchestration?.action !== "destroy"),
+  );
+  const primaryActionLabel = isStopAction ? "Stop" : "Start";
+  const primaryAction = isStopAction ? stopAbraInstance : startAbraInstance;
   const shellGhostButtonClassName =
     "rounded-sm border border-white/12 bg-transparent font-mono text-[12px] uppercase tracking-[0.14em] text-zinc-100 shadow-none hover:border-white/25 hover:bg-white/[0.04] hover:text-white";
   const shellStatusBadgeClassName =
@@ -95,13 +100,15 @@ export default async function DashboardPage() {
               Deploy one Abra runtime for your account, monitor its status, and delete it when you want to replace the instance.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <Button
-                variant="primary"
-                href="#deployment-request"
-                className="rounded-sm border border-brand-400/40 shadow-none"
-              >
-                {primaryActionLabel}
-              </Button>
+              <form action={primaryAction}>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  className="rounded-sm border border-brand-400/40 shadow-none"
+                >
+                  {primaryActionLabel}
+                </Button>
+              </form>
               <Button
                 variant="ghost"
                 href="/dashboard/settings"

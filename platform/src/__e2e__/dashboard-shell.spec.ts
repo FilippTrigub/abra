@@ -129,7 +129,7 @@ test.describe("Authenticated dashboard shell", () => {
     await expect(
       page.getByRole("heading", { name: "Your brand command center" }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Deploy Abra" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Start" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Logs" }).first()).toBeVisible();
   });
 
