@@ -115,6 +115,18 @@ describe("getStatefulSetName", () => {
       "deploymentId is required"
     );
   });
+
+  test("compacts long account and deployment ids deterministically", () => {
+    const accountId = "fjyqatlmasrvefkf0g6lgajz9gv2";
+    const deploymentId = "9ba066b6-8348-4e00-abd3-52e7fcc7e04c";
+
+    const name1 = getStatefulSetName(accountId, deploymentId);
+    const name2 = getStatefulSetName(accountId, deploymentId);
+
+    expect(name1).toBe(name2);
+    expect(name1.length).toBeLessThanOrEqual(55);
+    expect(name1.startsWith("abra-")).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -137,6 +149,16 @@ describe("getServiceName", () => {
     const name = getServiceName("User@123", "Deploy*456");
     expect(name).toBe("abra-user-123-deploy-456-svc");
   });
+
+  test("keeps long generated service names within the 63-character DNS label limit", () => {
+    const name = getServiceName(
+      "fjyqatlmasrvefkf0g6lgajz9gv2",
+      "9ba066b6-8348-4e00-abd3-52e7fcc7e04c"
+    );
+
+    expect(name.length).toBeLessThanOrEqual(63);
+    expect(name.endsWith("-svc")).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -158,6 +180,16 @@ describe("getPvcName", () => {
   test("sanitizes input correctly", () => {
     const name = getPvcName("User@123", "Deploy*456");
     expect(name).toBe("abra-user-123-deploy-456-data");
+  });
+
+  test("keeps long generated pvc names within the shared 63-character runtime budget", () => {
+    const name = getPvcName(
+      "fjyqatlmasrvefkf0g6lgajz9gv2",
+      "9ba066b6-8348-4e00-abd3-52e7fcc7e04c"
+    );
+
+    expect(name.length).toBeLessThanOrEqual(63);
+    expect(name.endsWith("-data")).toBe(true);
   });
 });
 
@@ -224,6 +256,16 @@ describe("getPodName", () => {
     const name2 = getPodName("user1", "deploy1", 1);
     expect(name1).toBe("abra-user1-deploy1-0");
     expect(name2).toBe("abra-user1-deploy1-1");
+  });
+
+  test("keeps long generated pod names within the shared 63-character runtime budget", () => {
+    const name = getPodName(
+      "fjyqatlmasrvefkf0g6lgajz9gv2",
+      "9ba066b6-8348-4e00-abd3-52e7fcc7e04c"
+    );
+
+    expect(name.length).toBeLessThanOrEqual(63);
+    expect(name.endsWith("-0")).toBe(true);
   });
 });
 

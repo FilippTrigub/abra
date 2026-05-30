@@ -12,6 +12,8 @@
  * to ensure stability across restarts and idempotent reconciliation.
  */
 
+import { createHash } from "node:crypto";
+
 import { OrchestrationOperation } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -20,6 +22,18 @@ import { OrchestrationOperation } from "./types";
 
 /** Maximum length for Kubernetes resource names (RFC 1123 subdomain) */
 const MAX_NAME_LENGTH = 253;
+
+/** Maximum length for Kubernetes DNS labels used by Service/StatefulSet names */
+const MAX_DNS_LABEL_LENGTH = 63;
+
+/** Longest suffix appended to the shared AKS runtime base name. */
+const LONGEST_RUNTIME_SUFFIX = "-secrets";
+
+/** Shared runtime base name budget so all derived AKS resource names stay <= 63 chars. */
+const MAX_RUNTIME_BASE_NAME_LENGTH = MAX_DNS_LABEL_LENGTH - LONGEST_RUNTIME_SUFFIX.length;
+
+/** Stable hash length for compacting long AKS names without collisions. */
+const HASH_LENGTH = 8;
 
 /** Prefix for all Abra runtime resources */
 const ABRA_PREFIX = "abra";
@@ -89,6 +103,47 @@ function sanitizeKubernetesName(input: string): string {
   return sanitized;
 }
 
+function trimTrailingNonAlphanumeric(value: string): string {
+  let trimmed = value;
+
+  while (trimmed.length > 0 && !/^[a-z0-9]$/.test(trimmed.slice(-1))) {
+    trimmed = trimmed.slice(0, -1);
+  }
+
+  return trimmed;
+}
+
+function compactRuntimeBaseName(name: string): string {
+  if (name.length <= MAX_RUNTIME_BASE_NAME_LENGTH) {
+    return name;
+  }
+
+  const hash = createHash("sha256").update(name).digest("hex").slice(0, HASH_LENGTH);
+  const readableBudget = MAX_RUNTIME_BASE_NAME_LENGTH - HASH_LENGTH - SEPARATOR.length;
+  const readablePrefix = trimTrailingNonAlphanumeric(name.slice(0, readableBudget));
+
+  return `${readablePrefix}${SEPARATOR}${hash}`;
+}
+
+function isValidDnsLabel(name: string): boolean {
+  return name.length > 0
+    && name.length <= MAX_DNS_LABEL_LENGTH
+    && /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(name);
+}
+
+function buildRuntimeBaseName(accountId: string, deploymentId: string): string {
+  const sanitizedAccount = sanitizeKubernetesName(accountId);
+  const sanitizedDeployment = sanitizeKubernetesName(deploymentId);
+  const baseName = `${ABRA_PREFIX}${SEPARATOR}${sanitizedAccount}${SEPARATOR}${sanitizedDeployment}`;
+
+  const compactedName = compactRuntimeBaseName(baseName);
+  if (!isValidDnsLabel(compactedName)) {
+    throw new Error(`Invalid compacted AKS runtime name generated: ${compactedName}`);
+  }
+
+  return compactedName;
+}
+
 // ---------------------------------------------------------------------------
 // Naming functions
 // ---------------------------------------------------------------------------
@@ -127,10 +182,7 @@ export function getStatefulSetName(accountId: string, deploymentId: string): str
     throw new Error("deploymentId is required for StatefulSet naming");
   }
 
-  const sanitizedAccount = sanitizeKubernetesName(accountId);
-  const sanitizedDeployment = sanitizeKubernetesName(deploymentId);
-
-  const name = `${ABRA_PREFIX}${SEPARATOR}${sanitizedAccount}${SEPARATOR}${sanitizedDeployment}`;
+  const name = buildRuntimeBaseName(accountId, deploymentId);
 
   if (!isValidKubernetesName(name)) {
     throw new Error(`Invalid StatefulSet name generated: ${name}`);
