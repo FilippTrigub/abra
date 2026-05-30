@@ -551,7 +551,7 @@ function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Rec
       },
     },
     data: {
-      "openclaw.json": "{}\n",
+      "openclaw.json": JSON.stringify({ gateway: { mode: "local" } }, null, 2) + "\n",
     },
   };
 }
