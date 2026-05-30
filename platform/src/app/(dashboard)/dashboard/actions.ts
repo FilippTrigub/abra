@@ -3,6 +3,7 @@
 import { after } from "next/server";
 import {
   createDeploymentRecord,
+  destroyCurrentDeploymentForUser,
   dispatchDeploymentRequest,
   type DeploymentEnvironment,
 } from "@/lib/deployments";
@@ -72,7 +73,7 @@ export async function submitDeploymentRequest(
     };
   }
 
-  const { deployment, warning } = await createDeploymentRecord({
+  const { deployment, warning, created } = await createDeploymentRecord({
     authUserId: user.id,
     request: {
       name: fields.name,
@@ -82,6 +83,16 @@ export async function submitDeploymentRequest(
     },
   });
 
+  if (!created) {
+    return {
+      ...initialDeploymentFormState,
+      status: "error",
+      message: warning ?? "An Abra instance already exists. Delete it before deploying another one.",
+      warning,
+      deployment,
+    };
+  }
+
   after(async () => {
     await dispatchDeploymentRequest(deployment.id, user.id);
   });
@@ -90,6 +101,43 @@ export async function submitDeploymentRequest(
     ...initialDeploymentFormState,
     status: "success",
     message: `Deployment request for ${deployment.request.name} was queued.`,
+    warning,
+    deployment,
+  };
+}
+
+export async function deleteAbraInstance(
+  previousState: DeploymentFormState,
+): Promise<DeploymentFormState> {
+  void previousState;
+
+  const { user, error } = await getUser();
+
+  if (error || !user) {
+    return {
+      ...initialDeploymentFormState,
+      status: "error",
+      message: "Your session expired. Sign in again to delete this Abra instance.",
+    };
+  }
+
+  const { deployment, warning, destroyed } = await destroyCurrentDeploymentForUser(user.id);
+
+  if (!deployment) {
+    return {
+      ...initialDeploymentFormState,
+      status: "error",
+      message: "No Abra instance exists for this account.",
+      warning,
+    };
+  }
+
+  return {
+    ...initialDeploymentFormState,
+    status: destroyed ? "success" : "error",
+    message: destroyed
+      ? "Abra instance deletion started. The status box will update as AKS removes the runtime."
+      : deployment.errorMessage ?? "Unable to delete this Abra instance.",
     warning,
     deployment,
   };

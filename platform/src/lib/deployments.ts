@@ -3,15 +3,20 @@ import { getPlatformAccount } from "@/lib/platform-account";
 import {
   dispatchOrchestrationAction,
   getOrchestrationAdapter,
+  type OrchestrationAction,
+  type OrchestrationOperation,
+  type OrchestrationOperationStatus,
 } from "@/lib/orchestration";
 import { synthesizeMockOperation } from "@/lib/orchestration/mock-store";
 import { firestoreOperationStore } from "@/lib/orchestration/firestore-operation-store";
 import { toIsoTimestamp } from "@/lib/firestore-serialization";
 import * as admin from "firebase-admin";
 
-export type DeploymentStatus = "queued" | "running" | "succeeded" | "failed";
+export type DeploymentStatus = "queued" | "running" | "succeeded" | "failed" | "deleting" | "deleted";
 export type DeploymentEnvironment = "preview" | "staging" | "production";
 export type DeploymentPersistence = "database" | "memory";
+
+export const CURRENT_ABRA_DEPLOYMENT_ID = "abra-instance";
 
 export interface DashboardDeploymentRequest {
   name: string;
@@ -24,6 +29,7 @@ interface DeploymentPayloadEnvelope {
   request: DashboardDeploymentRequest;
   orchestration?: {
     requestId: string;
+    action?: OrchestrationAction;
     operationId?: string;
     adapter?: string;
     pollAfterMs?: number;
@@ -44,6 +50,7 @@ export interface DashboardDeployment {
   request: DashboardDeploymentRequest;
   orchestration: {
     requestId: string;
+    action: OrchestrationAction;
     operationId: string | null;
     adapter: string | null;
     pollAfterMs: number;
@@ -92,12 +99,45 @@ function isDeploymentStatus(value: unknown): value is DeploymentStatus {
     value === "queued" ||
     value === "running" ||
     value === "succeeded" ||
-    value === "failed"
+    value === "failed" ||
+    value === "deleting" ||
+    value === "deleted"
   );
 }
 
 function isTerminalDeploymentStatus(status: DeploymentStatus) {
-  return status === "succeeded" || status === "failed";
+  return status === "succeeded" || status === "failed" || status === "deleted";
+}
+
+function isLiveDeployment(deployment: DashboardDeployment) {
+  return deployment.status === "queued" ||
+    deployment.status === "running" ||
+    deployment.status === "succeeded" ||
+    deployment.status === "deleting" ||
+    (deployment.status === "failed" && deployment.orchestration?.action === "destroy");
+}
+
+function isOrchestrationAction(value: unknown): value is OrchestrationAction {
+  return value === "create" || value === "update" || value === "restart" || value === "destroy";
+}
+
+function toDeploymentStatus(
+  operationStatus: OrchestrationOperationStatus,
+  action: OrchestrationAction,
+): DeploymentStatus {
+  if (action === "destroy") {
+    if (operationStatus === "succeeded") {
+      return "deleted";
+    }
+
+    if (operationStatus === "failed") {
+      return "failed";
+    }
+
+    return "deleting";
+  }
+
+  return operationStatus;
 }
 
 function isEnvironment(value: unknown): value is DeploymentEnvironment {
@@ -143,6 +183,9 @@ function normalizePayload(value: unknown): DeploymentPayloadEnvelope | null {
             typeof orchestration.requestId === "string"
               ? orchestration.requestId
               : crypto.randomUUID(),
+          action: isOrchestrationAction(orchestration.action)
+            ? orchestration.action
+            : "create",
           operationId:
             typeof orchestration.operationId === "string"
               ? orchestration.operationId
@@ -223,6 +266,7 @@ function toDashboardDeployment(
     orchestration: orchestration
       ? {
           requestId: orchestration.requestId,
+          action: orchestration.action ?? "create",
           operationId: orchestration.operationId ?? null,
           adapter: orchestration.adapter ?? null,
           pollAfterMs: orchestration.pollAfterMs ?? 1500,
@@ -265,7 +309,15 @@ export async function getDeploymentFeed(authUserId: string) {
   return {
     ...account,
     deployments,
+    currentDeployment: findCurrentDeployment(deployments),
   };
+}
+
+function findCurrentDeployment(deployments: DashboardDeployment[]) {
+  return deployments.find((deployment) => isLiveDeployment(deployment))
+    ?? deployments.find((deployment) => deployment.id === CURRENT_ABRA_DEPLOYMENT_ID && deployment.status !== "deleted")
+    ?? deployments.find((deployment) => deployment.id === CURRENT_ABRA_DEPLOYMENT_ID)
+    ?? null;
 }
 
 async function listDeployments(accountScope: string) {
@@ -377,6 +429,16 @@ async function getDeploymentRecord(accountScope: string, deploymentId: string) {
   }
 }
 
+async function getCurrentDeploymentRecord(accountScope: string) {
+  const currentDeployment = await getDeploymentRecord(accountScope, CURRENT_ABRA_DEPLOYMENT_ID);
+  if (currentDeployment) {
+    return currentDeployment;
+  }
+
+  const deployments = await listDeployments(accountScope);
+  return findCurrentDeployment(deployments);
+}
+
 function buildDeploymentOperationInput(deployment: DashboardDeployment) {
   return {
     requestId: deployment.orchestration?.requestId ?? crypto.randomUUID(),
@@ -403,6 +465,7 @@ async function persistDeployment(
     orchestration: deployment.orchestration
       ? {
           requestId: deployment.orchestration.requestId,
+          action: deployment.orchestration.action,
           operationId: deployment.orchestration.operationId ?? undefined,
           adapter: deployment.orchestration.adapter ?? undefined,
           pollAfterMs: deployment.orchestration.pollAfterMs,
@@ -481,12 +544,23 @@ export async function createDeploymentRecord({
   request,
 }: CreateDeploymentInput) {
   const account = await resolveAccountScope(authUserId);
+  const existingDeployment = await getCurrentDeploymentRecord(account.accountScope);
+
+  if (existingDeployment && isLiveDeployment(existingDeployment)) {
+    return {
+      deployment: existingDeployment,
+      warning: "An Abra instance already exists for this account. Delete it before deploying another one.",
+      created: false,
+    };
+  }
+
   const requestId = crypto.randomUUID();
   const now = new Date().toISOString();
   const requestPayload: DeploymentPayloadEnvelope = {
     request,
     orchestration: {
       requestId,
+      action: "create",
       lastKnownStatus: "queued",
       pollAfterMs: 1500,
       lastSyncedAt: now,
@@ -495,7 +569,7 @@ export async function createDeploymentRecord({
 
   if (account.persistence === "memory") {
     const row: MemoryDeploymentRecord = {
-      id: crypto.randomUUID(),
+      id: CURRENT_ABRA_DEPLOYMENT_ID,
       accountScope: account.accountScope,
       requestPayload,
       status: "queued",
@@ -514,12 +588,13 @@ export async function createDeploymentRecord({
         accountScope: account.accountScope,
       }),
       warning: account.warning,
+      created: true,
     };
   }
 
   try {
     const firestore = getAdminFirestore();
-    const deploymentId = crypto.randomUUID();
+    const deploymentId = CURRENT_ABRA_DEPLOYMENT_ID;
     const docRef = firestore.doc(`accounts/${account.accountScope}/deployments/${deploymentId}`);
 
     const nowTs = admin.firestore.FieldValue.serverTimestamp();
@@ -535,7 +610,36 @@ export async function createDeploymentRecord({
       updatedAt: nowTs,
     };
 
-    await docRef.set(data);
+    await firestore.runTransaction(async (transaction) => {
+      const currentDoc = await transaction.get(docRef);
+
+      if (currentDoc.exists) {
+        const currentData = currentDoc.data();
+        if (currentData) {
+          const currentDeployment = toDashboardDeployment({
+            persistence: "database",
+            row: {
+              id: currentDoc.id,
+              account_id: account.accountScope,
+              agent_id: null,
+              request_payload: currentData.requestPayload,
+              status: currentData.status,
+              error_message: currentData.errorMessage ?? null,
+              result_url: currentData.resultUrl ?? null,
+              created_at: currentData.createdAt,
+              updated_at: currentData.updatedAt,
+            } as DeploymentRecordRow,
+            accountScope: account.accountScope,
+          });
+
+          if (isLiveDeployment(currentDeployment)) {
+            throw new Error("ABRA_INSTANCE_EXISTS");
+          }
+        }
+      }
+
+      transaction.set(docRef, data, { merge: true });
+    });
 
     return {
       deployment: toDashboardDeployment({
@@ -554,13 +658,29 @@ export async function createDeploymentRecord({
         accountScope: account.accountScope,
       }),
       warning: null,
+      created: true,
     };
   } catch (error) {
+    if (error instanceof Error && error.message === "ABRA_INSTANCE_EXISTS") {
+      const currentDeployment = existingDeployment
+        ?? await getCurrentDeploymentRecord(account.accountScope);
+
+      if (!currentDeployment) {
+        throw error;
+      }
+
+      return {
+        deployment: currentDeployment,
+        warning: "An Abra instance already exists for this account. Delete it before deploying another one.",
+        created: false,
+      };
+    }
+
     console.warn("[deployments] create failed, falling back to memory:", error);
 
     const fallbackScope = getMemoryScope(authUserId);
     const row: MemoryDeploymentRecord = {
-      id: crypto.randomUUID(),
+      id: CURRENT_ABRA_DEPLOYMENT_ID,
       accountScope: fallbackScope,
       requestPayload,
       status: "queued",
@@ -580,8 +700,33 @@ export async function createDeploymentRecord({
       }),
       warning:
         "Firestore deployment storage is unavailable. The request was queued in local memory for this process.",
+      created: true,
     };
   }
+}
+
+function mergeOperationIntoDeployment(
+  deployment: DashboardDeployment,
+  operation: OrchestrationOperation,
+): DashboardDeployment {
+  const action = operation.action;
+
+  return {
+    ...deployment,
+    status: toDeploymentStatus(operation.status, action),
+    updatedAt: operation.updatedAt,
+    errorMessage: operation.error?.message ?? null,
+    resultUrl: operation.result?.resourceHandle ?? deployment.resultUrl,
+    orchestration: {
+      requestId: operation.requestId,
+      action,
+      operationId: operation.operationId,
+      adapter: operation.adapter,
+      pollAfterMs: operation.pollAfterMs,
+      lastKnownStatus: toDeploymentStatus(operation.status, action),
+      lastSyncedAt: operation.updatedAt,
+    },
+  };
 }
 
 export async function dispatchDeploymentRequest(deploymentId: string, authUserId: string) {
@@ -597,24 +742,7 @@ export async function dispatchDeploymentRequest(deploymentId: string, authUserId
       buildDeploymentOperationInput(deployment),
     );
 
-    return await persistDeployment(
-      {
-        ...deployment,
-        status: operation.status,
-        updatedAt: operation.updatedAt,
-        errorMessage: operation.error?.message ?? null,
-        resultUrl: operation.result?.resourceHandle ?? null,
-        orchestration: {
-          requestId: operation.requestId,
-          operationId: operation.operationId,
-          adapter: operation.adapter,
-          pollAfterMs: operation.pollAfterMs,
-          lastKnownStatus: operation.status,
-          lastSyncedAt: operation.updatedAt,
-        },
-      },
-      deployment.accountScope,
-    );
+    return await persistDeployment(mergeOperationIntoDeployment(deployment, operation), deployment.accountScope);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Dispatch failed.";
 
@@ -627,6 +755,7 @@ export async function dispatchDeploymentRequest(deploymentId: string, authUserId
         orchestration: deployment.orchestration
           ? {
               ...deployment.orchestration,
+              action: "create",
               lastKnownStatus: "failed",
               lastSyncedAt: new Date().toISOString(),
             }
@@ -634,6 +763,60 @@ export async function dispatchDeploymentRequest(deploymentId: string, authUserId
       },
       deployment.accountScope,
     );
+  }
+}
+
+export async function destroyCurrentDeploymentForUser(authUserId: string) {
+  const account = await resolveAccountScope(authUserId);
+  const deployment = await getCurrentDeploymentRecord(account.accountScope);
+
+  if (!deployment || deployment.status === "deleted") {
+    return {
+      deployment: null,
+      warning: account.warning,
+      destroyed: false,
+    };
+  }
+
+  try {
+    const operation = await dispatchOrchestrationAction(
+      "destroy",
+      buildDeploymentOperationInput(deployment),
+    );
+
+    return {
+      deployment: await persistDeployment(
+        mergeOperationIntoDeployment(deployment, operation),
+        deployment.accountScope,
+      ),
+      warning: account.warning,
+      destroyed: true,
+    };
+  } catch (error) {
+    const now = new Date().toISOString();
+    const message = error instanceof Error ? error.message : "Destroy failed.";
+
+    return {
+      deployment: await persistDeployment(
+        {
+          ...deployment,
+          status: "failed",
+          updatedAt: now,
+          errorMessage: message,
+          orchestration: deployment.orchestration
+            ? {
+                ...deployment.orchestration,
+                action: "destroy",
+                lastKnownStatus: "failed",
+                lastSyncedAt: now,
+              }
+            : null,
+        },
+        deployment.accountScope,
+      ),
+      warning: account.warning,
+      destroyed: false,
+    };
   }
 }
 
@@ -730,19 +913,7 @@ export async function syncDeploymentStatusForUser(
       return await persistDeployment(
         {
           ...deployment,
-          status: synthesizedOperation.status,
-          updatedAt: synthesizedOperation.updatedAt,
-          errorMessage: synthesizedOperation.error?.message ?? null,
-          resultUrl:
-            synthesizedOperation.result?.resourceHandle ?? deployment.resultUrl,
-          orchestration: {
-            requestId: synthesizedOperation.requestId,
-            operationId: synthesizedOperation.operationId,
-            adapter: synthesizedOperation.adapter,
-            pollAfterMs: synthesizedOperation.pollAfterMs,
-            lastKnownStatus: synthesizedOperation.status,
-            lastSyncedAt: synthesizedOperation.updatedAt,
-          },
+          ...mergeOperationIntoDeployment(deployment, synthesizedOperation),
         },
         deployment.accountScope,
       );
@@ -764,22 +935,5 @@ export async function syncDeploymentStatusForUser(
     );
   }
 
-  return await persistDeployment(
-    {
-      ...deployment,
-      status: operation.status,
-      updatedAt: operation.updatedAt,
-      errorMessage: operation.error?.message ?? null,
-      resultUrl: operation.result?.resourceHandle ?? deployment.resultUrl,
-      orchestration: {
-        requestId: operation.requestId,
-        operationId: operation.operationId,
-        adapter: operation.adapter,
-        pollAfterMs: operation.pollAfterMs,
-        lastKnownStatus: operation.status,
-        lastSyncedAt: operation.updatedAt,
-      },
-    },
-    deployment.accountScope,
-  );
+  return await persistDeployment(mergeOperationIntoDeployment(deployment, operation), deployment.accountScope);
 }
