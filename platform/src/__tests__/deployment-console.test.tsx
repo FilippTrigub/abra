@@ -13,20 +13,14 @@ describe("DeploymentConsole", () => {
     render(
       <DeploymentConsole
         initialDeployment={null}
-        deploymentHistory={[]}
         persistenceWarning={null}
       />,
     );
 
-    expect(
-      (screen.getByLabelText("Instance name") as HTMLInputElement).value,
-    ).toBe("");
-    expect(
-      (screen.getByLabelText("Environment") as HTMLSelectElement).value,
-    ).toBe("preview");
-    expect(
-      (screen.getByLabelText("Branch / tag / version") as HTMLInputElement).value,
-    ).toBe("main");
+    expect(screen.getByRole("button", { name: "Deploy Abra" })).toBeTruthy();
+    expect(screen.queryByLabelText("Instance name")).toBeNull();
+    expect(screen.queryByLabelText("Environment")).toBeNull();
+    expect(screen.queryByLabelText("Branch / tag / version")).toBeNull();
   });
 
   it("shows a single ready instance with a delete control", async () => {
@@ -59,7 +53,6 @@ describe("DeploymentConsole", () => {
             lastSyncedAt: "2026-01-01T00:01:00.000Z",
           },
         }}
-        deploymentHistory={[]}
         persistenceWarning={null}
       />,
     );

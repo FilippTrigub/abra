@@ -1,14 +1,13 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useState } from "react";
-import { Badge, Button, Card, Input, Label, Panel, Select, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Panel } from "@/components/ui";
 import type { DashboardDeployment } from "@/lib/deployments";
 import { deleteAbraInstance, submitDeploymentRequest } from "./actions";
 import { initialDeploymentFormState } from "./deployment-form-state";
 
 interface DeploymentConsoleProps {
   initialDeployment: DashboardDeployment | null;
-  deploymentHistory: DashboardDeployment[];
   persistenceWarning: string | null;
 }
 
@@ -33,9 +32,6 @@ const shellInsetClassName =
 
 const shellLabelClassName =
   "font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500";
-
-const shellFieldClassName =
-  "rounded-sm border-[var(--color-shell-border-strong)] bg-black/20 text-white placeholder:text-zinc-500 hover:border-white/20 focus:border-brand-300";
 
 function isPollingStatus(deployment: DashboardDeployment | null): deployment is DashboardDeployment {
   return deployment?.status === "queued" || deployment?.status === "running" || deployment?.status === "deleting";
@@ -130,7 +126,6 @@ function InstanceStatusBox({ deployment }: { deployment: DashboardDeployment | n
 
 export function DeploymentConsole({
   initialDeployment,
-  deploymentHistory,
   persistenceWarning,
 }: DeploymentConsoleProps) {
   const [deployState, deployAction, deployPending] = useActionState(
@@ -174,15 +169,10 @@ export function DeploymentConsole({
     return () => window.clearTimeout(timer);
   }, [deployment]);
 
-  const history = useMemo(
-    () => deploymentHistory.filter((item) => item.id !== deployment?.id),
-    [deployment?.id, deploymentHistory],
-  );
   const shouldShowDeployForm = canDeploy(deployment);
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
-      <div className="space-y-6">
+    <div className="space-y-6">
         <InstanceStatusBox deployment={deployment} />
 
         <Card className={shellCardClassName}>
@@ -236,71 +226,12 @@ export function DeploymentConsole({
           )}
 
           {shouldShowDeployForm ? (
-            <form action={deployAction} className="mt-8 space-y-5">
-              <div className="grid gap-5 md:grid-cols-2">
-                <div className={`space-y-2 px-4 py-4 ${shellInsetClassName}`}>
-                  <Label htmlFor="deployment-name">Instance name</Label>
-                  <Input
-                    id="deployment-name"
-                    name="name"
-                    defaultValue={deployState.fields.name}
-                    placeholder="Abra brand runtime"
-                    variant={deployState.fieldErrors.name ? "error" : "default"}
-                    errorText={deployState.fieldErrors.name}
-                    className={shellFieldClassName}
-                  />
-                </div>
-
-                <div className={`space-y-2 px-4 py-4 ${shellInsetClassName}`}>
-                  <Label htmlFor="deployment-environment">Environment</Label>
-                  <Select
-                    id="deployment-environment"
-                    name="environment"
-                    defaultValue={deployState.fields.environment}
-                    options={[
-                      { value: "preview", label: "Preview" },
-                      { value: "staging", label: "Staging" },
-                      { value: "production", label: "Production" },
-                    ]}
-                    variant={deployState.fieldErrors.environment ? "error" : "default"}
-                    errorText={deployState.fieldErrors.environment}
-                    className={shellFieldClassName}
-                  />
-                </div>
-
-                <div className={`space-y-2 px-4 py-4 ${shellInsetClassName}`}>
-                  <Label htmlFor="deployment-source-ref">Branch / tag / version</Label>
-                  <Input
-                    id="deployment-source-ref"
-                    name="sourceRef"
-                    defaultValue={deployState.fields.sourceRef}
-                    placeholder="main"
-                    variant={deployState.fieldErrors.sourceRef ? "error" : "default"}
-                    errorText={deployState.fieldErrors.sourceRef}
-                    className={shellFieldClassName}
-                  />
-                </div>
-              </div>
-
-              <div className={`space-y-2 px-4 py-4 ${shellInsetClassName}`}>
-                <Label htmlFor="deployment-notes">Deployment notes</Label>
-                <Textarea
-                  id="deployment-notes"
-                  name="notes"
-                  defaultValue={deployState.fields.notes}
-                  rows={5}
-                  placeholder="Optional runtime setup notes."
-                  variant={deployState.fieldErrors.notes ? "error" : "default"}
-                  errorText={deployState.fieldErrors.notes}
-                  className={shellFieldClassName}
-                />
-              </div>
-
+            <form action={deployAction} className="mt-8">
               <div className={`flex flex-wrap items-center justify-between gap-4 px-4 py-4 ${shellInsetClassName}`}>
                 <div>
                   <p className={shellLabelClassName}>Deployment contract</p>
                   <p className="mt-1 text-body text-zinc-300">
-                    One account → one Abra instance → one status box
+                    One click creates the single Abra instance for this account.
                   </p>
                 </div>
                 <SubmitButton pending={deployPending} />
@@ -318,51 +249,6 @@ export function DeploymentConsole({
             </form>
           )}
         </Card>
-      </div>
-
-      <Card className={shellCardClassName}>
-        <div className="border-b border-[var(--color-shell-border-strong)] pb-5">
-          <p className={shellLabelClassName}>Deployment history</p>
-          <h3 className="mt-4 text-h5 font-display font-bold text-white">
-            Logs and previous requests
-          </h3>
-          <p className="mt-3 text-body text-zinc-300">
-            History is secondary to the live instance. Use it for troubleshooting, not as the source of truth.
-          </p>
-        </div>
-
-        <div className="mt-5 space-y-3">
-          {history.length === 0 ? (
-            <div className={`px-5 py-6 ${shellInsetClassName}`}>
-              <p className={shellLabelClassName}>No history</p>
-              <p className="mt-2 text-body text-zinc-300">
-                Previous deployment requests will appear here after the live instance changes.
-              </p>
-            </div>
-          ) : (
-            history.map((item) => {
-              const badge = STATUS_BADGES[item.status];
-              return (
-                <Panel
-                  key={item.id}
-                  bordered
-                  className="rounded-sm border-[var(--color-shell-border-strong)] bg-black/20 text-[var(--color-shell-text-strong)]"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <p className="text-body font-semibold text-white">{item.request.name}</p>
-                      <p className="mt-2 text-caption text-zinc-400">
-                        {item.request.sourceRef} · {formatTimestamp(item.createdAt)}
-                      </p>
-                    </div>
-                    <Badge variant={badge.variant}>{badge.label}</Badge>
-                  </div>
-                </Panel>
-              );
-            })
-          )}
-        </div>
-      </Card>
     </div>
   );
 }
