@@ -12,11 +12,11 @@ let adapterSingleton: OrchestrationAdapter | null = null;
  * Gets the orchestration adapter based on backend configuration.
  *
  * Supported backends:
- * - mock: Default for local development and testing
- * - aks: AKS-backed adapter with Kubernetes auth bootstrap
+ * - aks: Default AKS-backed adapter with Kubernetes auth bootstrap
+ * - mock: Explicit local development and testing adapter
  */
 export function getOrchestrationAdapter(): OrchestrationAdapter {
-  const backend = process.env.ORCHESTRATION_BACKEND ?? "mock";
+  const backend = process.env.ORCHESTRATION_BACKEND ?? "aks";
 
   switch (backend) {
     case "mock":

@@ -147,7 +147,7 @@ export function DeploymentConsole({
               Queue a new rollout
             </h2>
             <p className="mt-3 max-w-2xl text-body leading-7 text-zinc-300">
-              Persist the request first, then hand orchestration off to the background adapter. The dashboard keeps polling the mock contract until the rollout settles.
+              Persist the request first, then hand orchestration off to the AKS adapter. The dashboard keeps polling until the runtime is ready or fails.
             </p>
           </div>
           <Badge
@@ -238,21 +238,6 @@ export function DeploymentConsole({
               />
             </div>
 
-            <div className={`space-y-2 px-4 py-4 ${shellInsetClassName}`}>
-              <Label htmlFor="deployment-mock-outcome">Mock outcome</Label>
-              <Select
-                id="deployment-mock-outcome"
-                name="mockOutcome"
-                defaultValue={state.fields.mockOutcome}
-                options={[
-                  { value: "succeeded", label: "Succeeded" },
-                  { value: "failed", label: "Failed" },
-                ]}
-                variant={state.fieldErrors.mockOutcome ? "error" : "default"}
-                errorText={state.fieldErrors.mockOutcome}
-                className={shellFieldClassName}
-              />
-            </div>
           </div>
 
           <div className={`space-y-2 px-4 py-4 ${shellInsetClassName}`}>

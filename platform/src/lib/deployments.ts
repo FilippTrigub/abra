@@ -3,7 +3,6 @@ import { getPlatformAccount } from "@/lib/platform-account";
 import {
   dispatchOrchestrationAction,
   getOrchestrationAdapter,
-  type MockOperationOutcome,
 } from "@/lib/orchestration";
 import { synthesizeMockOperation } from "@/lib/orchestration/mock-store";
 import { firestoreOperationStore } from "@/lib/orchestration/firestore-operation-store";
@@ -19,7 +18,6 @@ export interface DashboardDeploymentRequest {
   environment: DeploymentEnvironment;
   sourceRef: string;
   notes: string;
-  mockOutcome: MockOperationOutcome;
 }
 
 interface DeploymentPayloadEnvelope {
@@ -106,10 +104,6 @@ function isEnvironment(value: unknown): value is DeploymentEnvironment {
   return value === "preview" || value === "staging" || value === "production";
 }
 
-function isMockOutcome(value: unknown): value is MockOperationOutcome {
-  return value === "succeeded" || value === "failed";
-}
-
 function getMemoryScope(authUserId: string) {
   return `${MEMORY_SCOPE_PREFIX}${authUserId}`;
 }
@@ -125,14 +119,11 @@ function normalizePayload(value: unknown): DeploymentPayloadEnvelope | null {
 
   const request = value.request;
   const environment = request.environment;
-  const mockOutcome = request.mockOutcome;
-
   if (
     typeof request.name !== "string" ||
     typeof request.sourceRef !== "string" ||
     typeof request.notes !== "string" ||
-    !isEnvironment(environment) ||
-    !isMockOutcome(mockOutcome)
+    !isEnvironment(environment)
   ) {
     return null;
   }
@@ -145,7 +136,6 @@ function normalizePayload(value: unknown): DeploymentPayloadEnvelope | null {
       environment,
       sourceRef: request.sourceRef,
       notes: request.notes,
-      mockOutcome,
     },
     orchestration: orchestration
       ? {
@@ -193,7 +183,6 @@ function toDashboardDeployment(
         environment: "preview",
         sourceRef: "unknown",
         notes: "",
-        mockOutcome: "succeeded",
       },
       orchestration: {
         requestId: crypto.randomUUID(),
@@ -401,9 +390,6 @@ function buildDeploymentOperationInput(deployment: DashboardDeployment) {
       environment: deployment.request.environment,
       sourceRef: deployment.request.sourceRef,
       notes: deployment.request.notes,
-    },
-    mockBehavior: {
-      outcome: deployment.request.mockOutcome,
     },
   };
 }
@@ -737,7 +723,7 @@ export async function syncDeploymentStatusForUser(
         deployment.orchestration.operationId,
         "create",
         buildDeploymentOperationInput(deployment),
-        deployment.request.mockOutcome,
+        "succeeded",
         deployment.createdAt,
       );
 

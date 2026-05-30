@@ -191,10 +191,10 @@ describe("Default backend (undefined)", () => {
     __resetAdapterSingleton();
   });
 
-  it("returns mock adapter when ORCHESTRATION_BACKEND is not set", () => {
+  it("returns aks adapter when ORCHESTRATION_BACKEND is not set", () => {
     const adapter = getOrchestrationAdapter();
 
-    expect(adapter).toBeInstanceOf(MockOrchestrationAdapter);
-    expect(adapter.name).toBe("mock");
+    expect(adapter).toBeInstanceOf(AksOrchestrationAdapter);
+    expect(adapter.name).toBe("aks");
   });
 });

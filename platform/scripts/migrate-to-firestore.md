@@ -42,7 +42,7 @@ accounts/{uid}/settings/current
 
 accounts/{uid}/deployments/{deploymentId}
 ├── accountScope: string (uid)
-├── request: { name, environment, sourceRef, notes, mockOutcome }
+├── request: { name, environment, sourceRef, notes }
 ├── orchestration: { requestId, operationId, adapter, pollAfterMs, lastKnownStatus, lastSyncedAt }
 ├── status: "queued" | "running" | "succeeded" | "failed"
 ├── errorMessage: string | null

@@ -37,7 +37,6 @@ export async function submitDeploymentRequest(
     environment: getString(formData, "environment"),
     sourceRef: getString(formData, "sourceRef"),
     notes: getString(formData, "notes"),
-    mockOutcome: getString(formData, "mockOutcome"),
   };
 
   const fieldErrors: Partial<Record<DeploymentFieldName, string>> = {};
@@ -58,10 +57,6 @@ export async function submitDeploymentRequest(
     fieldErrors.notes = "Keep rollout notes under 500 characters.";
   }
 
-  if (!(["succeeded", "failed"] as const).includes(fields.mockOutcome as "succeeded" | "failed")) {
-    fieldErrors.mockOutcome = "Choose a valid mock outcome.";
-  }
-
   if (Object.keys(fieldErrors).length > 0) {
     return {
       ...initialDeploymentFormState,
@@ -72,8 +67,6 @@ export async function submitDeploymentRequest(
         environment: (fields.environment as DeploymentEnvironment) || "preview",
         sourceRef: fields.sourceRef,
         notes: fields.notes,
-        mockOutcome:
-          fields.mockOutcome === "failed" ? "failed" : "succeeded",
       },
       fieldErrors,
     };
@@ -86,7 +79,6 @@ export async function submitDeploymentRequest(
       environment: fields.environment as DeploymentEnvironment,
       sourceRef: fields.sourceRef,
       notes: fields.notes,
-      mockOutcome: fields.mockOutcome as "succeeded" | "failed",
     },
   });
 

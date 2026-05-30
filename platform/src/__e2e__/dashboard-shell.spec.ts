@@ -141,7 +141,7 @@ test.describe("Authenticated dashboard shell", () => {
     await expect(page).toHaveURL(/(?:\/en)?\/dashboard\/settings$/);
     await expect(page.getByRole("heading", { name: "Dashboard settings" })).toBeVisible();
     await expect(page.getByLabel("Default deployment environment")).toBeVisible();
-    await expect(page.getByLabel("Mock operation outcome")).toBeVisible();
+    await expect(page.getByLabel("Auto-poll deployment status")).toBeVisible();
     await expect(page.getByRole("button", { name: "Reset to defaults" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Save changes" })).toBeVisible();
   });

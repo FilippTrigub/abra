@@ -24,7 +24,6 @@ function buildSnapshot(
     accountScope: "user-1",
     values: {
       defaultEnvironment: "preview",
-      mockOutcome: "succeeded",
       deploymentAutoPoll: true,
       deploymentPollInterval: 1500,
       notificationsEnabled: true,
@@ -115,9 +114,7 @@ describe("SettingsPage", () => {
 
     await screen.findByLabelText("Default deployment environment");
 
-    fireEvent.change(screen.getByLabelText("Mock operation outcome"), {
-      target: { value: "failed" },
-    });
+    fireEvent.click(screen.getByLabelText("Auto-poll deployment status"));
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => {
@@ -125,8 +122,8 @@ describe("SettingsPage", () => {
     });
 
     expect(updateUserSetting).toHaveBeenCalledWith({
-      key: "mockOutcome",
-      value: "failed",
+      key: "deploymentAutoPoll",
+      value: false,
     });
     expect(screen.queryByText("Restart required")).toBeNull();
   });
@@ -357,18 +354,14 @@ describe("SettingsPage", () => {
 
       await screen.findByLabelText("Default deployment environment");
 
-      fireEvent.change(screen.getByLabelText("Mock operation outcome"), {
-        target: { value: "failed" },
-      });
+      fireEvent.click(screen.getByLabelText("Auto-poll deployment status"));
       fireEvent.click(screen.getByRole("button", { name: "Reset to defaults" }));
 
       await waitFor(() => {
         expect(revertToDefaults).toHaveBeenCalledTimes(1);
       });
 
-      expect((screen.getByLabelText("Mock operation outcome") as HTMLSelectElement).value).toBe(
-        "succeeded",
-      );
+      expect((screen.getByLabelText("Auto-poll deployment status") as HTMLInputElement).checked).toBe(true);
       expect(screen.getByText("In-memory fallback")).toBeTruthy();
       expect(screen.queryByText("Database")).toBeNull();
       await waitFor(() => {

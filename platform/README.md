@@ -10,7 +10,7 @@ Local web dashboard for the Abra brand management system. This is a Next.js 16 a
 | Authentication (`/sign-in`) | Firebase Auth (Google, GitHub) with server-side session cookies. |
 | Dashboard (`/dashboard`) | Live — deployment console, stats cards, quick-access nav. Requires Firebase-backed auth. |
 | Settings (`/dashboard/settings`) | Live — client-side form backed by server actions. Persisted to Firestore or memory fallback. |
-| Deployment orchestration | Mock adapter by default (`ORCHESTRATION_BACKEND=mock`). AKS mode is available (`ORCHESTRATION_BACKEND=aks`) and uses the hosted AKS env contract documented below. |
+| Deployment orchestration | AKS adapter by default. Set `ORCHESTRATION_BACKEND=mock` only for explicit local/test simulation. |
 
 ## Quick start
 
@@ -81,7 +81,7 @@ pnpm test        # Runs both typecheck and lint together
 - **Platform accounts** — Firestore document at `accounts/{authUserId}`. Bootstrapped on first sign-in.
 - **Deployments** — Firestore-backed records with an in-memory fallback when Firestore is unavailable.
 - **Settings** — Persisted in Firestore at `accounts/{authUserId}/settings/current`, with an in-memory fallback when Firestore is unavailable.
-- **Orchestration** — Backend selection in `src/lib/orchestration/` via `ORCHESTRATION_BACKEND=mock|aks`. Mock is the default; AKS mode uses the hosted env contract documented below.
+- **Orchestration** — Backend selection in `src/lib/orchestration/` via `ORCHESTRATION_BACKEND=aks|mock`. AKS is the default and uses the hosted env contract documented below.
 
 ### Styling
 
@@ -113,7 +113,7 @@ If none of those values is set, create requests fail with a clear missing-image 
 
 ### AKS backend contract
 
-Hosted AKS mode requires the documented production env set, including `ORCHESTRATION_BACKEND=aks` plus the AKS identity and runtime variables listed in `.env.example`. Mock remains the default backend when `ORCHESTRATION_BACKEND` is unset or set to `mock`.
+Hosted AKS mode requires the documented production env set, including the AKS runtime image plus Kubernetes auth through in-cluster auth, `KUBECONFIG`, or `KUBECONFIG_B64`. AKS remains the default backend when `ORCHESTRATION_BACKEND` is unset. Set `ORCHESTRATION_BACKEND=mock` only when intentionally running the simulator.
 
 ### Firebase data model
 
@@ -121,7 +121,7 @@ The app expects Firebase Auth for sign-in and Firestore for persistence. If Fire
 
 ## What is NOT implemented (yet)
 
-- **Real agent orchestration** — mock remains the default adapter, while AKS mode is available for hosted/runtime testing via `ORCHESTRATION_BACKEND=aks`.
+- **Real agent orchestration** — AKS is the normal adapter, but the product still needs fuller runtime configuration hydration beyond the minimal generated `openclaw.json`.
 - **Dashboard scope** — the current product surface is intentionally focused on `/dashboard` and `/dashboard/settings`. Deployment management lives inside the main dashboard feed rather than separate sub-pages.
 - **Subscription / billing** — always returns `active` / `free`. No Stripe or payment provider integration.
 - **Production hosting docs** — no deployment guide. This is a local development dashboard.

@@ -91,7 +91,7 @@ describe("platform-account Firestore integration", () => {
       expect(settingsSnap.exists).toBe(true);
       expect(settingsSnap.data()?.values).toMatchObject({
         defaultEnvironment: "preview",
-        mockOutcome: "succeeded",
+        deploymentAutoPoll: true,
       });
     });
   });

@@ -155,7 +155,6 @@ describe("Deployment Sync - Durable Operation Reads", () => {
             environment: "preview",
             sourceRef: "test-ref",
             notes: "",
-            mockOutcome: "succeeded",
           },
           orchestration: {
             requestId: "req-456",
@@ -192,7 +191,6 @@ describe("Deployment Sync - Durable Operation Reads", () => {
             environment: "preview",
             sourceRef: "test-ref",
             notes: "",
-            mockOutcome: "succeeded",
           },
           orchestration: {
             requestId: "req-456",
@@ -231,7 +229,6 @@ describe("Deployment Sync - Durable Operation Reads", () => {
             environment: "preview",
             sourceRef: "test-ref",
             notes: "",
-            mockOutcome: "succeeded",
           },
           orchestration: {
             requestId: "req-456",
@@ -312,7 +309,6 @@ describe("Deployment Sync - Durable Operation Reads", () => {
             environment: "preview",
             sourceRef: "test-ref",
             notes: "",
-            mockOutcome: "succeeded",
           },
           orchestration: {
             requestId: "req-456",
@@ -355,7 +351,6 @@ describe("Deployment Sync - Durable Operation Reads", () => {
             environment: "preview",
             sourceRef: "test-ref",
             notes: "",
-            mockOutcome: "succeeded",
           },
           orchestration: {
             requestId: "req-456",
@@ -396,7 +391,6 @@ describe("Deployment Sync - Durable Operation Reads", () => {
             environment: "preview",
             sourceRef: "test-ref",
             notes: "",
-            mockOutcome: "succeeded",
           },
           orchestration: {
             requestId: "req-456",

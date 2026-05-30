@@ -16,19 +16,6 @@ export const SETTINGS_DEFINITIONS: SettingDefinition[] = [
     ],
   },
   {
-    key: "mockOutcome",
-    label: "Mock operation outcome",
-    description:
-      "Control how mock orchestration operations resolve. Only affects local development and testing.",
-    section: "deployment",
-    defaultValue: "succeeded",
-    type: "select",
-    options: [
-      { value: "succeeded", label: "Succeeded — operation completes successfully" },
-      { value: "failed", label: "Failed — operation fails with error" },
-    ],
-  },
-  {
     key: "deploymentAutoPoll",
     label: "Auto-poll deployment status",
     description:
@@ -89,7 +76,6 @@ export const SETTINGS_DEFINITIONS: SettingDefinition[] = [
 
 const VALIDATION_RANGES: Record<SettingsKey, { min?: number; max?: number; allowedValues?: string[] }> = {
   defaultEnvironment: { allowedValues: ["preview", "staging", "production"] },
-  mockOutcome: { allowedValues: ["succeeded", "failed"] },
   deploymentAutoPoll: {},
   deploymentPollInterval: { min: 500, max: 10000 },
   notificationsEnabled: {},

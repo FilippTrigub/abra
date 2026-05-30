@@ -1,6 +1,6 @@
 import type { DashboardDeployment, DeploymentEnvironment } from "@/lib/deployments";
 
-type FieldName = "name" | "environment" | "sourceRef" | "notes" | "mockOutcome";
+type FieldName = "name" | "environment" | "sourceRef" | "notes";
 
 export interface DeploymentFormState {
   status: "idle" | "success" | "error";
@@ -11,7 +11,6 @@ export interface DeploymentFormState {
     environment: DeploymentEnvironment;
     sourceRef: string;
     notes: string;
-    mockOutcome: "succeeded" | "failed";
   };
   fieldErrors: Partial<Record<FieldName, string>>;
   deployment: DashboardDeployment | null;
@@ -26,7 +25,6 @@ export const initialDeploymentFormState: DeploymentFormState = {
     environment: "preview",
     sourceRef: "main",
     notes: "",
-    mockOutcome: "succeeded",
   },
   fieldErrors: {},
   deployment: null,

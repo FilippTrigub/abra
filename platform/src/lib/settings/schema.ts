@@ -10,7 +10,6 @@
 
 export type SettingsKey =
   | "defaultEnvironment"
-  | "mockOutcome"
   | "deploymentAutoPoll"
   | "deploymentPollInterval"
   | "notificationsEnabled"

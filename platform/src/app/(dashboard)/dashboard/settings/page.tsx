@@ -27,7 +27,6 @@ type FieldErrors = Record<SettingsKey, string>;
 function initialFieldState(snapshot: ConfigSnapshot | null): FieldState {
   const defaults: FieldState = {
     defaultEnvironment: "preview",
-    mockOutcome: "succeeded",
     deploymentAutoPoll: true,
     deploymentPollInterval: 1500,
     notificationsEnabled: true,

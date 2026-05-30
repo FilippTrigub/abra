@@ -13,7 +13,6 @@ vi.mock("@/lib/firebase/admin", () => ({
 vi.mock("@/lib/settings/definitions", () => ({
   SETTINGS_DEFINITIONS: [
     { key: "defaultEnvironment", defaultValue: "preview" as const },
-    { key: "mockOutcome", defaultValue: "succeeded" as const },
     { key: "deploymentAutoPoll", defaultValue: true as const },
     { key: "deploymentPollInterval", defaultValue: 1500 as const },
     { key: "notificationsEnabled", defaultValue: true as const },
@@ -113,7 +112,6 @@ describe("settings service - Firestore migration", () => {
   describe("saveSettings", () => {
     const fullValues = {
       defaultEnvironment: "preview" as const,
-      mockOutcome: "succeeded" as const,
       deploymentAutoPoll: true as const,
       deploymentPollInterval: 1500 as const,
       notificationsEnabled: true as const,
@@ -131,10 +129,10 @@ describe("settings service - Firestore migration", () => {
       });
       mockFirestore.doc.mockReturnValue(mockDocRef);
 
-      const result = await saveSettings("user-123", { key: "mockOutcome", value: "failed" });
+      const result = await saveSettings("user-123", { key: "deploymentAutoPoll", value: false });
 
       expect(result.success).toBe(true);
-      expect(result.snapshot?.values.mockOutcome).toBe("failed");
+      expect(result.snapshot?.values.deploymentAutoPoll).toBe(false);
       expect(result.snapshot?.accountScope).toBe("user-123");
       expect(result.restartRequired).toBe(false);
       expect(result.warning).toBeNull();
@@ -174,9 +172,9 @@ describe("settings service - Firestore migration", () => {
         set: vi.fn().mockResolvedValue(undefined),
       }));
 
-      const result = await saveSettings("user-123", { key: "mockOutcome", value: "failed" });
+      const result = await saveSettings("user-123", { key: "deploymentAutoPoll", value: false });
 
-      expect(result.snapshot?.values.mockOutcome).toBe("failed");
+      expect(result.snapshot?.values.deploymentAutoPoll).toBe(false);
       expect(result.snapshot?.values.defaultEnvironment).toBe("preview");
       expect(result.snapshot?.values.brandAccentColor).toBe("coral");
     });
@@ -188,7 +186,7 @@ describe("settings service - Firestore migration", () => {
         update: vi.fn().mockRejectedValue(new Error("Firestore error")),
       }));
 
-      const result = await saveSettings("user-123", { key: "mockOutcome", value: "failed" });
+      const result = await saveSettings("user-123", { key: "deploymentAutoPoll", value: false });
 
       expect(result.success).toBe(true);
       expect(result.snapshot).toBeNull();
@@ -206,7 +204,7 @@ describe("settings service - Firestore migration", () => {
 
       expect(result.success).toBe(true);
       expect(result.snapshot?.values.defaultEnvironment).toBe("preview");
-      expect(result.snapshot?.values.mockOutcome).toBe("succeeded");
+      expect(result.snapshot?.values.deploymentAutoPoll).toBe(true);
       expect(result.warning).toBeNull();
     });
 
