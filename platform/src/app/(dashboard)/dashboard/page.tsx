@@ -4,7 +4,7 @@ import { getDeploymentFeed } from "@/lib/deployments";
 import { DeploymentConsole } from "./deployment-console";
 
 const NAV_LINKS = [
-  { label: "Deployments", href: "#deployment-request" },
+  { label: "Abra instance", href: "#deployment-request" },
   { label: "Settings", href: "/dashboard/settings" },
 ];
 
@@ -48,21 +48,32 @@ export default async function DashboardPage() {
   let feedWarning: string | null = null;
   let feedLoadError: string | null = null;
   let deployments: Awaited<ReturnType<typeof getDeploymentFeed>>["deployments"] = [];
+  let currentDeployment: Awaited<ReturnType<typeof getDeploymentFeed>>["currentDeployment"] = null;
 
   try {
     const feed = await getDeploymentFeed(user.id);
     deployments = feed.deployments;
+    currentDeployment = feed.currentDeployment;
     feedWarning = feed.warning;
   } catch (err) {
     feedLoadError = err instanceof Error ? err.message : "Could not load deployment feed.";
   }
 
-  const deploymentCount = deployments.length;
-  const activeCount = deployments.filter(
-    (deployment) =>
-      deployment.status === "queued" || deployment.status === "running",
-  ).length;
-  const latestDeployment = deployments[0] ?? null;
+  const instanceStatus = currentDeployment?.status ?? "idle";
+  const historyCount = deployments.filter((deployment) => deployment.id !== currentDeployment?.id).length;
+  const statusLabel = currentDeployment
+    ? instanceStatus === "succeeded"
+      ? "Ready"
+      : instanceStatus === "running"
+        ? "Deploying"
+        : instanceStatus === "queued"
+          ? "Queued"
+          : instanceStatus === "deleting"
+            ? "Deleting"
+            : instanceStatus === "deleted"
+              ? "Deleted"
+              : "Failed"
+    : "Not deployed";
   const shellGhostButtonClassName =
     "rounded-sm border border-white/12 bg-transparent font-mono text-[12px] uppercase tracking-[0.14em] text-zinc-100 shadow-none hover:border-white/25 hover:bg-white/[0.04] hover:text-white";
   const shellStatusBadgeClassName =
@@ -80,7 +91,7 @@ export default async function DashboardPage() {
               Your brand command center
             </h1>
             <p className="mt-5 max-w-2xl text-[1.05rem] leading-7 text-zinc-300 md:text-[1.15rem]">
-              Queue deployment requests, hand them off to the orchestration adapter, and track the lifecycle from queued to terminal state without blocking the dashboard response.
+              Deploy one Abra runtime for your account, monitor its status, and delete it when you want to replace the instance.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Button
@@ -88,7 +99,7 @@ export default async function DashboardPage() {
                 href="#deployment-request"
                 className="rounded-sm border border-brand-400/40 shadow-none"
               >
-                Request deployment
+                Manage instance
               </Button>
               <Button
                 variant="ghost"
@@ -98,21 +109,19 @@ export default async function DashboardPage() {
                 Settings
               </Button>
               <Badge
-                variant={activeCount > 0 ? "info" : "success"}
+                variant={currentDeployment ? "info" : "success"}
                 className={shellStatusBadgeClassName}
               >
-                {activeCount > 0
-                  ? `${activeCount} active rollout${activeCount > 1 ? "s" : ""}`
-                  : "All quiet"}
+                {statusLabel}
               </Badge>
             </div>
           </div>
 
           <div className="self-start border border-[var(--color-shell-border-strong)] bg-black/10">
             {[
-              ["Deployments", `${deploymentCount}`],
-              ["Active queue", `${activeCount}`],
-              ["Latest outcome", latestDeployment ? latestDeployment.request.name : "No requests yet"],
+              ["Instance", currentDeployment ? currentDeployment.request.name : "Not deployed"],
+              ["Status", statusLabel],
+              ["History", `${historyCount} log${historyCount === 1 ? "" : "s"}`],
             ].map(([label, value]) => (
               <div
                 key={label}
@@ -135,13 +144,13 @@ export default async function DashboardPage() {
           <div className="border-l border-[var(--color-shell-border-strong)] pl-4">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                Deployments
+                Abra instance
               </p>
               <p className="mt-3 text-h2 font-display font-bold text-white">
-                {deploymentCount}
+                {currentDeployment ? "1" : "0"}
               </p>
               <p className="mt-2 text-caption text-zinc-400">
-                Durable request records in your dashboard feed
+                Active runtime allowed for this account
               </p>
             </div>
           </div>
@@ -151,45 +160,30 @@ export default async function DashboardPage() {
           <div className="border-l border-[var(--color-shell-border-strong)] pl-4">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                Active queue
-              </p>
-              <p className="mt-3 text-h2 font-display font-bold text-white">
-                {activeCount}
-              </p>
-              <p className="mt-2 text-caption text-zinc-400">
-                Requests currently queued or running
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="rounded-[1.25rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
-          <div className="border-l border-[var(--color-shell-border-strong)] pl-4">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                Latest outcome
+                Runtime status
               </p>
               <p className="mt-3 text-h5 font-display font-bold text-white">
-                {latestDeployment ? latestDeployment.request.name : "No requests yet"}
+                {statusLabel}
               </p>
-              <div className="mt-2">
-                <Badge
-                  variant={
-                    latestDeployment?.status === "failed"
-                      ? "danger"
-                      : latestDeployment?.status === "succeeded"
-                        ? "success"
-                        : latestDeployment?.status === "running"
-                          ? "info"
-                          : latestDeployment?.status === "queued"
-                            ? "warning"
-                            : "default"
-                  }
-                  className={shellStatusBadgeClassName}
-                >
-                  {latestDeployment?.status ?? "idle"}
-                </Badge>
-              </div>
+              <p className="mt-2 text-caption text-zinc-400">
+                Live state from the orchestration adapter
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="rounded-[1.25rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
+          <div className="border-l border-[var(--color-shell-border-strong)] pl-4">
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
+                History logs
+              </p>
+              <p className="mt-3 text-h2 font-display font-bold text-white">
+                {historyCount}
+              </p>
+              <p className="mt-2 text-caption text-zinc-400">
+                Secondary deployment records for troubleshooting
+              </p>
             </div>
           </div>
         </Card>
@@ -201,7 +195,8 @@ export default async function DashboardPage() {
 
       <div id="deployment-request">
         <DeploymentConsole
-          initialDeployments={deployments}
+          initialDeployment={currentDeployment}
+          deploymentHistory={deployments}
           persistenceWarning={feedWarning}
         />
       </div>
