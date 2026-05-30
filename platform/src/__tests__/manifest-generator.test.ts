@@ -9,6 +9,11 @@
  * - Manifest structure validation
  */
 
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, test, expect } from "vitest";
 import {
   generateKubernetesManifests,
@@ -26,6 +31,33 @@ import {
 
 function expectDefined<T>(value: T | null | undefined, message: string): asserts value is T {
   expect(value, message).toBeDefined();
+}
+
+function rewriteHydrationScriptForTest(script: string) {
+  const sandboxRoot = mkdtempSync(join(tmpdir(), "abra-hydration-"));
+  const openclawHome = join(sandboxRoot, "openclaw-home");
+  const configDir = join(sandboxRoot, "config");
+  const secretsDir = join(sandboxRoot, "secrets");
+
+  mkdirSync(openclawHome, { recursive: true });
+  mkdirSync(configDir, { recursive: true });
+  mkdirSync(secretsDir, { recursive: true });
+
+  writeFileSync(join(configDir, "openclaw.json"), "{}\n");
+  writeFileSync(join(secretsDir, "env"), "OPENCLAW_HOME=/openclaw-home\n");
+
+  return {
+    executableScript: script
+      .replaceAll("/openclaw-home", openclawHome)
+      .replaceAll("/config", configDir)
+      .replaceAll("/secrets", secretsDir)
+      .replace(
+        `chown -R 1000:1000 ${openclawHome}/.openclaw`,
+        "true # chown skipped in test"
+      ),
+    hydratedConfigPath: join(openclawHome, ".openclaw", "openclaw.json"),
+    hydratedEnvPath: join(openclawHome, ".openclaw", "env"),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -351,6 +383,34 @@ describe("StatefulSet manifest", () => {
     expect(command.length).toBe(3);
     expect(command[2]).toContain("mkdir -p /openclaw-home/.openclaw");
     expect(command[2]).toContain("cp /config/openclaw.json /openclaw-home/.openclaw/");
+  });
+
+  test("generates an init-hydration script that executes successfully", () => {
+    const manifests = generateKubernetesManifests(BASE_INPUT);
+    const initContainers = manifests.statefulset.spec.template.spec.initContainers;
+
+    expectDefined(initContainers, "init containers should exist");
+    const initContainer = initContainers.find(
+      (c) => c.name === "init-hydration"
+    );
+    expectDefined(initContainer, "init hydration container should exist");
+
+    const command = initContainer.command as string[];
+    expect(command).toHaveLength(3);
+
+    const { executableScript, hydratedConfigPath, hydratedEnvPath } = rewriteHydrationScriptForTest(
+      command[2]
+    );
+
+    execFileSync(command[0], [command[1], executableScript], {
+      env: process.env,
+      stdio: "pipe",
+    });
+
+    expect(existsSync(hydratedConfigPath)).toBe(true);
+    expect(existsSync(hydratedEnvPath)).toBe(true);
+    expect(readFileSync(hydratedConfigPath, "utf8")).toBe("{}\n");
+    expect(readFileSync(hydratedEnvPath, "utf8")).toBe("OPENCLAW_HOME=/openclaw-home\n");
   });
 
   test("applies custom image pull policy", () => {

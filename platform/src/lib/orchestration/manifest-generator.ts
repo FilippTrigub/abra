@@ -277,6 +277,27 @@ function validateInput(input: ManifestInput): void {
 // StatefulSet Manifest Generator
 // ---------------------------------------------------------------------------
 
+function buildHydrationInitScript(): string {
+  return [
+    "set -eu",
+    "echo 'Starting ~/.openclaw hydration...'",
+    "mkdir -p /openclaw-home/.openclaw",
+    "if [ -f /config/openclaw.json ]; then",
+    "  cp /config/openclaw.json /openclaw-home/.openclaw/",
+    "  echo 'Config loaded from /config/openclaw.json'",
+    "else",
+    "  echo 'Warning: No /config/openclaw.json found, using defaults'",
+    "fi",
+    "if [ -f /secrets/env ]; then",
+    "  cp /secrets/env /openclaw-home/.openclaw/",
+    "  echo 'Environment loaded from /secrets/env'",
+    "fi",
+    "chown -R 1000:1000 /openclaw-home/.openclaw",
+    "chmod 700 /openclaw-home/.openclaw",
+    "echo 'Hydration complete.'",
+  ].join("\n");
+}
+
 /**
  * Generates a StatefulSet manifest for the Abra/OpenClaw runtime.
  *
@@ -325,28 +346,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
 
   // Build hydration init container command
   // This assumes the init container has access to configuration via ConfigMap/Secret
-  const hydrationInitContainerCommand = [
-    "/bin/sh",
-    "-c",
-    [
-      "set -euo pipefail",
-      "echo 'Starting ~/.openclaw hydration...',",
-      "mkdir -p /openclaw-home/.openclaw",
-      "if [ -f /config/openclaw.json ]; then",
-      "  cp /config/openclaw.json /openclaw-home/.openclaw/",
-      "  echo 'Config loaded from /config/openclaw.json',",
-      "else",
-      "  echo 'Warning: No /config/openclaw.json found, using defaults',",
-      "fi",
-      "if [ -f /secrets/env ]; then",
-      "  cp /secrets/env /openclaw-home/.openclaw/",
-      "  echo 'Environment loaded from /secrets/env',",
-      "fi",
-      "chown -R 1000:1000 /openclaw-home/.openclaw",
-      "chmod 700 /openclaw-home/.openclaw",
-      "echo 'Hydration complete.'",
-    ].join(" "),
-  ];
+  const hydrationInitContainerCommand = ["/bin/sh", "-c", buildHydrationInitScript()];
 
   const manifest = {
     apiVersion: "apps/v1",
