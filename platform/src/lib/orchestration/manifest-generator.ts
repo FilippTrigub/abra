@@ -443,7 +443,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
               readinessProbe: {
                 httpGet: {
                   path: "/health",
-                  port: 3000,
+                  port: 18789,
                 },
                 initialDelaySeconds: 10,
                 periodSeconds: 5,
@@ -454,7 +454,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
               livenessProbe: {
                 httpGet: {
                   path: "/health",
-                  port: 3000,
+                  port: 18789,
                 },
                 initialDelaySeconds: 30,
                 periodSeconds: 10,
@@ -617,8 +617,8 @@ function generateService(input: ManifestInput): KubernetesObject & {
       type: "ClusterIP",
       ports: [
         {
-          port: 3000,
-          targetPort: 3000,
+          port: 18789,
+          targetPort: 18789,
           protocol: "TCP",
           name: "http",
         },

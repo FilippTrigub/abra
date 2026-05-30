@@ -193,7 +193,7 @@ function buildGatewayRoute(metadata: {
   namespace: string;
   serviceName: string;
 }): string {
-  return `http://${metadata.serviceName}.${metadata.namespace}.svc.cluster.local:3000`;
+  return `http://${metadata.serviceName}.${metadata.namespace}.svc.cluster.local:18789`;
 }
 
 function resolveConfigRevision(payload: Record<string, unknown>): number {

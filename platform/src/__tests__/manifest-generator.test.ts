@@ -363,7 +363,7 @@ describe("StatefulSet manifest", () => {
     expectDefined(openclawContainer, "openclaw container should exist");
     expectDefined(openclawContainer.readinessProbe, "readiness probe should exist");
     expect(openclawContainer.readinessProbe.httpGet.path).toBe("/health");
-    expect(openclawContainer.readinessProbe.httpGet.port).toBe(3000);
+    expect(openclawContainer.readinessProbe.httpGet.port).toBe(18789);
   });
 
   test("has liveness probe configured", () => {
@@ -378,7 +378,7 @@ describe("StatefulSet manifest", () => {
     expectDefined(openclawContainer, "openclaw container should exist");
     expectDefined(openclawContainer.livenessProbe, "liveness probe should exist");
     expect(openclawContainer.livenessProbe.httpGet.path).toBe("/health");
-    expect(openclawContainer.livenessProbe.httpGet.port).toBe(3000);
+    expect(openclawContainer.livenessProbe.httpGet.port).toBe(18789);
   });
 
   test("has init-hydration command with hydration logic", () => {
@@ -529,8 +529,8 @@ describe("Service manifest", () => {
     const spec = service.spec;
 
     expect(spec.ports.length).toBe(1);
-    expect(spec.ports[0].port).toBe(3000);
-    expect(spec.ports[0].targetPort).toBe(3000);
+    expect(spec.ports[0].port).toBe(18789);
+    expect(spec.ports[0].targetPort).toBe(18789);
     expect(spec.ports[0].protocol).toBe("TCP");
     expect(spec.ports[0].name).toBe("http");
   });
