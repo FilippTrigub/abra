@@ -16,7 +16,6 @@ import {
   getStatefulSetName,
   getServiceName,
   getPvcName,
-  getPodName,
   getRuntimeNamespace,
 } from "./naming-helpers";
 
@@ -404,7 +403,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
           initContainers: [
             {
               name: "init-hydration",
-              image: "bitnami/kubectl:latest",
+              image: "busybox:latest",
               imagePullPolicy: "IfNotPresent",
               command: hydrationInitContainerCommand,
               securityContext: {

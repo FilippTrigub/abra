@@ -34,6 +34,8 @@ function ensureAdminApp() {
     }),
   });
 
+  admin.firestore().settings({ ignoreUndefinedProperties: true });
+
   const emulatorHost = getFirebaseEmulatorHost();
 
   if (emulatorHost) {

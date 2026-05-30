@@ -227,7 +227,7 @@ describe("StatefulSet manifest", () => {
       (c) => c.name === "init-hydration"
     );
     expectDefined(initContainer, "init hydration container should exist");
-    expect(initContainer.image).toBe("bitnami/kubectl:latest");
+    expect(initContainer.image).toBe("busybox:latest");
   });
 
   test("runs init-hydration as root so it can hand off runtime ownership", () => {
