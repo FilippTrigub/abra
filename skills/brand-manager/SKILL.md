@@ -312,6 +312,52 @@ def get_brand_font_by_tag(tag):
 
 ---
 
+## Brand Strategy Principles
+
+These principles come from expert personal-branding research and should inform how this skill reads, extracts, and applies brand identity.
+
+### Brand is association
+
+A brand is what people think of when they hear your name. The goal is not just a polished profile — it is a consistent pairing of who you are, what you talk about, and what people can rely on you for. When reading source material in `read-about-me`, extract this pairing explicitly.
+
+### Brand first, trust first, transactions later
+
+Content should build credibility before it asks for anything. When adapting content, check that the piece gives value before promoting. The recommended sequence is: free content → lead magnets → low-ticket offers → services. Never lead with the offer.
+
+### Niche beats generic
+
+Recognized niche expertise commands attention and trust. Generic content competes with everything; niche content competes with a smaller, more interested slice. When defining brand positioning, push toward a specific domain rather than staying broad.
+
+### Interest stacking
+
+The brand should have a clear primary topic while adding enough human texture (side interests, process stories, honest failures) to feel real. Avoid becoming so narrow that the brand feels robotic. Extract secondary interests from source material and include them in BRAND.md.
+
+### Consistency over perfection
+
+Consistency matters more than polish. Ship, learn, improve. When adapting content, do not block publishing over minor style concerns — flag them as suggestions instead.
+
+### Content pillars
+
+A brand should have 4 recurring content types (e.g., educational how-to, personal storytelling, industry insight, conversion content). These pillars keep output from becoming random and help audiences know what to expect. Extract and name the pillars when building BRAND.md.
+
+### Repurpose from long to short
+
+Long-form source material (calls, workshops, articles) is the primary asset. Every long-form piece should be broken into several platform-native short pieces. When adapting content, always consider what shorter posts could come from the same source.
+
+### Failure stories build trust
+
+Vulnerability and honest failure stories create more trust than polished success claims. When the user shares source material about mistakes, challenges, or lessons learned, treat it as high-value branding material.
+
+### Adapt to channel, not just to brand
+
+The same idea behaves differently on Instagram, LinkedIn, and Twitter/X. LinkedIn rewards 600–800 character posts with a strong hook and no external links in the body. Instagram rewards authenticity, strong first-frame hooks, and vertical format. When adapting content, always apply channel-specific rules on top of brand voice.
+
+### Anti-generic test
+
+Before finalizing adapted content, ask: does this sound like the expert, or does it sound like generic AI writing? If it passes as "something anyone could write," it fails the brand test. The content must reflect specific expertise, point of view, or lived experience.
+
+---
+
 ## Best Practices
 
 1. **Always check BRAND.md first** - Ensure brand spec is current

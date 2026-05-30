@@ -112,6 +112,81 @@ See **WORKFLOW.md → Phase 2** for detailed step-by-step instructions.
 
 ---
 
+## **C**ontent Intelligence
+
+Apply these branding and content principles across all orchestration decisions. They come from expert personal-brand research and inform how to evaluate, generate, and prioritize content.
+
+### Brand = association
+
+A brand is not a logo or a posting schedule. It is what people think when they hear the expert's name. Every output should reinforce one clear pairing: who this person is, what they talk about, and what people can rely on them for.
+
+### Brand first, trust first, transactions later
+
+Content should build credibility before asking for anything. The sequence is: free content → lead magnets → services → products. Never lead with the offer. When in doubt, give more value.
+
+### The 10 golden rules for making content
+
+Apply these as a checklist before any content is finalized:
+
+1. Be authentic — stay true to the expert's voice
+2. One good idea per piece — never two competing themes
+3. Make it simple — the reader should understand instantly
+4. Cut the boring parts — keep only what earns attention
+5. Post consistently — cadence builds audience more than perfection
+6. Study what works — learn from high-performing formats in the same niche
+7. Start with a strong hook — the first line determines whether the rest gets read
+8. Keep pacing fast — eliminate drag
+9. Give value — make it worth the reader's or viewer's time
+10. Review analytics and double down on what works
+
+### Rule of One
+
+Every piece of content should carry one central idea. If a draft tries to make multiple points, identify the strongest one and cut the rest. Test: can you say this post in one sentence? If not, tighten it.
+
+### Hook quality
+
+The hook is the most important part of any piece of content. The opening seconds of a video and the first line of a post determine whether the rest gets consumed. A hook works by creating a curiosity gap — a contrast between what the viewer expects and what the content reveals.
+
+The six hook archetypes (any topic can be framed through all six — choose the one that matches the strongest contrast):
+
+- **Fortune Teller** — "this is about to change..." (anticipation, authority)
+- **Experimentor** — "I tried X so you don't have to" (proof, peer-to-peer)
+- **Teacher** — "here's what you should know" (authority, trust)
+- **Magician** — striking visual + "check this out" (scroll-stop)
+- **Investigator** — "here's what most people don't know" (discovery, intrigue)
+- **Contrarian** — "you're doing X wrong" (tension, strong positioning)
+
+Three-step formula for spoken/written hooks:
+1. Context lean-in — state the topic immediately
+2. Scroll-stop interjection — "but...", "however...", "yet..."
+3. Contrarian snapback — reverse the expected conclusion
+
+### Content pillars
+
+A personal brand should post from 4 recurring content types:
+- Educational how-to content
+- Personal storytelling (especially failure stories and lessons learned)
+- Industry insight and expert commentary
+- Conversion content (CTAs, proof, offers)
+
+When orchestrating content from source material, identify which pillar the output belongs to and note it in the execution plan.
+
+### Repurpose from long to short
+
+Long-form source material is the primary asset. Every long piece (call transcript, workshop recording, article) should be broken into 3–5 shorter platform-native pieces. When the user provides a long recording or document, always suggest the repurposing chain in the execution plan.
+
+### Platform rhythm
+
+**LinkedIn optimal windows**: 9–11 am and 12–2 pm. Story posts on Tue/Thu; educational posts on Wed/Fri. Respond to comments within the first 60 minutes. No external links in the post body.
+
+**Instagram**: hook-first (first 3 seconds decide everything for Reels). Carousels: first slide is the hook, second slide must deliver immediate value. Reels: minimum 3 seconds long.
+
+### Anti-generic test
+
+Before finalizing any content output, ask: does this sound like the expert, or does it sound like generic AI writing? If it could have been written by anyone about anything, it fails. The content must reflect the expert's specific point of view, lived experience, or domain knowledge.
+
+---
+
 ## **E**rror Handling
 - If brand info is missing → trigger Init phase
 - If brand assets are missing → prompt to store them via brand-awareness skill

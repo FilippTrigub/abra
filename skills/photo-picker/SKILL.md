@@ -132,3 +132,29 @@ Selected images are copied to `output_dir` with rank prefix:
 - No images in input_dir → clear message, exits cleanly
 - Invalid config → all errors printed before any images are scored
 - Individual image errors → logged; other images continue
+
+---
+
+## Brand & Content Selection Principles
+
+Raw aesthetic quality is a necessary but not sufficient condition for a good brand photo. Apply these principles when advising on or prompting for photo selection.
+
+### The key visual principle
+
+The lead image for any post is a hook in itself. In the first 3–5 seconds of a Reel, or in the first frame of a carousel, the visual does more work than the text. Before scoring, ask: does this image create contrast, intrigue, or a clear subject that earns attention? A technically excellent but visually static image may underperform a less polished image with stronger contrast or a more compelling subject.
+
+### Carousel-specific selection
+
+For carousels, the **first slide** is the hook and the **second slide** is where the viewer decides to continue. Select images with these roles in mind:
+- Slide 1: strongest visual contrast, clearest subject, most scroll-stopping composition
+- Slide 2: second-strongest, with a visual payoff that rewards the swipe
+
+Do not pick photos purely by aesthetic score for carousels — pick by narrative sequence.
+
+### Brand alignment in pick mode
+
+When using `--mode pick`, write prompts that reflect brand visual identity, not just generic quality. If the brand is minimalist and technical, a prompt like `"clean, minimal composition, muted tones, professional setting"` will select better than `"beautiful, vibrant, lively"`. Reference `BRAND.md` visual identity before writing the pick prompt.
+
+### Trust and authenticity signals
+
+For personal-brand content, photos that show the expert in a real context (working, presenting, in conversation) often build more trust than highly polished studio shots. If both types are available, prefer authentic context shots for story/educational posts and polished images for product or conversion posts.

@@ -173,3 +173,57 @@ uv run python scripts/describe.py --config config.json --provider replicate --re
 - Remote mode still writes the same `description` / `caption` / `tags` JSON sidecar
 - Missing credentials fail fast; there is **no silent fallback** to local mode
 - Replicate requires an explicit model slug for remote captioning
+
+---
+
+## Caption Quality Standards
+
+The caption is as important as the image. A weak caption wastes a strong visual. Apply these principles when generating or prompting for captions.
+
+### Rule of One
+
+Every caption should carry one clear central idea. If the caption tries to make multiple points, it becomes diffuse and loses impact. The strongest captions have a single spear tip: one promise, one lesson, one observation, one story beat.
+
+Test: can you say this caption in one sentence? Do all the lines support the same idea? If not, cut until the core is clear.
+
+### Hook first
+
+The first line of any caption is the hook. On Instagram, only the first ~125 characters are shown before "more" — that first line must earn the tap. On LinkedIn, the first line is the headline.
+
+Hook patterns that work:
+- **Contrarian**: "Stop doing X."
+- **Curiosity gap**: "Most people don't realize..."
+- **Identity callout**: "If you're [X], pay attention."
+- **Authority/experience**: "If I had to start over, here's what I'd do."
+- **Pain-point**: "This is why you're stuck at [X]."
+
+Avoid opening with "I" or with a warm-up sentence that says nothing. The first line should earn the rest of the read.
+
+### Platform-specific structure
+
+**Instagram**:
+- Hook first (≤125 chars)
+- Body: story, lesson, or insight
+- 3–5 relevant hashtags at the end
+- Authentic tone — avoid polished marketing language
+- Emoji are acceptable but should reinforce meaning, not decorate
+
+**LinkedIn**:
+- 600–800 characters for best reach; 100–150 for high CTR when needed
+- Strong hook in the first line
+- No external links in the post body (LinkedIn suppresses reach for outbound links)
+- Frameworks that work: Hook → insight → breakdown → CTA; or Story → lesson → action → engagement question
+- Clarity over creativity — readers scan quickly
+- Avoid: emoji overload, excessive whitespace, back-to-back same format, external fonts
+
+### Anti-generic test
+
+Before accepting a generated caption, ask: does this sound like the expert who took this photo, or does it sound like generic AI writing? If it could have been written by anyone about anything, it fails. The caption must reflect a specific point of view, observation, or lived moment.
+
+### Avoid
+
+- Opening with "I" as the first word
+- Vague inspirational statements without a concrete point
+- Emoji used as visual padding rather than to reinforce meaning
+- More than one call-to-action in a single caption
+- Hashtag spam (10+ hashtags) on LinkedIn

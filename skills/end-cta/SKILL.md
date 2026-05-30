@@ -82,3 +82,40 @@ cd "$SKILL_DIR" && uv run python scripts/cta.py \
 - selected CTA missing from the manifest
 - selected CTA asset file missing
 - video CTA chosen for an image input
+
+---
+
+## CTA Strategy Guide
+
+A CTA is only effective when it matches the trust level the content has already established. Asking for a sale before trust exists destroys credibility. Use this guide when selecting or recommending CTAs.
+
+### The monetization ladder
+
+Progress through these steps in order. Only move to the next step once the previous is in place:
+
+1. **Contact info** — the simplest possible CTA: "DM me", "Reply here", or a link in bio. This is the baseline and the first monetization step for any personal brand.
+2. **Email list** — retains audience attention outside social platforms. Email beats social reach for conversion. CTA: "Join my weekly note at [link]".
+3. **Services** — the natural extension of demonstrated expertise. CTA: "Book a call", "Work with me".
+4. **Low-ticket products** — guides, templates, workshops. CTA: "Get the guide".
+5. **Higher-ticket offers** — programs, consulting retainers. CTA: "Apply for [program]".
+
+### Match CTA to content type
+
+| Content type | Appropriate CTA |
+|---|---|
+| Educational / how-to | Email list signup or "follow for more" |
+| Story / behind-the-scenes | DM or comment engagement |
+| Expert insight / thought leadership | "Work with me" or book a call |
+| Product demo / result showcase | Direct service or product link |
+| Industry commentary | Email list or profile visit |
+
+### What to avoid
+
+- Never put the highest-commitment CTA (book a call, buy now) on content that hasn't established credibility first
+- Avoid more than one CTA per piece — the Rule of One applies here too
+- Do not put external links in the body of LinkedIn posts — use the first comment instead
+- Avoid vague CTAs like "let me know what you think" on conversion content — be direct about the next step
+
+### First 60 minutes
+
+After posting on LinkedIn, actively responding to comments in the first 60 minutes amplifies reach. If the CTA asks for comments ("drop a question below"), plan to be available to respond. This is part of the CTA strategy, not just engagement hygiene.

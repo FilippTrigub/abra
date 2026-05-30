@@ -263,3 +263,54 @@ uv run python skills/social-analytics/scripts/linkedin_post.py --url "POST_URL" 
 
 - `post-scheduler`: Create, schedule, and manage social media posts
 - `social-content`: Generate and optimize social media content ideas
+
+---
+
+## What the Metrics Mean for Content Strategy
+
+Raw engagement numbers mean little without interpretation. Use this guide when presenting analytics results to the user.
+
+### Priority signal hierarchy
+
+Rank these signals in this order when evaluating content performance:
+
+1. **Dwell time / consumption rate** — did people actually read/watch to the end? This is the strongest signal that the content delivered real value. High views + low consumption = strong hook, weak body.
+
+2. **Save rate** — saves indicate the viewer found the content reference-worthy. High saves on educational or how-to content signal a strong content pillar worth repeating.
+
+3. **Comment / reaction ratio** — comments create secondary reach and indicate emotional resonance. A high reaction count with zero comments can mean the content felt complete but not discussion-worthy.
+
+4. **Profile visits and connection/follow requests** — these indicate the post drove brand-level interest, not just content-level curiosity. A post that drives profile visits is working as a brand asset.
+
+5. **Likes and raw view count** — useful as a baseline but not the best signal for brand-building. High views on a low-save post may indicate entertainment rather than expertise.
+
+### Double-down logic
+
+When a post significantly outperforms others on *save rate* and *profile visits*, it is a strong signal to:
+- Repeat the content format (not necessarily the exact topic)
+- Examine the hook and identify which archetype it used (see `visual-hook` skill)
+- Extract the structural pattern and apply it to adjacent topics
+
+Do not just repeat what performed well on likes. Save rate and profile visits are better indicators of brand-building value.
+
+### Pattern identification questions
+
+When reviewing analytics across several posts, ask:
+
+- What format (video, carousel, image+text, text-only) has the highest average save rate?
+- Which content pillar (educational, story, insight, conversion) drives the most profile visits?
+- Are there posting days or times that correlate with higher engagement?
+- Does a particular hook type (contrarian, teacher, investigator) outperform others in this account?
+
+### LinkedIn-specific metrics
+
+LinkedIn does not expose link clicks in public analytics. Prioritize:
+- Comment volume (LinkedIn's algorithm heavily weights comments)
+- Reaction diversity (not just likes — the other reactions signal stronger emotional response)
+- Profile visits in the 24 hours after posting
+
+### Instagram-specific metrics
+
+Instagram Reels with high play_count but low comment_count suggest the content was viewed passively. Prioritize posts with both play_count and comment_count performing together — those indicate active engagement.
+
+For carousels, a high reach combined with low saves suggests the hook worked but the content did not feel reference-worthy. Revisit the slide structure.

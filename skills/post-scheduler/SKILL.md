@@ -329,3 +329,54 @@ Scripts exit with a non-zero code and print the error message to stderr on failu
 - Local image files and local `shareNow` video files require `cloudflared`
 - Local scheduled/queued video files require `--video-staging-provider 0x0.st` or `backblaze-b2`
 - Local scheduled/queued video staging is rejected unless retention is known and strictly longer than `(due_at - now) + 12h`
+
+---
+
+## Platform Scheduling Strategy
+
+### LinkedIn
+
+**Optimal posting windows**: 9–11 am and 12–2 pm (audience's timezone).
+
+**Weekly rhythm**:
+- Tuesday and Thursday: story posts (personal journey, behind-the-scenes, honest reflection)
+- Wednesday and Friday: educational posts (how-to, insight, framework)
+- Sunday/Monday: use for planning and coming up with post ideas, not publishing
+
+**Comment-first strategy**: Before publishing, spend time leaving comments on target creators' posts. This warms the account and signals activity to the algorithm. Responding to your own comments within the first 60 minutes after publishing amplifies reach.
+
+**What LinkedIn penalizes** (suppress reach):
+- External links in the post body — use the first comment for links instead
+- Asking for reposts explicitly
+- Sharing other people's posts too often
+- Back-to-back posts in the same format
+- Major edits after publication
+
+**What LinkedIn rewards**:
+- Dwell time (readers finishing the post)
+- Saves
+- Comments and reactions
+- Profile visits from the post
+
+### Instagram
+
+**Post types and their roles**:
+- Reels: best for reach; the opening 3 seconds determine everything
+- Carousels: best for engagement and saves; first slide is the hook, second slide must immediately deliver value or the reader stops swiping
+- Feed image: lowest reach but builds brand aesthetics
+- Stories: conversational, ephemeral, behind-the-scenes
+
+**Carousel structure**:
+- Slide 1: hook / promise
+- Slide 2: immediate payoff or tension (this is where readers decide to continue)
+- Slides 3–5: examples, steps, or proof
+- Final slide: takeaway or CTA
+
+**Instagram avoids**:
+- Overusing hashtags beyond the 3–5 most relevant
+- Posting without a strong first-frame hook
+- Long captions that open with "I" or a warm-up sentence
+
+### Universal scheduling principle
+
+Post consistently before trying to optimize posting times. Consistency in format and cadence builds audience recognition faster than finding the perfect hour. Data from `social-analytics` should guide time adjustments only after a baseline of consistent posting exists.
