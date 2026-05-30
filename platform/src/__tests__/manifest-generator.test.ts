@@ -691,6 +691,26 @@ describe("Names consistency", () => {
     expect(manifests.names.secretName).toBe("abra-user123-abra-main-secrets");
     expect(manifests.names.serviceAccountName).toBeUndefined();
   });
+
+  test("compacts long generated AKS names while keeping cross-resource references aligned", () => {
+    const manifests = generateKubernetesManifests({
+      accountId: "fjyqatlmasrvefkf0g6lgajz9gv2",
+      deploymentId: "9ba066b6-8348-4e00-abd3-52e7fcc7e04c",
+      image: TEST_IMAGE,
+    });
+
+    expect(manifests.names.statefulSetName.length).toBeLessThanOrEqual(55);
+    expect(manifests.names.serviceName.length).toBeLessThanOrEqual(63);
+    expect(manifests.names.pvcName.length).toBeLessThanOrEqual(63);
+    expect(manifests.names.configMapName.length).toBeLessThanOrEqual(63);
+    expect(manifests.names.secretName.length).toBeLessThanOrEqual(63);
+    expect(manifests.names.podName.length).toBeLessThanOrEqual(63);
+    expect(manifests.statefulset.spec.serviceName).toBe(manifests.names.serviceName);
+    expect(manifests.service.metadata.name).toBe(manifests.names.serviceName);
+    expect(manifests.pvc.metadata.name).toBe(manifests.names.pvcName);
+    expect(manifests.configMap.metadata.name).toBe(manifests.names.configMapName);
+    expect(manifests.secret.metadata.name).toBe(manifests.names.secretName);
+  });
 });
 
 // ---------------------------------------------------------------------------

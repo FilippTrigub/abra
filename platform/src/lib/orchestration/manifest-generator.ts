@@ -49,6 +49,19 @@ export interface ManifestInput {
   useServiceAccount?: boolean;
   /** Service account name (if useServiceAccount=true, default: abra-openclaw-sa) */
   serviceAccountName?: string;
+  /** Optional persisted AKS resource names to reuse for reconciliation/migration safety */
+  nameOverrides?: ManifestNameOverrides;
+}
+
+export interface ManifestNameOverrides {
+  namespace?: string;
+  configMapName?: string;
+  secretName?: string;
+  serviceAccountName?: string;
+  statefulSetName?: string;
+  serviceName?: string;
+  pvcName?: string;
+  podName?: string;
 }
 
 const DEFAULT_SERVICE_ACCOUNT_NAME = "abra-openclaw-sa";
@@ -229,6 +242,10 @@ function resolveServiceAccountName(input: ManifestInput): string | undefined {
   return input.serviceAccountName?.trim() || DEFAULT_SERVICE_ACCOUNT_NAME;
 }
 
+function getPodNameForStatefulSetName(statefulSetName: string, ordinal: number = 0): string {
+  return `${statefulSetName}-${ordinal}`;
+}
+
 /**
  * Validation error for manifest generation.
  */
@@ -318,12 +335,13 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
 } {
   const { accountId, deploymentId, image, imagePullPolicy = "IfNotPresent" } = input;
 
-  const statefulSetName = getStatefulSetName(accountId, deploymentId);
-  const pvcName = getPvcName(accountId, deploymentId);
-  const namespace = getRuntimeNamespace();
-  const configMapName = getConfigMapName(accountId, deploymentId);
-  const secretName = getSecretName(accountId, deploymentId);
-  const serviceAccountName = resolveServiceAccountName(input);
+  const statefulSetName = input.nameOverrides?.statefulSetName ?? getStatefulSetName(accountId, deploymentId);
+  const pvcName = input.nameOverrides?.pvcName ?? getPvcName(accountId, deploymentId);
+  const namespace = input.nameOverrides?.namespace ?? getRuntimeNamespace();
+  const configMapName = input.nameOverrides?.configMapName ?? getConfigMapName(accountId, deploymentId);
+  const secretName = input.nameOverrides?.secretName ?? getSecretName(accountId, deploymentId);
+  const serviceAccountName = input.nameOverrides?.serviceAccountName ?? resolveServiceAccountName(input);
+  const serviceName = input.nameOverrides?.serviceName ?? getServiceName(accountId, deploymentId);
 
   // Build container resources if provided
   type ContainerResources = {
@@ -365,7 +383,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
       },
     },
     spec: {
-      serviceName: getServiceName(accountId, deploymentId),
+      serviceName,
       replicas: 1,
       selector: {
         matchLabels: {
@@ -482,12 +500,12 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
   return manifest;
 }
 
-function generateNamespace(): KubernetesObject {
+function generateNamespace(input: ManifestInput): KubernetesObject {
   return {
     apiVersion: "v1",
     kind: "Namespace",
     metadata: {
-      name: getRuntimeNamespace(),
+      name: input.nameOverrides?.namespace ?? getRuntimeNamespace(),
       labels: {
         app: "abra",
       },
@@ -496,7 +514,7 @@ function generateNamespace(): KubernetesObject {
 }
 
 function generateServiceAccount(input: ManifestInput): KubernetesObject | undefined {
-  const serviceAccountName = resolveServiceAccountName(input);
+  const serviceAccountName = input.nameOverrides?.serviceAccountName ?? resolveServiceAccountName(input);
   if (!serviceAccountName) {
     return undefined;
   }
@@ -507,7 +525,7 @@ function generateServiceAccount(input: ManifestInput): KubernetesObject | undefi
     kind: "ServiceAccount",
     metadata: {
       name: serviceAccountName,
-      namespace: getRuntimeNamespace(),
+      namespace: input.nameOverrides?.namespace ?? getRuntimeNamespace(),
       labels: {
         app: "abra",
         "abra.io/account-id": accountId,
@@ -519,13 +537,13 @@ function generateServiceAccount(input: ManifestInput): KubernetesObject | undefi
 
 function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Record<string, string> } {
   const { accountId, deploymentId } = input;
-  const namespace = getRuntimeNamespace();
+  const namespace = input.nameOverrides?.namespace ?? getRuntimeNamespace();
 
   return {
     apiVersion: "v1",
     kind: "ConfigMap",
     metadata: {
-      name: getConfigMapName(accountId, deploymentId),
+      name: input.nameOverrides?.configMapName ?? getConfigMapName(accountId, deploymentId),
       namespace,
       labels: {
         app: "abra",
@@ -544,13 +562,13 @@ function generateSecret(input: ManifestInput): KubernetesObject & {
   type: string;
 } {
   const { accountId, deploymentId } = input;
-  const namespace = getRuntimeNamespace();
+  const namespace = input.nameOverrides?.namespace ?? getRuntimeNamespace();
 
   return {
     apiVersion: "v1",
     kind: "Secret",
     metadata: {
-      name: getSecretName(accountId, deploymentId),
+      name: input.nameOverrides?.secretName ?? getSecretName(accountId, deploymentId),
       namespace,
       labels: {
         app: "abra",
@@ -581,8 +599,8 @@ function generateService(input: ManifestInput): KubernetesObject & {
   spec: ServiceSpec;
 } {
   const { accountId, deploymentId } = input;
-  const serviceName = getServiceName(accountId, deploymentId);
-  const namespace = getRuntimeNamespace();
+  const serviceName = input.nameOverrides?.serviceName ?? getServiceName(accountId, deploymentId);
+  const namespace = input.nameOverrides?.namespace ?? getRuntimeNamespace();
 
   const manifest = {
     apiVersion: "v1",
@@ -633,8 +651,8 @@ function generatePVC(input: ManifestInput): KubernetesObject & {
   spec: PVCSpec;
 } {
   const { accountId, deploymentId } = input;
-  const pvcName = getPvcName(accountId, deploymentId);
-  const namespace = getRuntimeNamespace();
+  const pvcName = input.nameOverrides?.pvcName ?? getPvcName(accountId, deploymentId);
+  const namespace = input.nameOverrides?.namespace ?? getRuntimeNamespace();
 
   const manifest = {
     apiVersion: "v1",
@@ -686,7 +704,7 @@ export function generateKubernetesManifests(input: ManifestInput): KubernetesMan
   const { accountId, deploymentId } = input;
 
   // Generate all manifests
-  const namespace = generateNamespace();
+  const namespace = generateNamespace(input);
   const serviceAccount = generateServiceAccount(input);
   const configMap = generateConfigMap(input);
   const secret = generateSecret(input);
@@ -695,15 +713,16 @@ export function generateKubernetesManifests(input: ManifestInput): KubernetesMan
   const pvc = generatePVC(input);
 
   // Compute resource names for reference
+  const statefulSetName = input.nameOverrides?.statefulSetName ?? getStatefulSetName(accountId, deploymentId);
   const names = {
-    namespace: getRuntimeNamespace(),
-    configMapName: getConfigMapName(accountId, deploymentId),
-    secretName: getSecretName(accountId, deploymentId),
-    serviceAccountName: resolveServiceAccountName(input),
-    statefulSetName: getStatefulSetName(accountId, deploymentId),
-    serviceName: getServiceName(accountId, deploymentId),
-    pvcName: getPvcName(accountId, deploymentId),
-    podName: getPodName(accountId, deploymentId),
+    namespace: input.nameOverrides?.namespace ?? getRuntimeNamespace(),
+    configMapName: input.nameOverrides?.configMapName ?? getConfigMapName(accountId, deploymentId),
+    secretName: input.nameOverrides?.secretName ?? getSecretName(accountId, deploymentId),
+    serviceAccountName: input.nameOverrides?.serviceAccountName ?? resolveServiceAccountName(input),
+    statefulSetName,
+    serviceName: input.nameOverrides?.serviceName ?? getServiceName(accountId, deploymentId),
+    pvcName: input.nameOverrides?.pvcName ?? getPvcName(accountId, deploymentId),
+    podName: input.nameOverrides?.podName ?? getPodNameForStatefulSetName(statefulSetName),
   };
 
   return {
