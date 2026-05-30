@@ -6,8 +6,13 @@ import {
   type AkSKubernetesClient,
 } from "./aks-k8s-bootstrap";
 import { firestoreOperationStore } from "./firestore-operation-store";
-import { generateKubernetesManifests, type ManifestInput } from "./manifest-generator";
+import {
+  generateKubernetesManifests,
+  type ManifestInput,
+  type ManifestNameOverrides,
+} from "./manifest-generator";
 import type {
+  AkRuntimeMetadata,
   AdapterMetadata,
   OrchestrationAdapter,
   OrchestrationOperation,
@@ -103,6 +108,7 @@ function buildManifestInput(input: {
   payload: Record<string, unknown>;
   image: string;
   configRevision: number;
+  nameOverrides?: ManifestNameOverrides;
 }): ManifestInput {
   const serviceAccountName = readOptionalString(input.payload.serviceAccountName) ?? undefined;
   const useServiceAccount = readOptionalBoolean(input.payload.useServiceAccount);
@@ -112,8 +118,52 @@ function buildManifestInput(input: {
     deploymentId: input.deploymentId,
     image: input.image,
     configRevision: input.configRevision,
+    ...(input.nameOverrides ? { nameOverrides: input.nameOverrides } : {}),
     ...(serviceAccountName ? { serviceAccountName } : {}),
     ...(useServiceAccount !== undefined ? { useServiceAccount } : {}),
+  };
+}
+
+function readPersistedAksNames(payload: Record<string, unknown>): ManifestNameOverrides | undefined {
+  const raw = payload.aksNames;
+  if (!isRecord(raw)) {
+    return undefined;
+  }
+
+  const statefulSetName = readOptionalString(raw.statefulSetName);
+  const serviceName = readOptionalString(raw.serviceName);
+  const pvcName = readOptionalString(raw.pvcName);
+
+  if (!statefulSetName || !serviceName || !pvcName) {
+    return undefined;
+  }
+
+  return {
+    namespace: readOptionalString(raw.namespace) ?? undefined,
+    configMapName: readOptionalString(raw.configMapName) ?? undefined,
+    secretName: readOptionalString(raw.secretName) ?? undefined,
+    serviceAccountName: readOptionalString(raw.serviceAccountName) ?? undefined,
+    statefulSetName,
+    serviceName,
+    pvcName,
+    podName: readOptionalString(raw.podName) ?? undefined,
+  };
+}
+
+function getNameOverridesFromMetadata(aksMetadata: AkRuntimeMetadata | undefined): ManifestNameOverrides | undefined {
+  if (!aksMetadata?.statefulSetName || !aksMetadata.serviceName || !aksMetadata.pvcName) {
+    return undefined;
+  }
+
+  return {
+    namespace: aksMetadata.namespace,
+    configMapName: aksMetadata.configMapName,
+    secretName: aksMetadata.secretName,
+    serviceAccountName: aksMetadata.serviceAccountName,
+    statefulSetName: aksMetadata.statefulSetName,
+    serviceName: aksMetadata.serviceName,
+    pvcName: aksMetadata.pvcName,
+    podName: aksMetadata.podName,
   };
 }
 
@@ -665,6 +715,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       payload,
       image,
       configRevision: DEFAULT_CONFIG_REVISION,
+      nameOverrides: readPersistedAksNames(payload),
     }));
     const now = this.dependencies.now();
     const resourceHandle = buildResourceHandle(manifests.names);
@@ -752,6 +803,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       payload,
       image,
       configRevision: nextRevision,
+      nameOverrides: readPersistedAksNames(payload),
     }));
     const operation = await this.createActionOperation({
       input,
@@ -837,6 +889,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       payload,
       image,
       configRevision: currentRevision,
+      nameOverrides: readPersistedAksNames(payload),
     }));
     const operation = await this.createActionOperation({
       input,
@@ -924,6 +977,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       payload,
       image,
       configRevision: currentRevision,
+      nameOverrides: readPersistedAksNames(payload),
     }));
     const retentionDays = resolvePvcRetentionDays();
     const operation = await this.createActionOperation({
@@ -1034,6 +1088,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
         payload,
         image,
         configRevision: operation.runtimeMetadata?.aks?.configRevision ?? DEFAULT_CONFIG_REVISION,
+        nameOverrides: getNameOverridesFromMetadata(operation.runtimeMetadata?.aks),
       }));
       client = this.dependencies.createResourceClient(
         await this.dependencies.loadKubernetesClient()

@@ -414,6 +414,68 @@ describe("AksOrchestrationAdapter create flow", () => {
     );
   });
 
+  it("reuses persisted AKS resource names when polling a legacy create operation", async () => {
+    const resourceClient = createResourceClient();
+
+    const adapter = new AksOrchestrationAdapter({
+      operationStore: store as never,
+      now: nextTimestamp,
+      createOperationId: () => "op-create-legacy-names",
+      loadKubernetesClient: vi.fn(async () => ({}) as never),
+      createResourceClient: vi.fn(() => resourceClient),
+    });
+
+    const created = await adapter.create(
+      createInput({
+        target: {
+          accountId: "fjyqatlmasrvefkf0g6lgajz9gv2",
+          agentId: null,
+          deploymentId: "9ba066b6-8348-4e00-abd3-52e7fcc7e04c",
+        },
+      })
+    );
+
+    const legacyNames = {
+      namespace: "abra",
+      configMapName: "abra-fjyqatlmasrvefkf0g6lgajz9gv2-9ba066b6-8348-4e00-abd3-52e7fcc7e04c-config",
+      secretName: "abra-fjyqatlmasrvefkf0g6lgajz9gv2-9ba066b6-8348-4e00-abd3-52e7fcc7e04c-secrets",
+      statefulSetName: "abra-fjyqatlmasrvefkf0g6lgajz9gv2-9ba066b6-8348-4e00-abd3-52e7fcc7e04c",
+      pvcName: "abra-fjyqatlmasrvefkf0g6lgajz9gv2-9ba066b6-8348-4e00-abd3-52e7fcc7e04c-data",
+      serviceName: "abra-fjyqatlmasrvefkf0g6lgajz9gv2-9ba066b6-8348-4e00-abd3-52e7fcc7e04c-svc",
+      configRevision: 1,
+    };
+
+    await store.update({
+      ...created,
+      runtimeMetadata: {
+        ...created.runtimeMetadata,
+        aks: {
+          ...created.runtimeMetadata?.aks,
+          ...legacyNames,
+        },
+      },
+    });
+
+    await adapter.getStatus(created.operationId);
+
+    expect(resourceClient.ensureConfigMap).toHaveBeenCalledWith(
+      "abra",
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          name: legacyNames.configMapName,
+        }),
+      })
+    );
+    expect(resourceClient.ensureSecret).toHaveBeenCalledWith(
+      "abra",
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          name: legacyNames.secretName,
+        }),
+      })
+    );
+  });
+
   it("rejects create requests that do not resolve a runtime image", async () => {
     const adapter = new AksOrchestrationAdapter({
       operationStore: store as never,
@@ -695,5 +757,52 @@ describe("AksOrchestrationAdapter create flow", () => {
         process.env.AKS_PVC_RETENTION_DAYS = previousRetention;
       }
     }
+  });
+
+  it("reuses persisted AKS resource names from payload during destroy", async () => {
+    const resourceClient = createResourceClient({
+      ensurePersistentVolumeClaim: vi.fn(async () => "existing" as const),
+      ensureService: vi.fn(async () => "existing" as const),
+      ensureStatefulSet: vi.fn(async () => "existing" as const),
+    });
+
+    const adapter = new AksOrchestrationAdapter({
+      operationStore: store as never,
+      now: nextTimestamp,
+      createOperationId: () => "op-destroy-legacy-1",
+      loadKubernetesClient: vi.fn(async () => ({}) as never),
+      createResourceClient: vi.fn(() => resourceClient),
+    });
+
+    await adapter.destroy(
+      createInput({
+        requestId: "request-destroy-legacy-1",
+        target: {
+          accountId: "fjyqatlmasrvefkf0g6lgajz9gv2",
+          agentId: null,
+          deploymentId: "abra-instance",
+        },
+        payload: {
+          name: "Abra runtime",
+          aksNames: {
+            namespace: "abra",
+            configMapName: "abra-fjyqatlmasrvefkf0g6lgajz9gv2-9ba066b6-8348-4e00-abd3-52e7fcc7e04c-config",
+            secretName: "abra-fjyqatlmasrvefkf0g6lgajz9gv2-9ba066b6-8348-4e00-abd3-52e7fcc7e04c-secrets",
+            statefulSetName: "abra-fjyqatlmasrvefkf0g6lgajz9gv2-9ba066b6-8348-4e00-abd3-52e7fcc7e04c",
+            pvcName: "abra-fjyqatlmasrvefkf0g6lgajz9gv2-9ba066b6-8348-4e00-abd3-52e7fcc7e04c-data",
+            serviceName: "abra-fjyqatlmasrvefkf0g6lgajz9gv2-9ba066b6-8348-4e00-abd3-52e7fcc7e04c-svc",
+          },
+        },
+      })
+    );
+
+    expect(resourceClient.deleteStatefulSet).toHaveBeenCalledWith(
+      "abra",
+      "abra-fjyqatlmasrvefkf0g6lgajz9gv2-9ba066b6-8348-4e00-abd3-52e7fcc7e04c"
+    );
+    expect(resourceClient.deleteService).toHaveBeenCalledWith(
+      "abra",
+      "abra-fjyqatlmasrvefkf0g6lgajz9gv2-9ba066b6-8348-4e00-abd3-52e7fcc7e04c-svc"
+    );
   });
 });

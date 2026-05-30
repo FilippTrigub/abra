@@ -3,6 +3,7 @@ import { getPlatformAccount } from "@/lib/platform-account";
 import {
   dispatchOrchestrationAction,
   getOrchestrationAdapter,
+  type AkRuntimeMetadata,
   type OrchestrationAction,
   type OrchestrationOperation,
   type OrchestrationOperationStatus,
@@ -35,6 +36,7 @@ interface DeploymentPayloadEnvelope {
     pollAfterMs?: number;
     lastKnownStatus?: DeploymentStatus;
     lastSyncedAt?: string;
+    aksNames?: AkRuntimeMetadata;
   };
 }
 
@@ -56,6 +58,7 @@ export interface DashboardDeployment {
     pollAfterMs: number;
     lastKnownStatus: DeploymentStatus;
     lastSyncedAt: string | null;
+    aksNames?: AkRuntimeMetadata;
   } | null;
 }
 
@@ -169,6 +172,9 @@ function normalizePayload(value: unknown): DeploymentPayloadEnvelope | null {
   }
 
   const orchestration = isRecord(value.orchestration) ? value.orchestration : null;
+  const rawAksNames = orchestration && isRecord(orchestration.aksNames)
+    ? orchestration.aksNames
+    : null;
 
   return {
     request: {
@@ -205,6 +211,50 @@ function normalizePayload(value: unknown): DeploymentPayloadEnvelope | null {
             typeof orchestration.lastSyncedAt === "string"
               ? orchestration.lastSyncedAt
               : undefined,
+          aksNames: rawAksNames
+            ? {
+                namespace:
+                  typeof rawAksNames.namespace === "string"
+                    ? rawAksNames.namespace
+                    : "abra",
+                configMapName:
+                  typeof rawAksNames.configMapName === "string"
+                    ? rawAksNames.configMapName
+                    : undefined,
+                secretName:
+                  typeof rawAksNames.secretName === "string"
+                    ? rawAksNames.secretName
+                    : undefined,
+                serviceAccountName:
+                  typeof rawAksNames.serviceAccountName === "string"
+                    ? rawAksNames.serviceAccountName
+                    : undefined,
+                statefulSetName:
+                  typeof rawAksNames.statefulSetName === "string"
+                    ? rawAksNames.statefulSetName
+                    : "",
+                pvcName:
+                  typeof rawAksNames.pvcName === "string"
+                    ? rawAksNames.pvcName
+                    : "",
+                serviceName:
+                  typeof rawAksNames.serviceName === "string"
+                    ? rawAksNames.serviceName
+                    : "",
+                configRevision:
+                  typeof rawAksNames.configRevision === "number"
+                    ? rawAksNames.configRevision
+                    : undefined,
+                podName:
+                  typeof rawAksNames.podName === "string"
+                    ? rawAksNames.podName
+                    : undefined,
+                gatewayRoute:
+                  typeof rawAksNames.gatewayRoute === "string"
+                    ? rawAksNames.gatewayRoute
+                    : undefined,
+              }
+            : undefined,
         }
       : undefined,
   };
@@ -272,6 +322,7 @@ function toDashboardDeployment(
           pollAfterMs: orchestration.pollAfterMs ?? 1500,
           lastKnownStatus: orchestration.lastKnownStatus ?? status,
           lastSyncedAt: orchestration.lastSyncedAt ?? null,
+          aksNames: orchestration.aksNames,
         }
       : null,
   };
@@ -452,6 +503,7 @@ function buildDeploymentOperationInput(deployment: DashboardDeployment) {
       environment: deployment.request.environment,
       sourceRef: deployment.request.sourceRef,
       notes: deployment.request.notes,
+      ...(deployment.orchestration?.aksNames ? { aksNames: deployment.orchestration.aksNames } : {}),
     },
   };
 }
@@ -471,6 +523,7 @@ async function persistDeployment(
           pollAfterMs: deployment.orchestration.pollAfterMs,
           lastKnownStatus: deployment.orchestration.lastKnownStatus,
           lastSyncedAt: deployment.orchestration.lastSyncedAt ?? undefined,
+          aksNames: deployment.orchestration.aksNames,
         }
       : undefined,
   };
@@ -717,15 +770,16 @@ function mergeOperationIntoDeployment(
     updatedAt: operation.updatedAt,
     errorMessage: operation.error?.message ?? null,
     resultUrl: operation.result?.resourceHandle ?? deployment.resultUrl,
-    orchestration: {
-      requestId: operation.requestId,
-      action,
-      operationId: operation.operationId,
-      adapter: operation.adapter,
-      pollAfterMs: operation.pollAfterMs,
-      lastKnownStatus: toDeploymentStatus(operation.status, action),
-      lastSyncedAt: operation.updatedAt,
-    },
+      orchestration: {
+        requestId: operation.requestId,
+        action,
+        operationId: operation.operationId,
+        adapter: operation.adapter,
+        pollAfterMs: operation.pollAfterMs,
+        lastKnownStatus: toDeploymentStatus(operation.status, action),
+        lastSyncedAt: operation.updatedAt,
+        aksNames: operation.result?.metadata?.aks ?? deployment.orchestration?.aksNames,
+      },
   };
 }
 

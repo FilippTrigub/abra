@@ -1,4 +1,6 @@
 export type {
+  AkRuntimeMetadata,
+  AdapterMetadata,
   MockOperationOutcome,
   OrchestrationAction,
   OrchestrationAdapter,
