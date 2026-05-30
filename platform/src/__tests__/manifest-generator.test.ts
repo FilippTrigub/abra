@@ -230,6 +230,22 @@ describe("StatefulSet manifest", () => {
     expect(initContainer.image).toBe("bitnami/kubectl:latest");
   });
 
+  test("runs init-hydration as root so it can hand off runtime ownership", () => {
+    const manifests = generateKubernetesManifests(BASE_INPUT);
+    const initContainers = manifests.statefulset.spec.template.spec.initContainers;
+
+    expectDefined(initContainers, "init containers should exist");
+    const initContainer = initContainers.find(
+      (c) => c.name === "init-hydration"
+    );
+    expectDefined(initContainer, "init hydration container should exist");
+
+    expect(initContainer.securityContext).toEqual({
+      runAsUser: 0,
+      runAsGroup: 0,
+    });
+  });
+
   test("init-hydration container mounts config-volume", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;

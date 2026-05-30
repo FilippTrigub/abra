@@ -86,6 +86,10 @@ interface StatefulSetSpec {
         image: string;
         imagePullPolicy?: string;
         command?: string[];
+        securityContext?: {
+          runAsUser?: number;
+          runAsGroup?: number;
+        };
         volumeMounts?: Array<{
           name: string;
           mountPath: string;
@@ -385,6 +389,10 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
               image: "bitnami/kubectl:latest",
               imagePullPolicy: "IfNotPresent",
               command: hydrationInitContainerCommand,
+              securityContext: {
+                runAsUser: 0,
+                runAsGroup: 0,
+              },
               volumeMounts: [
                 {
                   name: "config-volume",
