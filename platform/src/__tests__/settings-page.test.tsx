@@ -16,6 +16,11 @@ vi.mock("@/lib/settings/actions", () => ({
   revertToDefaults,
 }));
 
+vi.mock("@/lib/agent-config/actions", () => ({
+  loadUserAgentConfig: vi.fn().mockResolvedValue({ configured: false, token: null }),
+  saveUserAgentConfig: vi.fn().mockResolvedValue({ success: true }),
+}));
+
 function buildSnapshot(
   overrides: Partial<ConfigSnapshot["values"]> = {},
 ): ConfigSnapshot {

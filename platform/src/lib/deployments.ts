@@ -1,5 +1,7 @@
 import { getAdminFirestore } from "@/lib/firebase/admin";
 import { getPlatformAccount } from "@/lib/platform-account";
+import { loadAgentConfig } from "@/lib/agent-config/service";
+import type { AgentConfig } from "@/lib/agent-config/types";
 import {
   dispatchOrchestrationAction,
   getOrchestrationAdapter,
@@ -490,7 +492,10 @@ async function getCurrentDeploymentRecord(accountScope: string) {
   return findCurrentDeployment(deployments);
 }
 
-function buildDeploymentOperationInput(deployment: DashboardDeployment) {
+function buildDeploymentOperationInput(
+  deployment: DashboardDeployment,
+  agentConfig: AgentConfig | null,
+) {
   return {
     requestId: deployment.orchestration?.requestId ?? crypto.randomUUID(),
     target: {
@@ -504,6 +509,7 @@ function buildDeploymentOperationInput(deployment: DashboardDeployment) {
       sourceRef: deployment.request.sourceRef,
       notes: deployment.request.notes,
       ...(deployment.orchestration?.aksNames ? { aksNames: deployment.orchestration.aksNames } : {}),
+      ...(agentConfig ? { agentConfig } : {}),
     },
   };
 }
@@ -791,9 +797,10 @@ export async function dispatchDeploymentRequest(deploymentId: string, authUserId
   }
 
   try {
+    const agentConfig = await loadAgentConfig(authUserId);
     const operation = await dispatchOrchestrationAction(
       "create",
-      buildDeploymentOperationInput(deployment),
+      buildDeploymentOperationInput(deployment, agentConfig),
     );
 
     return await persistDeployment(mergeOperationIntoDeployment(deployment, operation), deployment.accountScope);
@@ -835,7 +842,7 @@ export async function destroyCurrentDeploymentForUser(authUserId: string) {
   try {
     const operation = await dispatchOrchestrationAction(
       "destroy",
-      buildDeploymentOperationInput(deployment),
+      buildDeploymentOperationInput(deployment, null),
     );
 
     return {
@@ -959,7 +966,7 @@ export async function syncDeploymentStatusForUser(
       const synthesizedOperation = synthesizeMockOperation(
         deployment.orchestration.operationId,
         "create",
-        buildDeploymentOperationInput(deployment),
+        buildDeploymentOperationInput(deployment, null),
         "succeeded",
         deployment.createdAt,
       );

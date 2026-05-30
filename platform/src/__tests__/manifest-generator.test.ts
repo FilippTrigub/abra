@@ -56,7 +56,7 @@ function rewriteHydrationScriptForTest(script: string) {
         "true # chown skipped in test"
       ),
     hydratedConfigPath: join(openclawHome, ".openclaw", "openclaw.json"),
-    hydratedEnvPath: join(openclawHome, ".openclaw", "env"),
+    hydratedEnvPath: join(openclawHome, ".openclaw", ".env"),
   };
 }
 
@@ -636,6 +636,40 @@ describe("Runtime prerequisite manifests", () => {
         }),
       })
     );
+  });
+
+  test("init script copies secrets file to .env (with dot prefix)", () => {
+    const manifests = generateKubernetesManifests(BASE_INPUT);
+    const initContainers = manifests.statefulset.spec.template.spec.initContainers;
+    const initContainer = initContainers?.find((c) => c.name === "init-hydration");
+    expect(initContainer?.command?.[2]).toContain("cp /secrets/env /openclaw-home/.openclaw/.env");
+  });
+
+  test("without agentConfig: configMap has minimal gateway config, secret env is empty", () => {
+    const manifests = generateKubernetesManifests(BASE_INPUT);
+    const config = JSON.parse(manifests.configMap.data["openclaw.json"]);
+    expect(config).toEqual({ gateway: { mode: "local" } });
+    expect(manifests.secret.stringData.env).toBe("");
+  });
+
+  test("with agentConfig.telegramBotToken: configMap references env var, secret env has token", () => {
+    const manifests = generateKubernetesManifests({
+      ...BASE_INPUT,
+      agentConfig: { telegramBotToken: "123456:ABC-DEF" },
+    });
+    const config = JSON.parse(manifests.configMap.data["openclaw.json"]);
+    expect(config.channels.telegram.accounts.default.botToken).toBe("${TELEGRAM_BOT_TOKEN}");
+    expect(manifests.secret.stringData.env).toBe("TELEGRAM_BOT_TOKEN=123456:ABC-DEF");
+  });
+
+  test("with empty agentConfig.telegramBotToken: behaves like no agentConfig", () => {
+    const manifests = generateKubernetesManifests({
+      ...BASE_INPUT,
+      agentConfig: { telegramBotToken: "  " },
+    });
+    const config = JSON.parse(manifests.configMap.data["openclaw.json"]);
+    expect(config).toEqual({ gateway: { mode: "local" } });
+    expect(manifests.secret.stringData.env).toBe("");
   });
 });
 

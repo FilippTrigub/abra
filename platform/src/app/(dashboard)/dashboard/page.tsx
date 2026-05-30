@@ -1,6 +1,7 @@
 import { Badge, Button, Card, Panel } from "@/components/ui";
 import { getUser } from "@/lib/auth/firebase-auth";
 import { getDeploymentFeed } from "@/lib/deployments";
+import { hasAgentConfig } from "@/lib/agent-config/service";
 import { DeploymentConsole } from "./deployment-console";
 import { startAbraInstance, stopAbraInstance } from "./actions";
 
@@ -50,11 +51,16 @@ export default async function DashboardPage() {
   let feedWarning: string | null = null;
   let feedLoadError: string | null = null;
   let currentDeployment: Awaited<ReturnType<typeof getDeploymentFeed>>["currentDeployment"] = null;
+  let hasToken = false;
 
   try {
-    const feed = await getDeploymentFeed(user.id);
+    const [feed, tokenConfigured] = await Promise.all([
+      getDeploymentFeed(user.id),
+      hasAgentConfig(user.id),
+    ]);
     currentDeployment = feed.currentDeployment;
     feedWarning = feed.warning;
+    hasToken = tokenConfigured;
   } catch (err) {
     feedLoadError = err instanceof Error ? err.message : "Could not load deployment feed.";
   }
@@ -205,6 +211,7 @@ export default async function DashboardPage() {
         <DeploymentConsole
           initialDeployment={currentDeployment}
           persistenceWarning={feedWarning}
+          hasToken={hasToken}
         />
       </div>
 

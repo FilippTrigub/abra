@@ -102,6 +102,14 @@ function readOptionalBoolean(value: unknown): boolean | undefined {
   return typeof value === "boolean" ? value : undefined;
 }
 
+function readAgentConfig(payload: Record<string, unknown>): ManifestInput["agentConfig"] | undefined {
+  const raw = payload.agentConfig;
+  if (!isRecord(raw)) return undefined;
+  const telegramBotToken = readOptionalString(raw.telegramBotToken);
+  if (!telegramBotToken) return undefined;
+  return { telegramBotToken };
+}
+
 function buildManifestInput(input: {
   accountId: string;
   deploymentId: string;
@@ -112,6 +120,7 @@ function buildManifestInput(input: {
 }): ManifestInput {
   const serviceAccountName = readOptionalString(input.payload.serviceAccountName) ?? undefined;
   const useServiceAccount = readOptionalBoolean(input.payload.useServiceAccount);
+  const agentConfig = readAgentConfig(input.payload);
 
   return {
     accountId: input.accountId,
@@ -121,6 +130,7 @@ function buildManifestInput(input: {
     ...(input.nameOverrides ? { nameOverrides: input.nameOverrides } : {}),
     ...(serviceAccountName ? { serviceAccountName } : {}),
     ...(useServiceAccount !== undefined ? { useServiceAccount } : {}),
+    ...(agentConfig ? { agentConfig } : {}),
   };
 }
 

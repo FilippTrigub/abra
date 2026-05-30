@@ -9,6 +9,7 @@ import { initialDeploymentFormState } from "./deployment-form-state";
 interface DeploymentConsoleProps {
   initialDeployment: DashboardDeployment | null;
   persistenceWarning: string | null;
+  hasToken: boolean;
 }
 
 const STATUS_BADGES: Record<
@@ -127,6 +128,7 @@ function InstanceStatusBox({ deployment }: { deployment: DashboardDeployment | n
 export function DeploymentConsole({
   initialDeployment,
   persistenceWarning,
+  hasToken,
 }: DeploymentConsoleProps) {
   const [deployState, deployAction, deployPending] = useActionState(
     submitDeploymentRequest,
@@ -226,17 +228,35 @@ export function DeploymentConsole({
           )}
 
           {shouldShowDeployForm ? (
-            <form action={deployAction} className="mt-8">
-              <div className={`flex flex-wrap items-center justify-between gap-4 px-4 py-4 ${shellInsetClassName}`}>
+            hasToken ? (
+              <form action={deployAction} className="mt-8">
+                <div className={`flex flex-wrap items-center justify-between gap-4 px-4 py-4 ${shellInsetClassName}`}>
+                  <div>
+                    <p className={shellLabelClassName}>Deployment contract</p>
+                    <p className="mt-1 text-body text-zinc-300">
+                      One click creates the single Abra instance for this account.
+                    </p>
+                  </div>
+                  <SubmitButton pending={deployPending} />
+                </div>
+              </form>
+            ) : (
+              <div className={`mt-8 flex flex-wrap items-center justify-between gap-4 px-4 py-4 ${shellInsetClassName}`}>
                 <div>
-                  <p className={shellLabelClassName}>Deployment contract</p>
+                  <p className={shellLabelClassName}>Setup required</p>
                   <p className="mt-1 text-body text-zinc-300">
-                    One click creates the single Abra instance for this account.
+                    Connect your Telegram bot before deploying. The runtime needs a bot token to receive messages.
                   </p>
                 </div>
-                <SubmitButton pending={deployPending} />
+                <Button
+                  variant="ghost"
+                  href="/dashboard/settings#bot-setup"
+                  className="rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 text-zinc-100 shadow-none hover:border-white/25 hover:bg-white/[0.06] hover:text-white"
+                >
+                  Connect Telegram bot
+                </Button>
               </div>
-            </form>
+            )
           ) : (
             <form action={deleteAction} className={`mt-8 flex flex-wrap items-center justify-between gap-4 px-4 py-4 ${shellInsetClassName}`}>
               <div>

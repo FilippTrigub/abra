@@ -50,6 +50,10 @@ export interface ManifestInput {
   serviceAccountName?: string;
   /** Optional persisted AKS resource names to reuse for reconciliation/migration safety */
   nameOverrides?: ManifestNameOverrides;
+  /** User-supplied agent configuration injected into ConfigMap and Secret */
+  agentConfig?: {
+    telegramBotToken?: string;
+  };
 }
 
 export interface ManifestNameOverrides {
@@ -303,7 +307,7 @@ function buildHydrationInitScript(): string {
     "  echo 'Warning: No /config/openclaw.json found, using defaults'",
     "fi",
     "if [ -f /secrets/env ]; then",
-    "  cp /secrets/env /openclaw-home/.openclaw/",
+    "  cp /secrets/env /openclaw-home/.openclaw/.env",
     "  echo 'Environment loaded from /secrets/env'",
     "fi",
     "chown -R 1000:1000 /openclaw-home/.openclaw",
@@ -522,6 +526,25 @@ function generateServiceAccount(input: ManifestInput): KubernetesObject | undefi
   };
 }
 
+function buildOpenClawConfig(input: ManifestInput): string {
+  const config: Record<string, unknown> = { gateway: { mode: "local" } };
+
+  const token = input.agentConfig?.telegramBotToken?.trim();
+  if (token) {
+    config.channels = {
+      telegram: {
+        accounts: {
+          default: {
+            botToken: "${TELEGRAM_BOT_TOKEN}",
+          },
+        },
+      },
+    };
+  }
+
+  return JSON.stringify(config, null, 2);
+}
+
 function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Record<string, string> } {
   const { accountId, deploymentId } = input;
   const namespace = input.nameOverrides?.namespace ?? getRuntimeNamespace();
@@ -539,9 +562,18 @@ function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Rec
       },
     },
     data: {
-      "openclaw.json": JSON.stringify({ gateway: { mode: "local" } }, null, 2) + "\n",
+      "openclaw.json": buildOpenClawConfig(input) + "\n",
     },
   };
+}
+
+function buildEnvFileContent(input: ManifestInput): string {
+  const lines: string[] = [];
+  const token = input.agentConfig?.telegramBotToken?.trim();
+  if (token) {
+    lines.push(`TELEGRAM_BOT_TOKEN=${token}`);
+  }
+  return lines.join("\n");
 }
 
 function generateSecret(input: ManifestInput): KubernetesObject & {
@@ -565,7 +597,7 @@ function generateSecret(input: ManifestInput): KubernetesObject & {
     },
     type: "Opaque",
     stringData: {
-      env: "",
+      env: buildEnvFileContent(input),
     },
   };
 }

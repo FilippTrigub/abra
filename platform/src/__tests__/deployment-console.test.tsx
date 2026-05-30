@@ -14,6 +14,7 @@ describe("DeploymentConsole", () => {
       <DeploymentConsole
         initialDeployment={null}
         persistenceWarning={null}
+        hasToken={true}
       />,
     );
 
@@ -54,6 +55,7 @@ describe("DeploymentConsole", () => {
           },
         }}
         persistenceWarning={null}
+        hasToken={true}
       />,
     );
 
