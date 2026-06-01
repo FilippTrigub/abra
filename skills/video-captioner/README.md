@@ -45,6 +45,13 @@ uv run python scripts/caption_service.py \
   --input ./input --output ./output --watch
 ```
 
+## Brand fonts
+
+Static caption styling uses `config.default.json`. Its default `caption_font` is
+`auto`, which means the script checks `skills/brand-manager/brand-assets/asset-manifest.json`
+for an available brand font tagged `caption` before falling back to bundled/system
+font names. Set `CLAW_BRAND_ASSETS_DIR` to point at a different brand asset store.
+
 ## CSS styles
 
 `scripts/futuristic.css` — alternating gold/magenta captions with glow effects, monospace font, active word highlighted white. Pass any CSS file via `--css`.

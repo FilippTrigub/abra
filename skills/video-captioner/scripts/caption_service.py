@@ -50,6 +50,10 @@ log = logging.getLogger(__name__)
 
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v"}
 DEFAULT_REMOTE_HF_MODEL = "openai/whisper-large-v3"
+SKILL_DIR = Path(__file__).parent.parent
+REPO_ROOT = SKILL_DIR.parent.parent
+DEFAULT_BRAND_ASSETS_DIR = REPO_ROOT / "skills" / "brand-manager" / "brand-assets"
+BRAND_FONT_TAG_PREFERENCES = ["caption", "body", "heading", "bold"]
 
 
 def load_config(path: Path) -> dict:
@@ -78,6 +82,7 @@ def build_runtime_config(args: argparse.Namespace) -> dict[str, object]:
         "caption_color": None,
         "caption_font_size": None,
         "caption_font": None,
+        "caption_font_tag": None,
         "caption_padding": None,
         "caption_margin": None,
     }
@@ -96,7 +101,15 @@ def build_runtime_config(args: argparse.Namespace) -> dict[str, object]:
     if style_config_path.exists():
         style_config = load_style_config(style_config_path)
         # Apply style config values to the config
-        for key in ["caption_bg_color", "caption_color", "caption_font_size", "caption_font", "caption_padding", "caption_margin"]:
+        for key in [
+            "caption_bg_color",
+            "caption_color",
+            "caption_font_size",
+            "caption_font",
+            "caption_font_tag",
+            "caption_padding",
+            "caption_margin",
+        ]:
             if key in style_config and style_config[key] is not None:
                 config[key] = style_config[key]
 
@@ -134,6 +147,8 @@ def build_runtime_config(args: argparse.Namespace) -> dict[str, object]:
         config["caption_font_size"] = args.caption_font_size
     if hasattr(args, "caption_font") and args.caption_font is not None:
         config["caption_font"] = args.caption_font
+    if hasattr(args, "caption_font_tag") and args.caption_font_tag is not None:
+        config["caption_font_tag"] = args.caption_font_tag
     if hasattr(args, "caption_padding") and args.caption_padding is not None:
         config["caption_padding"] = args.caption_padding
     if hasattr(args, "caption_margin") and args.caption_margin is not None:
@@ -154,6 +169,88 @@ def _string_config_value(
     if value is None:
         return None
     return value if isinstance(value, str) and value.strip() else default
+
+
+def brand_assets_dir() -> Path:
+    override = os.environ.get("CLAW_BRAND_ASSETS_DIR")
+    if override:
+        return Path(override).expanduser().resolve()
+    return DEFAULT_BRAND_ASSETS_DIR
+
+
+def brand_manifest_path() -> Path:
+    return brand_assets_dir() / "asset-manifest.json"
+
+
+def load_brand_manifest() -> dict[str, object]:
+    manifest_path = brand_manifest_path()
+    if not manifest_path.exists():
+        return {}
+    try:
+        return json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"Brand asset manifest is invalid JSON: {manifest_path}") from exc
+
+
+def resolve_brand_font(tag: str | None = None) -> Path | None:
+    manifest = load_brand_manifest()
+    manifest_path = brand_manifest_path()
+    fonts = manifest.get("fonts", [])
+    if not isinstance(fonts, list):
+        return None
+
+    if tag:
+        for font in fonts:
+            if not isinstance(font, dict):
+                continue
+            if tag in font.get("tags", []):
+                path = font.get("path")
+                if not path:
+                    continue
+                candidate = manifest_path.parent / str(path)
+                if candidate.exists():
+                    return candidate
+
+    for preferred_tag in BRAND_FONT_TAG_PREFERENCES:
+        for font in fonts:
+            if not isinstance(font, dict):
+                continue
+            if preferred_tag in font.get("tags", []):
+                path = font.get("path")
+                if not path:
+                    continue
+                candidate = manifest_path.parent / str(path)
+                if candidate.exists():
+                    return candidate
+
+    for font in fonts:
+        if not isinstance(font, dict):
+            continue
+        path = font.get("path")
+        if not path:
+            continue
+        candidate = manifest_path.parent / str(path)
+        if candidate.exists():
+            return candidate
+
+    return None
+
+
+def resolve_caption_font(font_setting: str | None, brand_font_tag: str | None) -> str:
+    if font_setting not in (None, "auto"):
+        candidate = Path(font_setting).expanduser()
+        if candidate.suffix.lower() in {".ttf", ".otf", ".woff", ".woff2"}:
+            resolved = candidate.resolve()
+            if not resolved.exists():
+                raise ValueError(f"Configured caption font does not exist: {resolved}")
+            return str(resolved)
+        return font_setting
+
+    brand_font = resolve_brand_font(brand_font_tag)
+    if brand_font is not None:
+        return str(brand_font)
+
+    return "Courier New"
 
 
 def extract_audio(video_path: Path, audio_path: Path) -> None:
@@ -497,28 +594,47 @@ def build_caption_css(
     pad = padding or "10px 15px"
     marg = margin or "0"
     font_family = font or "Courier New"
+    font_path = Path(font_family).expanduser() if font_family else None
+    uses_font_file = bool(
+        font_path and font_path.suffix.lower() in {".ttf", ".otf", ".woff", ".woff2"}
+    )
+    css_font_family = "BrandCaptionFont" if uses_font_file else font_family
 
-    css_rules = [
-        "#subtitle-container {",
-        "  max-width: 100vw;",
-        "}",
-        "",
-        ".line {",
-        "  max-width: 80vw;",
-        "  flex-wrap: wrap;",
-        "  justify-content: center;",
-        "  white-space: normal;",
-        "  overflow-wrap: anywhere;",
-        "  word-break: break-word;",
-        "}",
-        "",
-        "span.word {",
-        f"  background-color: {bg};",
-        f"  color: {color};",
-        f"  padding: {pad};",
-        f"  margin: {marg};",
-        f"  font-family: '{font_family}';",
-    ]
+    css_rules = []
+    if uses_font_file and font_path:
+        css_rules.extend(
+            [
+                "@font-face {",
+                "  font-family: 'BrandCaptionFont';",
+                f"  src: url('{font_path.resolve().as_uri()}');",
+                "}",
+                "",
+            ]
+        )
+
+    css_rules.extend(
+        [
+            "#subtitle-container {",
+            "  max-width: 100vw;",
+            "}",
+            "",
+            ".line {",
+            "  max-width: 80vw;",
+            "  flex-wrap: wrap;",
+            "  justify-content: center;",
+            "  white-space: normal;",
+            "  overflow-wrap: anywhere;",
+            "  word-break: break-word;",
+            "}",
+            "",
+            "span.word {",
+            f"  background-color: {bg};",
+            f"  color: {color};",
+            f"  padding: {pad};",
+            f"  margin: {marg};",
+            f"  font-family: '{css_font_family}';",
+        ]
+    )
 
     if font_size:
         css_rules.append(f"  font-size: {font_size}px;")
@@ -584,7 +700,11 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--caption-font",
-        help="Caption font family or path to .ttf file (e.g., 'DejaVu Sans Bold')",
+        help="Caption font family, 'auto', or path to .ttf/.otf/.woff/.woff2 file",
+    )
+    parser.add_argument(
+        "--caption-font-tag",
+        help="Brand font tag to resolve from brand-manager asset manifest (e.g., caption, body, heading)",
     )
     parser.add_argument(
         "--caption-padding",
@@ -679,16 +799,25 @@ def main() -> None:
 
     # Generate CSS for static captions (with defaults applied automatically)
     if static_transcript:
+        try:
+            caption_font = resolve_caption_font(
+                _string_config_value(config, "caption_font"),
+                _string_config_value(config, "caption_font_tag"),
+            )
+        except ValueError as exc:
+            log.error(str(exc))
+            sys.exit(1)
+        config["caption_font"] = caption_font
         generated_css = build_caption_css(
             bg_color=config.get("caption_bg_color"),
             text_color=config.get("caption_color"),
             font_size=config.get("caption_font_size"),
-            font=config.get("caption_font"),
+            font=caption_font,
             padding=config.get("caption_padding"),
             margin=config.get("caption_margin"),
         )
         css_path = save_generated_css(generated_css, skill_dir)
-        log.info("Applied default caption styling (white bg, blue text, Courier New)")
+        log.info("Applied caption styling with font: %s", caption_font)
 
     output_dir.mkdir(parents=True, exist_ok=True)
 

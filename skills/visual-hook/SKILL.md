@@ -38,8 +38,10 @@ cd "$SKILL_DIR" && uv sync
 
 The skill tries fonts in this order:
 1. `hook.font` if set to a file path
-2. A brand font from `skills/brand-manager/brand-assets/asset-manifest.json`
+2. A brand font from `skills/brand-manager/brand-assets/asset-manifest.json`, preferring fonts tagged `heading` or `bold`
 3. Common system fonts such as DejaVu Sans Bold
+
+Set `CLAW_BRAND_ASSETS_DIR` to point at a different brand asset store. Keep `hook.font` as `auto` when you want downloaded brand fonts from `brand-manager` to be used automatically.
 
 For videos, the skill resolves the hook clip from `brand-assets/asset-manifest.json`:
 1. `--hook-video <name|path>` if provided
@@ -120,7 +122,7 @@ Tell the user:
 | `hook.font_size` | integer or `null` | `null` | Explicit font size; auto-scales when null |
 | `hook.stroke_width` | integer | `4` | Text outline width |
 | `hook.duration` | float | `3.0` | Seconds to show hook on videos |
-| `hook.font` | `auto` or file path | `auto` | Explicit font path override |
+| `hook.font` | `auto` or file path | `auto` | Explicit font path override; `auto` uses available brand fonts first |
 
 ## Output
 

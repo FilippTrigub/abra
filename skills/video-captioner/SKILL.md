@@ -66,7 +66,7 @@ Styling is managed via **JSON config files**. When using static captions, stylin
 When no `--style-config` is specified, `config.default.json` is used:
 - **Background:** white (`#FFFFFF`)
 - **Text color:** blue (`#0066FF`)
-- **Font:** Courier New
+- **Font:** `auto` — uses an available brand font tagged `caption` first, then falls back to Courier New
 - **Padding:** `10px 15px`
 - **Margin:** `0`
 
@@ -94,7 +94,8 @@ Copy `config.default.json` and modify:
 {
   "caption_bg_color": "#000000",
   "caption_color": "#FFFFFF",
-  "caption_font": "DejaVu Sans Bold",
+  "caption_font": "auto",
+  "caption_font_tag": "caption",
   "caption_padding": "20px 30px",
   "caption_margin": "10px",
   "caption_font_size": 48
@@ -127,7 +128,8 @@ uv run python scripts/caption_service.py \
 |-----|------|-------------|
 | `caption_bg_color` | string | Background color (hex or CSS color name) |
 | `caption_color` | string | Text color (hex or CSS color name) |
-| `caption_font` | string | Font family or path to .ttf file |
+| `caption_font` | string | `auto`, font family, or path to `.ttf`, `.otf`, `.woff`, `.woff2` file |
+| `caption_font_tag` | string or null | Brand font tag to prefer from `brand-manager` (`caption`, `body`, `heading`, etc.) |
 | `caption_padding` | string | CSS padding (e.g., `"10px 15px"`) |
 | `caption_margin` | string | CSS margin (e.g., `"0"`) |
 | `caption_font_size` | integer or null | Font size in pixels (null = auto-scale) |
@@ -142,6 +144,7 @@ System fonts can be specified by name:
 - Any TTF file path: `/path/to/font.ttf`
 
 Or choose from brand fonts in `skills/brand-manager/brand-assets/asset-manifest.json`.
+When `caption_font` is `auto`, the skill reads the brand manifest (or `CLAW_BRAND_ASSETS_DIR` if set) and uses the first available font tagged by `caption_font_tag`; if no tagged font exists, it tries brand fonts tagged `caption`, `body`, `heading`, or `bold`, then falls back to Courier New. If the resolved brand font is a file path, the generated CSS includes an `@font-face` rule so pycaps can render it.
 
 ## How to run
 

@@ -64,6 +64,7 @@ Every tool accepts `--device cpu` to fall back to CPU/RAM:
 
 **Features:**
 - Brand asset storage (logos, fonts, templates)
+- Font downloads from Fontsource and Google Fonts Developer API, with source/license metadata stored beside the font file
 - Voice and tone guidelines
 - Visual identity specifications
 - Content adaptation to brand standards
@@ -83,6 +84,16 @@ The brand-manager skill contains four strategy skills for brand development and 
 # Store a brand image
 python skills/brand-manager/scripts/brand_assets.py store-image \
   --input ./logo.png --name main-logo --tags logo,primary
+
+# Download a brand font from Fontsource (preferred, no auth)
+python skills/brand-manager/scripts/brand_assets.py download-fontsource-font \
+  --id inter --weight 700 --style normal --subset latin \
+  --format woff2 --name inter-bold --tags heading,caption
+
+# Download a brand font from Google Fonts Developer API
+GOOGLE_FONTS_API_KEY=your-key \
+python skills/brand-manager/scripts/brand_assets.py download-google-font \
+  --family "Inter" --variant 700 --name inter-google-bold --tags heading,caption
 
 # List all assets
 python skills/brand-manager/scripts/brand_assets.py list
@@ -265,7 +276,7 @@ uv run python scripts/separate.py --input ./input --output ./output --stem vocal
 
 ### image-captioner — Auto-Caption
 
-**What it does:** Runs a local vision-language model over each image and writes a JSON sidecar with a description, suggested Instagram caption, and detected tags.
+**What it does:** Runs a local vision-language model over each image and writes a JSON sidecar with a description, suggested Instagram caption, and detected tags. If brand fonts are specified and available in `brand-manager`, mention the preferred font in downstream handoff notes; this skill does not render text itself.
 
 **Models:**
 - moondream2 — 2B params, fast, runs on CPU
@@ -374,7 +385,7 @@ uv run python scripts/enhance.py --preset cinematic
 
 ### video-captioner — Animated Captions
 
-**What it does:** Transcribes speech with Whisper and burns word-by-word animated captions into videos. Two built-in styles: minimalist (default) and futuristic (gold/magenta glow). CPU-only — no GPU required.
+**What it does:** Transcribes speech with Whisper and burns word-by-word animated captions into videos. Two built-in styles: minimalist (default) and futuristic (gold/magenta glow). If brand fonts are specified and available in `brand-manager`, static caption styling uses them before falling back to system fonts. CPU-only — no GPU required.
 
 **Requires:** `uv`, `ffmpeg`
 
@@ -557,7 +568,7 @@ uv run python scripts/process.py --config config.json
 
 ### visual-hook — Visual Hook Overlays
 
-**What it does:** Adds bold, high-contrast hook text overlays to images and videos in Instagram-safe zones. Useful for questions, teasers, bold claims, and other scroll-stopping first-frame treatments. CPU-only — no GPU required.
+**What it does:** Adds bold, high-contrast hook text overlays to images and videos in Instagram-safe zones. If brand fonts are specified and available in `brand-manager`, the hook renderer uses them before falling back to system fonts. Useful for questions, teasers, bold claims, and other scroll-stopping first-frame treatments. CPU-only — no GPU required.
 
 **Requires:** `uv`, `ffmpeg`
 
@@ -571,7 +582,7 @@ uv run python scripts/hook.py --config config.json
 
 ### end-cta — End CTA Renderer
 
-**What it does:** Applies a brand-defined CTA at the end of content. Text and image CTAs can overlay images, while videos receive an appended CTA card or CTA video. CPU-only — no GPU required.
+**What it does:** Applies a brand-defined CTA at the end of content. Text and image CTAs can overlay images, while videos receive an appended CTA card or CTA video. If brand fonts are specified and available in `brand-manager`, text CTA rendering uses them before falling back to system fonts. CPU-only — no GPU required.
 
 **Requires:** `uv`, `ffmpeg`
 

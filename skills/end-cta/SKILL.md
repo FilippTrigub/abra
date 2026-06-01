@@ -32,6 +32,15 @@ Resolution order:
 2. manifest CTA entry with `"default": true`
 3. otherwise fail
 
+## Brand fonts
+
+Text CTAs use brand fonts when they are specified and available. Font resolution order is:
+1. `cta.font` if set to an explicit font file path
+2. a font from `skills/brand-manager/brand-assets/asset-manifest.json` tagged `heading` or `bold`, then any available brand font
+3. common system fonts such as DejaVu Sans Bold
+
+Set `CLAW_BRAND_ASSETS_DIR` to point at a different brand asset store. Keep `cta.font` as `auto` when you want downloaded brand fonts from `brand-manager` to be used automatically.
+
 ## Setup
 
 ```bash
@@ -65,7 +74,7 @@ cd "$SKILL_DIR" && uv run python scripts/cta.py \
 | `cta.selection` | `auto` or CTA name | `auto` | CTA to resolve from brand assets |
 | `cta.duration` | float | `2.0` | CTA card duration for text/image on videos |
 | `cta.position` | `top-left`, `top-right`, `upper-middle`, `center`, `lower-middle`, `bottom-right`, `bottom-left` | `lower-middle` | Overlay position for image inputs |
-| `cta.font` | `auto` or file path | `auto` | Font override for text CTA |
+| `cta.font` | `auto` or file path | `auto` | Font override for text CTA; `auto` uses available brand fonts first |
 | `cta.font_size` | integer or `null` | `null` | Explicit text size |
 | `cta.stroke_width` | integer | `4` | Text outline width |
 | `cta.preset` | `bold-white`, `bold-black`, `neon-red`, `neon-yellow`, `minimal` | `bold-white` | Text style preset |

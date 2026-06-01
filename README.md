@@ -116,7 +116,7 @@ bash ./installers/install-abra-on-openclaw.sh --env-file ./.env.production
 bash ./installers/install-abra-on-hermes.sh
 ```
 
-The OpenClaw installer copies Abra into `~/.openclaw/workspace-abra/`, registers it with OpenClaw, and can scaffold optional env files such as `~/.openclaw/post-scheduler-backblaze.env`. The Hermes installer creates a profile under `~/.hermes/profiles/abra/` and writes an Abra-specific `.env`, `config.yaml`, and skill set there.
+The OpenClaw installer copies Abra into `~/.openclaw/workspace-abra/`, registers it with OpenClaw, and can scaffold optional env files such as `~/.openclaw/post-scheduler-backblaze.env`. The Hermes installer creates the profile with `hermes profile create`, writes an Abra-specific `.env`, `config.yaml`, and skill set under `~/.hermes/profiles/abra/`, copies default-profile auth/session state when present, and installs the profile gateway with `hermes -p abra gateway install`. If `~/.hermes/.env` exists, the installer asks which variables to copy into the Abra profile; for non-interactive installs, set `ABRA_COPY_HERMES_ENV_VARS=all`, `none`, or a comma-separated key list.
 
 ### Prerequisites
 
@@ -220,7 +220,7 @@ Brand assets are stored in `skills/brand-manager/brand-assets/`:
 ```
 brand-assets/
 ├── images/              # Logos, profile pics, templates
-├── fonts/               # .ttf, .otf, .woff files
+├── fonts/               # .ttf, .otf, .woff, .woff2 files + metadata sidecars
 ├── videos/              # Hook intro clips and other reusable brand videos
 └── asset-manifest.json   # Asset index
 ```
@@ -235,6 +235,16 @@ python skills/brand-manager/scripts/brand_assets.py store-image \
 # Store a brand font
 python skills/brand-manager/scripts/brand_assets.py store-font \
   --input ./Inter-Bold.ttf --name inter-bold --tags heading
+
+# Download a brand font from Fontsource (preferred; no API key)
+python skills/brand-manager/scripts/brand_assets.py download-fontsource-font \
+  --id inter --weight 700 --style normal --subset latin \
+  --format woff2 --name inter-bold --tags heading,caption
+
+# Download a brand font from Google Fonts Developer API
+GOOGLE_FONTS_API_KEY=your-key \
+python skills/brand-manager/scripts/brand_assets.py download-google-font \
+  --family "Inter" --variant 700 --name inter-google-bold --tags heading,caption
 
 # Store a brand hook video
 python skills/brand-manager/scripts/brand_assets.py store-video \
@@ -287,6 +297,11 @@ Video assets follow the same manifest structure under `videos`, with optional
 
 CTA definitions live under `ctas` in the same manifest. Text CTAs store inline text,
 while image and video CTAs reference stored brand asset paths.
+
+Downloaded fonts also write `fonts/<name>.metadata.json` and enrich the font
+manifest entry with source, family, variant, download URL, license notes, and
+SHA-256. Downstream visual skills use available brand fonts when configured with
+`auto` or a matching font tag.
 
 ---
 

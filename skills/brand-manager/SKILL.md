@@ -91,7 +91,7 @@ This skill manages brand assets (images, fonts, videos, and CTA definitions) tha
 $SKILL_DIR/
 ├── brand-assets/
 │   ├── images/          # Brand images (logos, profile pics, templates)
-│   ├── fonts/           # Brand fonts (.ttf, .otf files)
+│   ├── fonts/           # Brand fonts (.ttf, .otf, .woff, .woff2 files + metadata sidecars)
 │   ├── videos/          # Brand video clips (hook intros, bumpers)
 │   └── asset-manifest.json  # Index of all stored assets and CTA definitions
 ```
@@ -151,6 +151,44 @@ python scripts/brand_assets.py store-font \
   --name inter-bold \
   --tags heading
 ```
+
+---
+
+### 4b. download-brand-font
+
+**Purpose**: Downloads an open web font into the brand-assets repository and registers it in the manifest with source and license metadata.
+
+**Sources**:
+- `download-fontsource-font` — preferred default. No auth required; downloads `.woff2`, `.woff`, or `.ttf` from Fontsource and records the API license field.
+- `download-google-font` — uses the Google Fonts Developer API. Requires `GOOGLE_FONTS_API_KEY` or `--api-key`; downloads the selected variant from the API `files` map. The Google API does not expose a documented license field, so the manifest records that caveat.
+
+**Output**:
+- Font file copied to `brand-assets/fonts/`
+- Metadata sidecar written as `brand-assets/fonts/<name>.metadata.json`
+- Manifest entry added with name, path, tags, source, family, variant details, license/source notes, download URL, SHA-256, and timestamp
+
+**Script Usage**:
+```bash
+# Preferred: Fontsource, no API key
+python scripts/brand_assets.py download-fontsource-font \
+  --id inter \
+  --weight 700 \
+  --style normal \
+  --subset latin \
+  --format woff2 \
+  --name inter-bold \
+  --tags heading,caption
+
+# Fallback: Google Fonts Developer API
+export GOOGLE_FONTS_API_KEY="your-key"
+python scripts/brand_assets.py download-google-font \
+  --family "Inter" \
+  --variant 700 \
+  --name inter-bold-google \
+  --tags heading,caption
+```
+
+Use tags intentionally. Downstream visual skills prefer brand fonts tagged `caption`, `body`, `heading`, or `bold` when their font setting is `auto`.
 
 ---
 

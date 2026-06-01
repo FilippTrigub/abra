@@ -70,6 +70,8 @@ Before I describe the images, I need to know:
 If the user gives a caption style, incorporate it into `prompt_caption`.
 Example: `"Write a fun, emoji-rich Instagram caption for this image. Include 3-5 hashtags."`
 
+If the user asks for branded visuals, check `skills/brand-manager/brand-assets/asset-manifest.json` for available fonts and mention the preferred brand font in the generated caption guidance or handoff notes. This skill writes JSON sidecars only, so it does not render text itself; downstream renderers such as `visual-hook`, `video-captioner`, and `end-cta` should use the actual brand font files when they are specified and available.
+
 ### 3. Run
 
 ```bash
@@ -127,6 +129,8 @@ For each `photo.jpg` in `input_dir`, writes `photo.json` in `output_dir`:
   "tags": ["portrait", "coffee", "indoor", "warm light"]
 }
 ```
+
+When brand fonts are relevant, include the font name/tag in downstream instructions rather than embedding a font file in this JSON. Rendering skills are responsible for resolving the manifest path and applying the font.
 
 ---
 
