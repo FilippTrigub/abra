@@ -36,6 +36,7 @@ Options:
 
 Environment:
   ABRA_COPY_HERMES_ENV_VARS  Comma-separated keys, 'all', or 'none' for ~/.hermes/.env copying
+                             TELEGRAM_BOT_TOKEN is always excluded; enter it when prompted
   HERMES_INSTALL_GATEWAY     Set to 0 to skip gateway service installation
 EOF
 }
@@ -145,6 +146,8 @@ for raw_line in path.read_text(encoding="utf-8").splitlines():
     if not line or line.startswith("#") or "=" not in line:
         continue
     key = line.split("=", 1)[0].strip()
+    if key == "TELEGRAM_BOT_TOKEN":
+        continue
     if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key) and key not in seen:
         seen.add(key)
         print(key)
@@ -287,7 +290,8 @@ def parse_dotenv(path: Path) -> dict[str, str]:
 
 existing = set(parse_dotenv(dest))
 source_values = parse_dotenv(source)
-extras = [(key, source_values[key]) for key in selected if key in source_values and key not in existing]
+forbidden = {"TELEGRAM_BOT_TOKEN"}
+extras = [(key, source_values[key]) for key in selected if key not in forbidden and key in source_values and key not in existing]
 if not extras:
     raise SystemExit(0)
 
@@ -375,12 +379,30 @@ resolve_installer_env_value() {
 
     # 3. ~/.hermes/.env (only keys explicitly selected for this profile)
     local hermes_env="${HOST_HERMES_ROOT}/.env"
-    if [ -f "${hermes_env}" ] && hermes_env_key_selected "${key}"; then
+    if [ "${key}" != "TELEGRAM_BOT_TOKEN" ] && [ -f "${hermes_env}" ] && hermes_env_key_selected "${key}"; then
         value="$(read_env_value "${hermes_env}" "${key}")"
         if [ -n "${value}" ]; then
             printf '%s' "${value}"
             return 0
         fi
+    fi
+
+    printf '%s' "${value}"
+}
+
+resolve_telegram_bot_token() {
+    local value="${TELEGRAM_BOT_TOKEN:-}"
+
+    # Telegram bot tokens are profile-specific. Allow shell env and this repo's
+    # installer .env, but never inherit them from ~/.hermes/.env or OpenClaw.
+    if [ -z "${value}" ] && [ -n "${ROOT_ENV_FILE:-}" ] && [ -f "${ROOT_ENV_FILE}" ]; then
+        value="$(read_env_value "${ROOT_ENV_FILE}" "TELEGRAM_BOT_TOKEN")"
+    fi
+
+    if [ -z "${value}" ] && [ -t 0 ]; then
+        echo
+        read -r -s -p "Telegram bot token for Hermes profile '${PROFILE_NAME}' (leave empty to skip): " value
+        echo
     fi
 
     printf '%s' "${value}"
@@ -676,18 +698,12 @@ write_env_file() {
     local apollo_api_key clearbit_api_key zoominfo_username zoominfo_password clay_api_key segment_write_key
     local brave_api_key gh_token
 
-    anthropic_api_key="$(resolve_installer_env_value "ANTHROPIC_API_KEY")"
-    openrouter_api_key="$(resolve_installer_env_value "OPENROUTER_API_KEY")"
-    telegram_bot_token="$(resolve_installer_env_value "TELEGRAM_BOT_TOKEN")"
-    telegram_allowed_users="$(resolve_installer_env_value "TELEGRAM_ALLOWED_USERS")"
-    telegram_home_channel="$(resolve_installer_env_value "TELEGRAM_HOME_CHANNEL")"
-    telegram_home_channel_name="$(resolve_installer_env_value "TELEGRAM_HOME_CHANNEL_NAME")"
     local fal_api_key
 
     # Always resolve platform keys (not skill-dependent)
     anthropic_api_key="$(resolve_installer_env_value "ANTHROPIC_API_KEY")"
     openrouter_api_key="$(resolve_installer_env_value "OPENROUTER_API_KEY")"
-    telegram_bot_token="$(resolve_installer_env_value "TELEGRAM_BOT_TOKEN")"
+    telegram_bot_token="$(resolve_telegram_bot_token)"
     telegram_allowed_users="$(resolve_installer_env_value "TELEGRAM_ALLOWED_USERS")"
     telegram_home_channel="$(resolve_installer_env_value "TELEGRAM_HOME_CHANNEL")"
     telegram_home_channel_name="$(resolve_installer_env_value "TELEGRAM_HOME_CHANNEL_NAME")"

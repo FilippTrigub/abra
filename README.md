@@ -116,7 +116,7 @@ bash ./installers/install-abra-on-openclaw.sh --env-file ./.env.production
 bash ./installers/install-abra-on-hermes.sh
 ```
 
-The OpenClaw installer copies Abra into `~/.openclaw/workspace-abra/`, registers it with OpenClaw, and can scaffold optional env files such as `~/.openclaw/post-scheduler-backblaze.env`. The Hermes installer creates the profile with `hermes profile create`, writes an Abra-specific `.env`, `config.yaml`, and skill set under `~/.hermes/profiles/abra/`, copies default-profile auth/session state when present, and installs the profile gateway with `hermes -p abra gateway install`. If `~/.hermes/.env` exists, the installer asks which variables to copy into the Abra profile; for non-interactive installs, set `ABRA_COPY_HERMES_ENV_VARS=all`, `none`, or a comma-separated key list.
+The OpenClaw installer copies Abra into `~/.openclaw/workspace-abra/`, registers it with OpenClaw, and can scaffold optional env files such as `~/.openclaw/post-scheduler-backblaze.env`. The Hermes installer creates the profile with `hermes profile create`, writes an Abra-specific `.env`, `config.yaml`, and skill set under `~/.hermes/profiles/abra/`, copies default-profile auth/session state when present, and installs the profile gateway with `hermes -p abra gateway install`. If `~/.hermes/.env` exists, the installer asks which variables to copy into the Abra profile; for non-interactive installs, set `ABRA_COPY_HERMES_ENV_VARS=all`, `none`, or a comma-separated key list. `TELEGRAM_BOT_TOKEN` is never copied from `~/.hermes/.env` or OpenClaw state; provide it through the shell, this repo's installer `.env`, or the interactive prompt.
 
 ### Prerequisites
 
