@@ -9,11 +9,14 @@ AGENT_DISPLAY_NAME="Abra"
 REPO_URL="${REPO_URL:-https://github.com/FilippTrigub/abra.git}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
 HOST_OPENCLAW_DIR="${HOME}/.openclaw"
+HOST_HERMES_DIR="${HOME}/.hermes"
 CONTAINER_OPENCLAW_DIR="/home/node/.openclaw"
 AGENT_WORKSPACE_HOST="${HOST_OPENCLAW_DIR}/workspace-${AGENT_NAME}"
 AGENT_WORKSPACE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/workspace-${AGENT_NAME}"
 SKILLS_DEST="${AGENT_WORKSPACE_HOST}/skills"
 CONFIG_FILE="${HOST_OPENCLAW_DIR}/openclaw.json"
+OPENCLAW_ENV_FILE="${HOST_OPENCLAW_DIR}/.env"
+HERMES_ENV_FILE="${HOST_HERMES_DIR}/.env"
 POST_SCHEDULER_ENV_FILE="${HOST_OPENCLAW_DIR}/post-scheduler-backblaze.env"
 POST_SCHEDULER_ENV_FILE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/post-scheduler-backblaze.env"
 BACKBLAZE_B2_RUNPOD_ENV_FILE="${HOST_OPENCLAW_DIR}/runpod-backblaze.env"
@@ -28,6 +31,10 @@ Usage: $0 [--env-file PATH]
 Options:
   -e, --env-file PATH   Use PATH as the source .env file for installer env values
   -h, --help            Show this help message
+
+Telegram env policy:
+  TELEGRAM_BOT_TOKEN      Shell env, selected installer .env, or visible prompt only
+  TELEGRAM_ALLOWED_USERS  Always copied from ~/.hermes/.env or ~/.openclaw/.env
 EOF
 }
 
@@ -168,6 +175,40 @@ resolve_installer_env_value() {
     if [ -n "${value}" ]; then
         printf '%s' "${value}"
         return 0
+    fi
+
+    printf '%s' "${value}"
+}
+
+resolve_telegram_bot_token() {
+    local value="${TELEGRAM_BOT_TOKEN:-}"
+
+    # Telegram bot tokens are agent-specific. Allow shell env and this repo's
+    # installer .env, but never inherit them from OpenClaw/Hermes state.
+    if [ -z "${value}" ] && [ -n "${ROOT_ENV_FILE:-}" ] && [ -f "${ROOT_ENV_FILE}" ]; then
+        value="$(read_env_value "${ROOT_ENV_FILE}" "TELEGRAM_BOT_TOKEN")"
+    fi
+
+    if [ -z "${value}" ] && [ -t 0 ]; then
+        echo
+        read -r -p "Telegram bot token for OpenClaw agent '${AGENT_DISPLAY_NAME}' (leave empty to skip): " value
+        echo
+    fi
+
+    printf '%s' "${value}"
+}
+
+resolve_telegram_allowed_users() {
+    local value=""
+
+    # Preserve the user's existing gateway allowlist. Prefer Hermes when both
+    # platforms are present so OpenClaw mirrors the newer multi-agent setup.
+    if [ -f "${HERMES_ENV_FILE}" ]; then
+        value="$(read_env_value "${HERMES_ENV_FILE}" "TELEGRAM_ALLOWED_USERS")"
+    fi
+
+    if [ -z "${value}" ] && [ -f "${OPENCLAW_ENV_FILE}" ]; then
+        value="$(read_env_value "${OPENCLAW_ENV_FILE}" "TELEGRAM_ALLOWED_USERS")"
     fi
 
     printf '%s' "${value}"
@@ -863,6 +904,11 @@ set_config_env_value() {
     echo "  ✓ openclaw.json env.${key}"
 }
 
+configure_telegram_env_values() {
+    INSTALL_TELEGRAM_BOT_TOKEN="$(resolve_telegram_bot_token)"
+    INSTALL_TELEGRAM_ALLOWED_USERS="$(resolve_telegram_allowed_users)"
+}
+
 configure_skill_api_keys() {
     warn_unset_skill_env_values
 
@@ -1203,10 +1249,10 @@ EOF
     echo "    openclaw.json env.BACKBLAZE_B2_ENV_FILE -> ${POST_SCHEDULER_ENV_FILE_CONTAINER}"
 }
 
+parse_args "$@"
+
 echo "Installing Abra - Agent de Branding..."
 echo
-
-parse_args "$@"
 
 command -v jq >/dev/null 2>&1 || { echo "jq required: brew install jq"; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 required to scaffold post-scheduler env values"; exit 1; }
@@ -1303,6 +1349,7 @@ done
 
 configure_post_scheduler_env
 configure_runpod_b2_staging_env
+configure_telegram_env_values
 configure_skill_api_keys
 
 cp "${CONFIG_FILE}" "${CONFIG_FILE}.backup.$(date +%Y%m%d%H%M%S)"
@@ -1337,6 +1384,9 @@ fi
 
 jq --arg path "${POST_SCHEDULER_ENV_FILE_CONTAINER}" '.env.BACKBLAZE_B2_ENV_FILE = $path' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
 jq --arg path "${BACKBLAZE_B2_RUNPOD_ENV_FILE_CONTAINER}" '.env.BACKBLAZE_B2_RUNPOD_ENV_FILE = $path' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
+
+set_config_env_value "TELEGRAM_BOT_TOKEN" "${INSTALL_TELEGRAM_BOT_TOKEN}"
+set_config_env_value "TELEGRAM_ALLOWED_USERS" "${INSTALL_TELEGRAM_ALLOWED_USERS}"
 
 [ "${SKILL_ENABLED_POST_SCHEDULER}" = "1" ] && set_config_env_value "BUFFER_API_KEY" "${INSTALL_BUFFER_API_KEY}"
 [ "${SKILL_ENABLED_GIPHY}" = "1" ] && set_config_env_value "GIPHY_API_KEY" "${INSTALL_GIPHY_API_KEY}"

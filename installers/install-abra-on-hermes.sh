@@ -19,6 +19,7 @@ else
     REAL_HOME="${HOME}"
 fi
 HOST_HERMES_ROOT="${REAL_HOME}/.hermes"
+HOST_OPENCLAW_ROOT="${REAL_HOME}/.openclaw"
 CONTAINER_HERMES_ROOT="/opt/data"
 HOST_PROFILE_DIR="${HOST_HERMES_ROOT}/profiles/${PROFILE_NAME}"
 CONTAINER_PROFILE_DIR="${CONTAINER_HERMES_ROOT}/profiles/${PROFILE_NAME}"
@@ -37,6 +38,7 @@ Options:
 Environment:
   ABRA_COPY_HERMES_ENV_VARS  Comma-separated keys, 'all', or 'none' for ~/.hermes/.env copying
                              TELEGRAM_BOT_TOKEN is always excluded; enter it when prompted
+                             TELEGRAM_ALLOWED_USERS always comes from ~/.hermes/.env or ~/.openclaw/.env
   HERMES_INSTALL_GATEWAY     Set to 0 to skip gateway service installation
 EOF
 }
@@ -401,8 +403,27 @@ resolve_telegram_bot_token() {
 
     if [ -z "${value}" ] && [ -t 0 ]; then
         echo
-        read -r -s -p "Telegram bot token for Hermes profile '${PROFILE_NAME}' (leave empty to skip): " value
+        read -r -p "Telegram bot token for Hermes profile '${PROFILE_NAME}' (leave empty to skip): " value
         echo
+    fi
+
+    printf '%s' "${value}"
+}
+
+resolve_telegram_allowed_users() {
+    local value=""
+    local hermes_env="${HOST_HERMES_ROOT}/.env"
+    local openclaw_env="${HOST_OPENCLAW_ROOT}/.env"
+
+    # Allowed-user lists protect the gateway and should follow the user's
+    # existing platform allowlist, independent of the optional ~/.hermes/.env
+    # variable picker.
+    if [ -f "${hermes_env}" ]; then
+        value="$(read_env_value "${hermes_env}" "TELEGRAM_ALLOWED_USERS")"
+    fi
+
+    if [ -z "${value}" ] && [ -f "${openclaw_env}" ]; then
+        value="$(read_env_value "${openclaw_env}" "TELEGRAM_ALLOWED_USERS")"
     fi
 
     printf '%s' "${value}"
@@ -704,7 +725,7 @@ write_env_file() {
     anthropic_api_key="$(resolve_installer_env_value "ANTHROPIC_API_KEY")"
     openrouter_api_key="$(resolve_installer_env_value "OPENROUTER_API_KEY")"
     telegram_bot_token="$(resolve_telegram_bot_token)"
-    telegram_allowed_users="$(resolve_installer_env_value "TELEGRAM_ALLOWED_USERS")"
+    telegram_allowed_users="$(resolve_telegram_allowed_users)"
     telegram_home_channel="$(resolve_installer_env_value "TELEGRAM_HOME_CHANNEL")"
     telegram_home_channel_name="$(resolve_installer_env_value "TELEGRAM_HOME_CHANNEL_NAME")"
     brave_api_key="$(resolve_installer_env_value "BRAVE_API_KEY")"
