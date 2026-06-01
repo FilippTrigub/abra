@@ -9,6 +9,8 @@ set -e
 PROFILE_NAME="${PROFILE_NAME:-abra}"
 REPO_URL="${REPO_URL:-https://github.com/FilippTrigub/abra.git}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
+HERMES_INSTALL_GATEWAY="${HERMES_INSTALL_GATEWAY:-1}"
+HERMES_ENV_COPY_KEYS="${ABRA_COPY_HERMES_ENV_VARS:-}"
 
 # When run via sudo, $HOME is /root — resolve the real user's home instead.
 if [ -n "${SUDO_USER:-}" ]; then
@@ -29,7 +31,12 @@ Usage: $0 [--env-file PATH] [--profile NAME]
 Options:
   -e, --env-file PATH   Use PATH as the source .env file for installer env values
   -p, --profile NAME    Hermes profile name (default: abra)
+      --no-gateway       Do not run 'hermes -p PROFILE gateway install'
   -h, --help            Show this help message
+
+Environment:
+  ABRA_COPY_HERMES_ENV_VARS  Comma-separated keys, 'all', or 'none' for ~/.hermes/.env copying
+  HERMES_INSTALL_GATEWAY     Set to 0 to skip gateway service installation
 EOF
 }
 
@@ -64,6 +71,10 @@ parse_args() {
                 PROFILE_NAME="${1#*=}"
                 HOST_PROFILE_DIR="${HOST_HERMES_ROOT}/profiles/${PROFILE_NAME}"
                 CONTAINER_PROFILE_DIR="${CONTAINER_HERMES_ROOT}/profiles/${PROFILE_NAME}"
+                shift
+                ;;
+            --no-gateway)
+                HERMES_INSTALL_GATEWAY=0
                 shift
                 ;;
             -h|--help)
@@ -118,11 +129,229 @@ for raw_line in path.read_text(encoding="utf-8").splitlines():
 PY
 }
 
+list_env_keys() {
+    local file="$1"
+    [ -f "${file}" ] || return 0
+
+    python3 - "$file" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+path = Path(sys.argv[1])
+seen: set[str] = set()
+for raw_line in path.read_text(encoding="utf-8").splitlines():
+    line = raw_line.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    key = line.split("=", 1)[0].strip()
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key) and key not in seen:
+        seen.add(key)
+        print(key)
+PY
+}
+
+normalize_comma_list() {
+    local value="$1"
+    python3 - "$value" <<'PY'
+import sys
+
+parts = [part.strip() for part in sys.argv[1].split(",")]
+print(",".join(part for part in parts if part))
+PY
+}
+
+hermes_env_key_selected() {
+    local key="$1"
+    case ",${HERMES_ENV_COPY_KEYS}," in
+        *,"${key}",*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+select_hermes_env_copy_keys() {
+    local hermes_env="${HOST_HERMES_ROOT}/.env"
+    [ -f "${hermes_env}" ] || return 0
+
+    local keys=()
+    local key
+    while IFS= read -r key; do
+        [ -n "${key}" ] && keys+=("${key}")
+    done < <(list_env_keys "${hermes_env}")
+    [ "${#keys[@]}" -gt 0 ] || return 0
+
+    if [ "${HERMES_ENV_COPY_KEYS}" = "all" ]; then
+        HERMES_ENV_COPY_KEYS="$(IFS=,; printf '%s' "${keys[*]}")"
+        echo "  ✓ selected all ${#keys[@]} vars from ${hermes_env}"
+        return 0
+    fi
+
+    if [ "${HERMES_ENV_COPY_KEYS}" = "none" ]; then
+        HERMES_ENV_COPY_KEYS=""
+        echo "  ✓ selected no vars from ${hermes_env}"
+        return 0
+    fi
+
+    if [ -n "${HERMES_ENV_COPY_KEYS}" ]; then
+        HERMES_ENV_COPY_KEYS="$(normalize_comma_list "${HERMES_ENV_COPY_KEYS}")"
+        echo "  ✓ selected vars from ${hermes_env}: ${HERMES_ENV_COPY_KEYS}"
+        return 0
+    fi
+
+    if [ ! -t 0 ]; then
+        HERMES_ENV_COPY_KEYS=""
+        echo "  ✓ non-interactive: selected no vars from ${hermes_env}"
+        return 0
+    fi
+
+    echo
+    echo "${hermes_env} exists. Select default-profile env vars to copy into profile '${PROFILE_NAME}'."
+    echo "Leave empty to copy none, enter 'all', or use comma-separated numbers/names."
+    echo
+
+    local i=1
+    for key in "${keys[@]}"; do
+        printf '  %2d) %s\n' "${i}" "${key}"
+        i=$((i + 1))
+    done
+
+    local reply=""
+    read -r -p "Copy vars from ${hermes_env}? [none]: " reply
+    reply="$(normalize_comma_list "${reply}")"
+
+    if [ -z "${reply}" ] || [ "${reply}" = "none" ]; then
+        HERMES_ENV_COPY_KEYS=""
+        echo "  ✓ selected no vars from ${hermes_env}"
+        return 0
+    fi
+
+    if [ "${reply}" = "all" ]; then
+        HERMES_ENV_COPY_KEYS="$(IFS=,; printf '%s' "${keys[*]}")"
+        echo "  ✓ selected all ${#keys[@]} vars from ${hermes_env}"
+        return 0
+    fi
+
+    local selected=()
+    local token
+    IFS=',' read -ra requested <<< "${reply}"
+    for token in "${requested[@]}"; do
+        token="$(printf '%s' "${token}" | xargs)"
+        [ -n "${token}" ] || continue
+        if [[ "${token}" =~ ^[0-9]+$ ]] && [ "${token}" -ge 1 ] && [ "${token}" -le "${#keys[@]}" ]; then
+            selected+=("${keys[$((token - 1))]}")
+        else
+            selected+=("${token}")
+        fi
+    done
+
+    HERMES_ENV_COPY_KEYS="$(IFS=,; printf '%s' "${selected[*]}")"
+    echo "  ✓ selected vars from ${hermes_env}: ${HERMES_ENV_COPY_KEYS:-none}"
+}
+
 escape_env_value() {
     local value="$1"
     value="${value//\\/\\\\}"
     value="${value//\"/\\\"}"
     printf '%s' "${value}"
+}
+
+append_selected_hermes_env_values() {
+    local dest="$1"
+    local hermes_env="${HOST_HERMES_ROOT}/.env"
+    [ -f "${hermes_env}" ] || return 0
+    [ -n "${HERMES_ENV_COPY_KEYS}" ] || return 0
+
+    python3 - "$hermes_env" "$dest" "$HERMES_ENV_COPY_KEYS" <<'PY'
+from pathlib import Path
+import sys
+
+source = Path(sys.argv[1])
+dest = Path(sys.argv[2])
+selected = [key.strip() for key in sys.argv[3].split(",") if key.strip()]
+
+def parse_dotenv(path: Path) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not path.exists():
+        return values
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, raw_value = line.split("=", 1)
+        key = key.strip()
+        value = raw_value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+            value = value[1:-1]
+        values[key] = value
+    return values
+
+existing = set(parse_dotenv(dest))
+source_values = parse_dotenv(source)
+extras = [(key, source_values[key]) for key in selected if key in source_values and key not in existing]
+if not extras:
+    raise SystemExit(0)
+
+def quote(value: str) -> str:
+    value = value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+    return f'"{value}"'
+
+with dest.open("a", encoding="utf-8") as handle:
+    handle.write("\n# =============================================================================\n")
+    handle.write("# SELECTED DEFAULT PROFILE VARIABLES\n")
+    handle.write("# =============================================================================\n")
+    for key, value in extras:
+        handle.write(f"{key}={quote(value)}\n")
+PY
+}
+
+ensure_hermes_profile() {
+    if ! command -v hermes >/dev/null 2>&1; then
+        echo "Error: hermes CLI is required to create the '${PROFILE_NAME}' profile." >&2
+        echo "Install Hermes first, or run inside an environment where 'hermes' is on PATH." >&2
+        exit 1
+    fi
+
+    if hermes profile show "${PROFILE_NAME}" >/dev/null 2>&1; then
+        if hermes profile alias "${PROFILE_NAME}" >/dev/null 2>&1; then
+            echo "  ✓ Hermes alias '${PROFILE_NAME}' installed"
+        fi
+        echo "  ✓ Hermes profile '${PROFILE_NAME}' already exists"
+        return 0
+    fi
+
+    if [ -d "${HOST_PROFILE_DIR}" ]; then
+        if hermes profile alias "${PROFILE_NAME}" >/dev/null 2>&1; then
+            echo "  ✓ Hermes alias '${PROFILE_NAME}' installed"
+        fi
+        echo "  ✓ Hermes profile directory already exists: ${HOST_PROFILE_DIR}"
+        return 0
+    fi
+
+    hermes profile create "${PROFILE_NAME}" --clone --description "Abra content capture and brand-management agent."
+    echo "  ✓ Hermes profile created with 'hermes profile create ${PROFILE_NAME} --clone'"
+}
+
+copy_default_auth_json() {
+    local source_auth="${HOST_HERMES_ROOT}/auth.json"
+    local dest_auth="${HOST_PROFILE_DIR}/auth.json"
+
+    if [ -f "${source_auth}" ]; then
+        cp "${source_auth}" "${dest_auth}"
+        chmod 600 "${dest_auth}" 2>/dev/null || true
+        echo "  ✓ auth.json (copied from ${source_auth})"
+    else
+        echo "  ! auth.json not found at ${source_auth}; run 'hermes setup --portal' if this profile needs Portal auth"
+    fi
+}
+
+install_hermes_gateway() {
+    if [ "${HERMES_INSTALL_GATEWAY}" = "0" ]; then
+        echo "  ✓ gateway install skipped"
+        return 0
+    fi
+
+    hermes -p "${PROFILE_NAME}" gateway install
+    echo "  ✓ gateway installed with 'hermes -p ${PROFILE_NAME} gateway install'"
 }
 
 resolve_installer_env_value() {
@@ -144,9 +373,9 @@ resolve_installer_env_value() {
         fi
     fi
 
-    # 3. ~/.hermes/.env (platform tokens, allowlists, model keys)
+    # 3. ~/.hermes/.env (only keys explicitly selected for this profile)
     local hermes_env="${HOST_HERMES_ROOT}/.env"
-    if [ -f "${hermes_env}" ]; then
+    if [ -f "${hermes_env}" ] && hermes_env_key_selected "${key}"; then
         value="$(read_env_value "${hermes_env}" "${key}")"
         if [ -n "${value}" ]; then
             printf '%s' "${value}"
@@ -666,15 +895,14 @@ SEGMENT_WRITE_KEY="$(escape_env_value "${segment_write_key}")"
 # =============================================================================
 FAL_API_KEY="$(escape_env_value "${fal_api_key}")"
 EOF
+    append_selected_hermes_env_values "${dest}"
+    chmod 600 "${dest}" 2>/dev/null || true
     echo "  ✓ .env"
 }
 
 # ============================================================================
 # Entry point
 # ============================================================================
-
-echo "Installing Abra as Hermes profile '${PROFILE_NAME}'..."
-echo
 
 parse_args "$@"
 
@@ -683,6 +911,9 @@ command -v python3 >/dev/null 2>&1 || { echo "python3 required"; exit 1; }
 # Re-evaluate profile paths after arg parsing (in case --profile was used)
 HOST_PROFILE_DIR="${HOST_HERMES_ROOT}/profiles/${PROFILE_NAME}"
 CONTAINER_PROFILE_DIR="${CONTAINER_HERMES_ROOT}/profiles/${PROFILE_NAME}"
+
+echo "Installing Abra as Hermes profile '${PROFILE_NAME}'..."
+echo
 
 # Warn if the hermes-abra container is running — it will overwrite files we copy.
 if command -v docker >/dev/null 2>&1 && docker ps --format '{{.Names}}' 2>/dev/null | grep -q '^hermes-abra$'; then
@@ -731,12 +962,15 @@ fi
 export SOURCE_ROOT
 
 # Select which skills to enable before any processing
+select_hermes_env_copy_keys
 select_enabled_skills
 
 # ---------------------------------------------------------------------------
-# Create profile directory structure (matches _PROFILE_DIRS + entrypoint)
+# Create profile through Hermes first so aliases/services/state are registered,
+# then ensure Abra-specific directories exist.
 # ---------------------------------------------------------------------------
 
+ensure_hermes_profile
 mkdir -p "${HOST_PROFILE_DIR}"/{memories,sessions,skills,skins,logs,plans,workspace,cron,hooks,home}
 echo "  ✓ profile directory: ${HOST_PROFILE_DIR}"
 
@@ -843,10 +1077,24 @@ if [ -f "${HOST_HERMES_ROOT}/channel_directory.json" ]; then
 fi
 
 # ---------------------------------------------------------------------------
+# auth.json — default profile Portal/OAuth token store, copied for deployments
+# that expect profile-local auth material.
+# ---------------------------------------------------------------------------
+
+copy_default_auth_json
+
+# ---------------------------------------------------------------------------
 # .env
 # ---------------------------------------------------------------------------
 
 write_env_file "${HOST_PROFILE_DIR}/.env"
+
+# ---------------------------------------------------------------------------
+# Gateway service — use Hermes CLI so service names and launchd/systemd files
+# match Hermes' profile-aware gateway conventions.
+# ---------------------------------------------------------------------------
+
+install_hermes_gateway
 
 # ---------------------------------------------------------------------------
 # Cleanup temp clone if used
@@ -868,7 +1116,8 @@ echo "Run with Docker (set HERMES_HOME=/opt/data/profiles/${PROFILE_NAME}):"
 echo "  docker compose -f docker-compose.hermes.yml up -d"
 echo
 echo "Run natively:"
-echo "  hermes -p ${PROFILE_NAME} gateway start"
-echo "  hermes -p ${PROFILE_NAME}"
+echo "  ${PROFILE_NAME} gateway start"
+echo "  ${PROFILE_NAME} chat"
+echo "  # or: hermes -p ${PROFILE_NAME} gateway start"
 echo
 echo "Customise: edit ${HOST_PROFILE_DIR}/SOUL.md, .env, config.yaml"
