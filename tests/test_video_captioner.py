@@ -12,8 +12,10 @@ Test fixture: tests/fixtures/clip_5s.mp4 (1080×1920, 30fps, 2s, stereo AAC)
 
 from __future__ import annotations
 
+import importlib.util
 import shutil
 from pathlib import Path
+from types import ModuleType
 
 import pytest
 
@@ -29,6 +31,7 @@ from conftest import (
 
 SKILL = "video-captioner"
 FUTURISTIC_CSS = SKILLS_DIR / SKILL / "scripts" / "futuristic.css"
+CAPTION_SERVICE = SKILLS_DIR / SKILL / "scripts" / "caption_service.py"
 
 
 # ---------------------------------------------------------------------------
@@ -49,6 +52,40 @@ def workdir(tmp_path: Path, test_clip: Path) -> tuple[Path, Path]:
     out = tmp_path / "output"
     out.mkdir()
     return inp, out
+
+
+@pytest.fixture(scope="module")
+def caption_service_module() -> ModuleType:
+    spec = importlib.util.spec_from_file_location(
+        "video_captioner_caption_service", CAPTION_SERVICE
+    )
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# ---------------------------------------------------------------------------
+# TestCaptionerGeneratedCss — static caption CSS generation
+# ---------------------------------------------------------------------------
+
+
+class TestCaptionerGeneratedCss:
+    """Generated static-caption CSS should keep captions inside the video frame."""
+
+    def test_generated_css_wraps_wide_caption_lines(
+        self, caption_service_module: ModuleType
+    ) -> None:
+        css = caption_service_module.build_caption_css()
+
+        assert "#subtitle-container" in css
+        assert "max-width: 100vw;" in css
+        assert ".line" in css
+        assert "max-width: 80vw;" in css
+        assert "flex-wrap: wrap;" in css
+        assert "overflow-wrap: anywhere;" in css
+        assert "word-break: break-word;" in css
 
 
 # ---------------------------------------------------------------------------

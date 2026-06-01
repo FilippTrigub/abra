@@ -499,6 +499,19 @@ def build_caption_css(
     font_family = font or "Courier New"
 
     css_rules = [
+        "#subtitle-container {",
+        "  max-width: 100vw;",
+        "}",
+        "",
+        ".line {",
+        "  max-width: 80vw;",
+        "  flex-wrap: wrap;",
+        "  justify-content: center;",
+        "  white-space: normal;",
+        "  overflow-wrap: anywhere;",
+        "  word-break: break-word;",
+        "}",
+        "",
         "span.word {",
         f"  background-color: {bg};",
         f"  color: {color};",
