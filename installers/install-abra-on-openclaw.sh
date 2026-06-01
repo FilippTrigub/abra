@@ -149,6 +149,8 @@ PY
 
 escape_env_value() {
     local value="$1"
+    value="${value//$'\r'/}"
+    value="${value//$'\n'/}"
     value="${value//\\/\\\\}"
     value="${value//\"/\\\"}"
     printf '%s' "${value}"

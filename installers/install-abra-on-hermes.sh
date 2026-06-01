@@ -255,6 +255,8 @@ select_hermes_env_copy_keys() {
 
 escape_env_value() {
     local value="$1"
+    value="${value//$'\r'/}"
+    value="${value//$'\n'/}"
     value="${value//\\/\\\\}"
     value="${value//\"/\\\"}"
     printf '%s' "${value}"
@@ -298,7 +300,8 @@ if not extras:
     raise SystemExit(0)
 
 def quote(value: str) -> str:
-    value = value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
+    value = value.replace("\r", "").replace("\n", "")
+    value = value.replace("\\", "\\\\").replace('"', '\\"')
     return f'"{value}"'
 
 with dest.open("a", encoding="utf-8") as handle:
