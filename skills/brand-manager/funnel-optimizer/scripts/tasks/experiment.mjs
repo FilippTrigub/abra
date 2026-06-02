@@ -4,6 +4,7 @@ import { GA4 } from '../../../../_providers/marketing/ga4.mjs';
 import { Optimizely } from '../../../../_providers/marketing/optimizely.mjs';
 import { Mixpanel } from '../../../../_providers/marketing/mixpanel.mjs';
 import { Amplitude } from '../../../../_providers/marketing/amplitude.mjs';
+import { PostHog } from '../../../../_providers/marketing/posthog.mjs';
 
 /**
  * A/B Test Setup Task
@@ -33,7 +34,8 @@ export async function run({ inputDir, outputDir, outputFormat }) {
         trafficVolume: null,
         mde: null,
         testType: null,
-        brandContext: brandContext
+        brandContext: brandContext,
+        posthogContext: await loadPostHogExperimentContext()
     };
     
     // Run analysis
@@ -80,7 +82,8 @@ function analyzeExperiment(experimentData) {
             baseline_conversion: experimentData.baselineConversion,
             traffic_volume: experimentData.trafficVolume,
             mde: experimentData.mde,
-            test_type: experimentData.testType
+            test_type: experimentData.testType,
+            posthog_context: experimentData.posthogContext
         },
         hypothesis_framework: {},
         sample_size_calculation: {},
@@ -243,4 +246,28 @@ function analyzeExperiment(experimentData) {
     ];
     
     return analysis;
+}
+
+async function loadPostHogExperimentContext() {
+    if (!PostHog.hasQueryCredentials()) {
+        return {
+            enabled: false,
+            reason: 'POSTHOG_API_KEY and POSTHOG_PROJECT_ID not configured'
+        };
+    }
+
+    try {
+        const experiments = await PostHog.listExperiments({ limit: 10 });
+        const flags = await PostHog.listFeatureFlags({ limit: 10 });
+        return {
+            enabled: true,
+            experiments,
+            feature_flags: flags
+        };
+    } catch (error) {
+        return {
+            enabled: false,
+            reason: error.message
+        };
+    }
 }
