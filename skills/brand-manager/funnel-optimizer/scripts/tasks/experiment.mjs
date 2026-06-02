@@ -252,7 +252,7 @@ async function loadPostHogExperimentContext() {
     if (!PostHog.hasQueryCredentials()) {
         return {
             enabled: false,
-            reason: 'POSTHOG_API_KEY and POSTHOG_PROJECT_ID not configured'
+            reason: 'POSTHOG_PERSONAL_API_KEY and POSTHOG_PROJECT_ID not configured'
         };
     }
 

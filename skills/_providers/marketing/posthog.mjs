@@ -1,28 +1,36 @@
 // PostHog provider
 
-const API_KEY = process.env.POSTHOG_API_KEY
-const PROJECT_API_KEY = process.env.POSTHOG_PROJECT_API_KEY
+const PERSONAL_API_KEY = process.env.POSTHOG_PERSONAL_API_KEY
+const PROJECT_TOKEN = process.env.POSTHOG_PROJECT_TOKEN
 const PROJECT_ID = process.env.POSTHOG_PROJECT_ID
-const APP_HOST = (process.env.POSTHOG_APP_HOST || process.env.POSTHOG_HOST || 'https://us.posthog.com').replace(/\/$/, '')
-const INGEST_HOST = (process.env.POSTHOG_INGEST_HOST || process.env.POSTHOG_HOST || 'https://us.i.posthog.com').replace(/\/$/, '')
+const HOST = (process.env.POSTHOG_HOST || 'https://us.posthog.com').replace(/\/$/, '')
 
-function hasQueryCredentials() {
-  return Boolean(API_KEY && PROJECT_ID)
+function resolveIngestHost(host) {
+  if (host === 'https://us.posthog.com') return 'https://us.i.posthog.com'
+  if (host === 'https://eu.posthog.com') return 'https://eu.i.posthog.com'
+  return host
 }
 
-function hasProjectApiKey() {
-  return Boolean(PROJECT_API_KEY)
+const APP_HOST = HOST
+const INGEST_HOST = resolveIngestHost(HOST)
+
+function hasQueryCredentials() {
+  return Boolean(PERSONAL_API_KEY && PROJECT_ID)
+}
+
+function hasProjectToken() {
+  return Boolean(PROJECT_TOKEN)
 }
 
 function checkQueryKeys() {
-  if (!API_KEY || !PROJECT_ID) {
-    throw new Error('POSTHOG_API_KEY and POSTHOG_PROJECT_ID environment variables required')
+  if (!PERSONAL_API_KEY || !PROJECT_ID) {
+    throw new Error('POSTHOG_PERSONAL_API_KEY and POSTHOG_PROJECT_ID environment variables required')
   }
 }
 
-function checkProjectApiKey() {
-  if (!PROJECT_API_KEY) {
-    throw new Error('POSTHOG_PROJECT_API_KEY environment variable required')
+function checkProjectToken() {
+  if (!PROJECT_TOKEN) {
+    throw new Error('POSTHOG_PROJECT_TOKEN environment variable required')
   }
 }
 
@@ -41,7 +49,7 @@ async function api(method, path, body) {
   const res = await fetch(`${APP_HOST}/api/projects/${PROJECT_ID}${path}`, {
     method,
     headers: {
-      'Authorization': `Bearer ${API_KEY}`,
+      'Authorization': `Bearer ${PERSONAL_API_KEY}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
@@ -51,7 +59,7 @@ async function api(method, path, body) {
 }
 
 async function publicPost(path, body) {
-  checkProjectApiKey()
+  checkProjectToken()
   const res = await fetch(`${INGEST_HOST}${path}`, {
     method: 'POST',
     headers: {
@@ -65,7 +73,7 @@ async function publicPost(path, body) {
 
 export const PostHog = {
   hasQueryCredentials,
-  hasProjectApiKey,
+  hasProjectToken,
 
   /**
    * Run a PostHog Query API request.
@@ -127,7 +135,7 @@ export const PostHog = {
     if (!distinctId) throw new Error('distinctId required')
     if (!event) throw new Error('event required')
     return publicPost('/i/v0/e/', {
-      api_key: PROJECT_API_KEY,
+      api_key: PROJECT_TOKEN,
       distinct_id: distinctId,
       event,
       properties,
@@ -137,7 +145,7 @@ export const PostHog = {
   async batchCapture(events) {
     if (!Array.isArray(events)) throw new Error('events must be an array')
     return publicPost('/batch/', {
-      api_key: PROJECT_API_KEY,
+      api_key: PROJECT_TOKEN,
       batch: events,
     })
   },
@@ -145,7 +153,7 @@ export const PostHog = {
   async evaluateFlags(distinctId, options = {}) {
     if (!distinctId) throw new Error('distinctId required')
     return publicPost('/flags?v=2', {
-      token: PROJECT_API_KEY,
+      token: PROJECT_TOKEN,
       distinct_id: distinctId,
       ...options,
     })

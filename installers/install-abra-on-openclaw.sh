@@ -226,7 +226,7 @@ skill_to_env_keys() {
         email-campaigner) printf '%s\n' "RESEND_API_KEY" "MAILCHIMP_API_KEY" "MAILCHIMP_SERVER_PREFIX" "SENDGRID_API_KEY" "KIT_API_KEY" "KIT_API_SECRET" "DUB_API_KEY" ;;
         seo-researcher) printf '%s\n' "GSC_CLIENT_ID" "GSC_CLIENT_SECRET" "GSC_REFRESH_TOKEN" "SEMRUSH_API_KEY" "AHREFS_API_KEY" "DATAFORSEO_LOGIN" "DATAFORSEO_PASSWORD" "KEYWORDS_EVERYWHERE_API_KEY" "PLAUSIBLE_API_KEY" "PLAUSIBLE_SITE_ID" ;;
         ads-manager) printf '%s\n' "GA4_CLIENT_ID" "GA4_CLIENT_SECRET" "GA4_REFRESH_TOKEN" "GA4_PROPERTY_ID" "GOOGLE_ADS_CLIENT_ID" "GOOGLE_ADS_CLIENT_SECRET" "GOOGLE_ADS_REFRESH_TOKEN" "GOOGLE_ADS_DEVELOPER_TOKEN" "GOOGLE_ADS_CUSTOMER_ID" "GOOGLE_ADS_LOGIN_CUSTOMER_ID" ;;
-        funnel-optimizer) printf '%s\n' "GA4_CLIENT_ID" "GA4_CLIENT_SECRET" "GA4_REFRESH_TOKEN" "GA4_PROPERTY_ID" "MIXPANEL_SA_USERNAME" "MIXPANEL_SECRET" "AMPLITUDE_API_KEY" "AMPLITUDE_SECRET_KEY" "HOTJAR_SITE_ID" "HOTJAR_API_TOKEN" "OPTIMIZELY_SDK_KEY" "OPTIMIZELY_ACCESS_TOKEN" "POSTHOG_PROJECT_ID" "POSTHOG_API_KEY" "POSTHOG_PROJECT_API_KEY" "POSTHOG_HOST" "POSTHOG_APP_HOST" "POSTHOG_INGEST_HOST" ;;
+        funnel-optimizer) printf '%s\n' "GA4_CLIENT_ID" "GA4_CLIENT_SECRET" "GA4_REFRESH_TOKEN" "GA4_PROPERTY_ID" "MIXPANEL_SA_USERNAME" "MIXPANEL_SECRET" "AMPLITUDE_API_KEY" "AMPLITUDE_SECRET_KEY" "HOTJAR_SITE_ID" "HOTJAR_API_TOKEN" "OPTIMIZELY_SDK_KEY" "OPTIMIZELY_ACCESS_TOKEN" "POSTHOG_PROJECT_ID" "POSTHOG_PERSONAL_API_KEY" "POSTHOG_PROJECT_TOKEN" "POSTHOG_HOST" ;;
         revenue-manager) printf '%s\n' "HUBSPOT_ACCESS_TOKEN" "SALESFORCE_CLIENT_ID" "SALESFORCE_CLIENT_SECRET" "SALESFORCE_USERNAME" "SALESFORCE_PASSWORD" "SALESFORCE_SECURITY_TOKEN" "CLOSE_API_KEY" "OUTREACH_CLIENT_ID" "OUTREACH_CLIENT_SECRET" "OUTREACH_REFRESH_TOKEN" "CROSSBEAM_API_KEY" "APOLLO_API_KEY" "CLEARBIT_API_KEY" "ZOOMINFO_USERNAME" "ZOOMINFO_PASSWORD" "CLAY_API_KEY" "SEGMENT_WRITE_KEY" ;;
         runpod-gpu) printf '%s\n' "RUNPOD_API_KEY" "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR" "RUNPOD_ENDPOINT_ID_VIDEO_MATTE" "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR" "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT" "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER" "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER" "RUNPOD_ENDPOINT_ID_PHOTO_PICKER" ;;
         ml-models) printf '%s\n' "HF_TOKEN" "REPLICATE_API_TOKEN" ;;
@@ -297,8 +297,8 @@ HOTJAR_API_TOKEN
 OPTIMIZELY_SDK_KEY
 OPTIMIZELY_ACCESS_TOKEN
 POSTHOG_PROJECT_ID
-POSTHOG_API_KEY
-POSTHOG_PROJECT_API_KEY
+POSTHOG_PERSONAL_API_KEY
+POSTHOG_PROJECT_TOKEN
 HUBSPOT_ACCESS_TOKEN
 SALESFORCE_CLIENT_ID
 SALESFORCE_CLIENT_SECRET
@@ -348,7 +348,7 @@ env_key_skill_labels() {
         GOOGLE_ADS_CLIENT_ID|GOOGLE_ADS_CLIENT_SECRET|GOOGLE_ADS_REFRESH_TOKEN|GOOGLE_ADS_DEVELOPER_TOKEN|GOOGLE_ADS_CUSTOMER_ID|GOOGLE_ADS_LOGIN_CUSTOMER_ID)
             printf '%s\n' "ads-manager"
             ;;
-        MIXPANEL_SA_USERNAME|MIXPANEL_SECRET|AMPLITUDE_API_KEY|AMPLITUDE_SECRET_KEY|HOTJAR_SITE_ID|HOTJAR_API_TOKEN|OPTIMIZELY_SDK_KEY|OPTIMIZELY_ACCESS_TOKEN|POSTHOG_PROJECT_ID|POSTHOG_API_KEY|POSTHOG_PROJECT_API_KEY|POSTHOG_HOST|POSTHOG_APP_HOST|POSTHOG_INGEST_HOST)
+        MIXPANEL_SA_USERNAME|MIXPANEL_SECRET|AMPLITUDE_API_KEY|AMPLITUDE_SECRET_KEY|HOTJAR_SITE_ID|HOTJAR_API_TOKEN|OPTIMIZELY_SDK_KEY|OPTIMIZELY_ACCESS_TOKEN|POSTHOG_PROJECT_ID|POSTHOG_PERSONAL_API_KEY|POSTHOG_PROJECT_TOKEN|POSTHOG_HOST)
             printf '%s\n' "funnel-optimizer"
             ;;
         HUBSPOT_ACCESS_TOKEN|SALESFORCE_CLIENT_ID|SALESFORCE_CLIENT_SECRET|SALESFORCE_USERNAME|SALESFORCE_PASSWORD|SALESFORCE_SECURITY_TOKEN|CLOSE_API_KEY|OUTREACH_CLIENT_ID|OUTREACH_CLIENT_SECRET|OUTREACH_REFRESH_TOKEN|CROSSBEAM_API_KEY|APOLLO_API_KEY|CLEARBIT_API_KEY|ZOOMINFO_USERNAME|ZOOMINFO_PASSWORD|CLAY_API_KEY|SEGMENT_WRITE_KEY)
@@ -409,7 +409,7 @@ env_key_provider() {
         OPTIMIZELY_SDK_KEY|OPTIMIZELY_ACCESS_TOKEN)
             printf '%s\n' "optimizely"
             ;;
-        POSTHOG_PROJECT_ID|POSTHOG_API_KEY|POSTHOG_PROJECT_API_KEY|POSTHOG_HOST|POSTHOG_APP_HOST|POSTHOG_INGEST_HOST)
+        POSTHOG_PROJECT_ID|POSTHOG_PERSONAL_API_KEY|POSTHOG_PROJECT_TOKEN|POSTHOG_HOST)
             printf '%s\n' "posthog"
             ;;
         HUBSPOT_ACCESS_TOKEN)
@@ -935,7 +935,7 @@ configure_skill_api_keys() {
     local plausible_api_key plausible_site_id
     local mixpanel_sa_username mixpanel_secret amplitude_api_key amplitude_secret_key
     local hotjar_site_id hotjar_api_token optimizely_sdk_key optimizely_access_token
-    local posthog_project_id posthog_api_key posthog_project_api_key posthog_host posthog_app_host posthog_ingest_host
+    local posthog_project_id posthog_personal_api_key posthog_project_token posthog_host
     local hubspot_access_token
     local salesforce_client_id salesforce_client_secret salesforce_username salesforce_password salesforce_security_token
     local close_api_key outreach_client_id outreach_client_secret outreach_refresh_token crossbeam_api_key
@@ -1016,7 +1016,12 @@ configure_skill_api_keys() {
         [ "${PROVIDER_ENABLED_AMPLITUDE}" = "1" ] && amplitude_api_key="$(resolve_installer_env_value "AMPLITUDE_API_KEY")" && amplitude_secret_key="$(resolve_installer_env_value "AMPLITUDE_SECRET_KEY")"
         [ "${PROVIDER_ENABLED_HOTJAR}" = "1" ] && hotjar_site_id="$(resolve_installer_env_value "HOTJAR_SITE_ID")" && hotjar_api_token="$(resolve_installer_env_value "HOTJAR_API_TOKEN")"
         [ "${PROVIDER_ENABLED_OPTIMIZELY}" = "1" ] && optimizely_sdk_key="$(resolve_installer_env_value "OPTIMIZELY_SDK_KEY")" && optimizely_access_token="$(resolve_installer_env_value "OPTIMIZELY_ACCESS_TOKEN")"
-        [ "${PROVIDER_ENABLED_POSTHOG}" = "1" ] && posthog_project_id="$(resolve_installer_env_value "POSTHOG_PROJECT_ID")" && posthog_api_key="$(resolve_installer_env_value "POSTHOG_API_KEY")" && posthog_project_api_key="$(resolve_installer_env_value "POSTHOG_PROJECT_API_KEY")" && posthog_host="$(resolve_installer_env_value "POSTHOG_HOST")" && posthog_app_host="$(resolve_installer_env_value "POSTHOG_APP_HOST")" && posthog_ingest_host="$(resolve_installer_env_value "POSTHOG_INGEST_HOST")"
+        if [ "${PROVIDER_ENABLED_POSTHOG}" = "1" ]; then
+            posthog_project_id="$(resolve_installer_env_value "POSTHOG_PROJECT_ID")"
+            posthog_personal_api_key="$(resolve_installer_env_value "POSTHOG_PERSONAL_API_KEY")"
+            posthog_project_token="$(resolve_installer_env_value "POSTHOG_PROJECT_TOKEN")"
+            posthog_host="$(resolve_installer_env_value "POSTHOG_HOST")"
+        fi
     fi
 
     if [ "${SKILL_ENABLED_REVENUE_MANAGER}" = "1" ]; then
@@ -1083,11 +1088,9 @@ configure_skill_api_keys() {
     INSTALL_OPTIMIZELY_SDK_KEY="${optimizely_sdk_key}"
     INSTALL_OPTIMIZELY_ACCESS_TOKEN="${optimizely_access_token}"
     INSTALL_POSTHOG_PROJECT_ID="${posthog_project_id}"
-    INSTALL_POSTHOG_API_KEY="${posthog_api_key}"
-    INSTALL_POSTHOG_PROJECT_API_KEY="${posthog_project_api_key}"
+    INSTALL_POSTHOG_PERSONAL_API_KEY="${posthog_personal_api_key}"
+    INSTALL_POSTHOG_PROJECT_TOKEN="${posthog_project_token}"
     INSTALL_POSTHOG_HOST="${posthog_host}"
-    INSTALL_POSTHOG_APP_HOST="${posthog_app_host}"
-    INSTALL_POSTHOG_INGEST_HOST="${posthog_ingest_host}"
     INSTALL_HUBSPOT_ACCESS_TOKEN="${hubspot_access_token}"
     INSTALL_SALESFORCE_CLIENT_ID="${salesforce_client_id}"
     INSTALL_SALESFORCE_CLIENT_SECRET="${salesforce_client_secret}"
@@ -1464,11 +1467,9 @@ fi
 [ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ] && set_config_env_value "OPTIMIZELY_SDK_KEY" "${INSTALL_OPTIMIZELY_SDK_KEY}"
 [ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ] && set_config_env_value "OPTIMIZELY_ACCESS_TOKEN" "${INSTALL_OPTIMIZELY_ACCESS_TOKEN}"
 [ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ] && set_config_env_value "POSTHOG_PROJECT_ID" "${INSTALL_POSTHOG_PROJECT_ID}"
-[ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ] && set_config_env_value "POSTHOG_API_KEY" "${INSTALL_POSTHOG_API_KEY}"
-[ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ] && set_config_env_value "POSTHOG_PROJECT_API_KEY" "${INSTALL_POSTHOG_PROJECT_API_KEY}"
+[ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ] && set_config_env_value "POSTHOG_PERSONAL_API_KEY" "${INSTALL_POSTHOG_PERSONAL_API_KEY}"
+[ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ] && set_config_env_value "POSTHOG_PROJECT_TOKEN" "${INSTALL_POSTHOG_PROJECT_TOKEN}"
 [ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ] && set_config_env_value "POSTHOG_HOST" "${INSTALL_POSTHOG_HOST}"
-[ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ] && set_config_env_value "POSTHOG_APP_HOST" "${INSTALL_POSTHOG_APP_HOST}"
-[ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ] && set_config_env_value "POSTHOG_INGEST_HOST" "${INSTALL_POSTHOG_INGEST_HOST}"
 
 [ "${SKILL_ENABLED_REVENUE_MANAGER}" = "1" ] && set_config_env_value "HUBSPOT_ACCESS_TOKEN" "${INSTALL_HUBSPOT_ACCESS_TOKEN}"
 [ "${SKILL_ENABLED_REVENUE_MANAGER}" = "1" ] && set_config_env_value "SALESFORCE_CLIENT_ID" "${INSTALL_SALESFORCE_CLIENT_ID}"

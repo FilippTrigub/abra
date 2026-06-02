@@ -721,7 +721,7 @@ uv run python scripts/seo.py --input ./input --output ./output
 - Amplitude: `AMPLITUDE_API_KEY`, `AMPLITUDE_SECRET_KEY`
 - Hotjar: `HOTJAR_SITE_ID`, `HOTJAR_API_TOKEN`
 - Optimizely: `OPTIMIZELY_SDK_KEY`, `OPTIMIZELY_ACCESS_TOKEN`
-- PostHog: `POSTHOG_PROJECT_ID`, `POSTHOG_API_KEY`, `POSTHOG_PROJECT_API_KEY` (`POSTHOG_HOST`, `POSTHOG_APP_HOST`, `POSTHOG_INGEST_HOST` optional)
+- PostHog: `POSTHOG_PROJECT_TOKEN`, plus `POSTHOG_PROJECT_ID` and `POSTHOG_PERSONAL_API_KEY` for private analytics reads (`POSTHOG_HOST` optional)
 
 **Location:** `skills/brand-manager/funnel-optimizer/`
 

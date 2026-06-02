@@ -378,20 +378,18 @@ Use the [Google OAuth2 Playground](https://developers.google.com/oauthplayground
 
 | Key | Description |
 |-----|-------------|
-| `POSTHOG_PROJECT_ID` | Numeric PostHog project ID for Query API reads |
-| `POSTHOG_API_KEY` | Personal API key for Query API, persons, insights, flags, and experiments reads |
-| `POSTHOG_PROJECT_API_KEY` | Project API key for event capture and public flag evaluation |
-| `POSTHOG_HOST` | Optional shared PostHog host override |
-| `POSTHOG_APP_HOST` | Optional private API host; defaults to `https://us.posthog.com` |
-| `POSTHOG_INGEST_HOST` | Optional capture/flags host; defaults to `https://us.i.posthog.com` |
+| `POSTHOG_PROJECT_TOKEN` | Project token for event capture and public flag evaluation |
+| `POSTHOG_PROJECT_ID` | Numeric PostHog project ID for private Query API reads |
+| `POSTHOG_PERSONAL_API_KEY` | Personal API key for Query API, persons, insights, feature flags, and experiments reads |
+| `POSTHOG_HOST` | Optional PostHog app/self-hosted host override; defaults to `https://us.posthog.com` |
 
 **How to get:**
 
 1. Sign in at [app.posthog.com](https://app.posthog.com) and open your project.
-2. Copy the project ID from **Project settings** or the project URL and set it as `POSTHOG_PROJECT_ID`.
-3. Go to **Project settings → Project variables** and copy the project API key as `POSTHOG_PROJECT_API_KEY`.
-4. Go to your profile or organization API settings, create a personal API key with read access, and set it as `POSTHOG_API_KEY`.
-5. Leave host values unset for PostHog Cloud US. For EU Cloud or self-hosted instances, set `POSTHOG_HOST` as a shared override or set `POSTHOG_APP_HOST` and `POSTHOG_INGEST_HOST` separately.
+2. Go to **Project settings → Project variables** and copy the project token as `POSTHOG_PROJECT_TOKEN`.
+3. Copy the numeric project ID from **Project settings** or the project URL and set it as `POSTHOG_PROJECT_ID` if you want private analytics reads.
+4. Go to your profile or organization API settings, create a personal API key with read access, and set it as `POSTHOG_PERSONAL_API_KEY` if you want private analytics reads.
+5. Leave `POSTHOG_HOST` unset for PostHog Cloud US. For EU Cloud set `POSTHOG_HOST=https://eu.posthog.com`; for self-hosted PostHog set it to your instance URL.
 
 ---
 
@@ -625,9 +623,9 @@ After obtaining your API keys, you can configure them in `~/.openclaw/openclaw.j
     "HOTJAR_API_TOKEN": "your-hotjar-token",
     "OPTIMIZELY_SDK_KEY": "your-optimizely-sdk-key",
     "OPTIMIZELY_ACCESS_TOKEN": "your-optimizely-token",
+    "POSTHOG_PROJECT_TOKEN": "your-posthog-project-token",
     "POSTHOG_PROJECT_ID": "12345",
-    "POSTHOG_API_KEY": "your-posthog-personal-api-key",
-    "POSTHOG_PROJECT_API_KEY": "your-posthog-project-api-key",
+    "POSTHOG_PERSONAL_API_KEY": "your-posthog-personal-api-key",
     "HUBSPOT_ACCESS_TOKEN": "your-hubspot-token",
     "CLOSE_API_KEY": "your-close-key",
     "OUTREACH_CLIENT_ID": "your-outreach-client-id",
