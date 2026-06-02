@@ -67,9 +67,9 @@ Abra includes 31 specialized skills for personal brand management:
 **Social Media Skills** *(each requires one API key)*: giphy (`GIPHY_API_KEY`), freesound (`FREESOUND_API_KEY`), pixabay (`PIXABAY_API_KEY`)
 
 **Marketing Skills** *(require API keys, see [docs/SETUP.md](./docs/SETUP.md))*:
-- brand-strategist, growth-strategist, seo-researcher, funnel-optimizer (no providers)
+- brand-strategist, growth-strategist, seo-researcher, funnel-optimizer (GA4, Mixpanel, Amplitude, Hotjar, Optimizely, or PostHog)
 - email-campaigner: RESEND_API_KEY, MAILCHIMP_API_KEY, SENDGRID_API_KEY, KIT_API_KEY, DUB_API_KEY
-- ads-manager: GA4_ACCESS_TOKEN, GA4_PROPERTY_ID, GOOGLE_ADS_* keys
+- ads-manager: GA4_CLIENT_ID, GA4_CLIENT_SECRET, GA4_REFRESH_TOKEN, GA4_PROPERTY_ID, GOOGLE_ADS_* keys
 - revenue-manager: HUBSPOT_ACCESS_TOKEN, SALESFORCE_*, CLOSE_API_KEY, and more
 
 **Usage:** Each skill follows the same conventions (`uv sync`, `--input`, `--output`, `--device cpu` fallback).

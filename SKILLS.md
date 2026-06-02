@@ -713,14 +713,15 @@ uv run python scripts/seo.py --input ./input --output ./output
 
 **What it does:** Analyzes conversion funnels, identifies optimization opportunities, and provides user journey mapping for improved conversions.
 
-**Providers:** Uses analytics platforms (GA4, Mixpanel, Amplitude, Hotjar, Optimizely) — at least one required.
+**Providers:** Uses analytics platforms (GA4, Mixpanel, Amplitude, Hotjar, Optimizely, PostHog) — at least one required.
 
 **Required Keys (at least one):**
-- Google Analytics 4: `GA4_ACCESS_TOKEN`, `GA4_PROPERTY_ID`
+- Google Analytics 4: `GA4_CLIENT_ID`, `GA4_CLIENT_SECRET`, `GA4_REFRESH_TOKEN`, `GA4_PROPERTY_ID`
 - Mixpanel: `MIXPANEL_SA_USERNAME`, `MIXPANEL_SECRET`
 - Amplitude: `AMPLITUDE_API_KEY`, `AMPLITUDE_SECRET_KEY`
 - Hotjar: `HOTJAR_SITE_ID`, `HOTJAR_API_TOKEN`
 - Optimizely: `OPTIMIZELY_SDK_KEY`, `OPTIMIZELY_ACCESS_TOKEN`
+- PostHog: `POSTHOG_PROJECT_ID`, `POSTHOG_API_KEY`, `POSTHOG_PROJECT_API_KEY` (`POSTHOG_HOST`, `POSTHOG_APP_HOST`, `POSTHOG_INGEST_HOST` optional)
 
 **Location:** `skills/brand-manager/funnel-optimizer/`
 
@@ -835,7 +836,7 @@ uv run python scripts/revenue.py --input ./input --output ./output
 | brand-strategist | brand-manager/ | Brand foundation and identity | none |
 | growth-strategist | brand-manager/ | Growth strategy and competitive analysis | none |
 | seo-researcher | brand-manager/ | SEO research and keyword analysis | GSC, SEMRUSH, Ahrefs, DataForSEO, Keywords Everywhere, or Plausible |
-| funnel-optimizer | brand-manager/ | Funnel analysis and conversion optimization | GA4, Mixpanel, Amplitude, Hotjar, or Optimizely |
+| funnel-optimizer | brand-manager/ | Funnel analysis and conversion optimization | GA4, Mixpanel, Amplitude, Hotjar, Optimizely, or PostHog |
 | email-campaigner | root | Email marketing campaigns | Resend, Mailchimp, SendGrid, Kit, or Dub |
 | ads-manager | root | Google Ads campaign management | GA4 + Google Ads keys |
 | revenue-manager | root | CRM and revenue operations | HubSpot, Salesforce, Close, or other CRM |

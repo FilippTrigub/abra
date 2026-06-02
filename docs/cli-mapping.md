@@ -121,6 +121,7 @@
 - `amplitude.js` - Cohort analysis
 - `hotjar.js` - Session recordings & heatmaps
 - `optimizely.js` - A/B test execution
+- `posthog.js` - Product analytics, session replay, feature flags, experiments
 - `rewardful.js` - Affiliate program tracking
 - `tolt.js` - Referral tracking
 
@@ -157,7 +158,7 @@
 |--------|---------------------|--------|
 | `email-campaigner` | ✅ Scoped | Has: resend, mailchimp, sendgrid, kit, dub |
 | `seo-researcher` | ✅ Scoped | Has: gsc, semrush, ahrefs, dataforseo, plausible |
-| `funnel-optimizer` | ✅ Scoped | Has: ga4, mixpanel, amplitude, hotjar, optimizely |
+| `funnel-optimizer` | ✅ Scoped | Has: ga4, mixpanel, amplitude, hotjar, optimizely, posthog |
 | `ads-manager` | ✅ Scoped | Has: ga4, google-ads |
 | `revenue-manager` | ✅ Scoped | Has: hubspot, salesforce, outreach, apollo, segment |
 

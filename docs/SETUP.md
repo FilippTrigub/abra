@@ -7,7 +7,7 @@ This document lists all API keys required by the marketing skills and where to o
 | Skill | Providers | Required Keys |
 |-------|-----------|---------------|
 | `seo-researcher` | gsc, semrush, ahrefs, dataforseo, keywords-everywhere, plausible | At least one of: GSC, SEMRUSH_API_KEY, AHREFS_API_KEY, DATAFORSEO_*, KEYWORDS_EVERYWHERE_*, PLAUSIBLE_* |
-| `funnel-optimizer` | ga4, mixpanel, amplitude, hotjar, optimizely | At least one of: GA4_*, MIXPANEL_*, AMPLITUDE_*, HOTJAR_*, OPTIMIZELY_* |
+| `funnel-optimizer` | ga4, mixpanel, amplitude, hotjar, optimizely, posthog | At least one of: GA4_*, MIXPANEL_*, AMPLITUDE_*, HOTJAR_*, OPTIMIZELY_*, POSTHOG_* |
 | `email-campaigner` | resend, mailchimp, sendgrid, kit, dub | At least one of: RESEND_API_KEY, MAILCHIMP_API_KEY, SENDGRID_API_KEY, KIT_API_KEY/KIT_API_SECRET, DUB_API_KEY |
 | `ads-manager` | ga4, google-ads | GA4_CLIENT_ID + GA4_CLIENT_SECRET + GA4_REFRESH_TOKEN + GA4_PROPERTY_ID, GOOGLE_ADS_* |
 | `revenue-manager` | hubspot, salesforce, close, outreach, crossbeam, apollo, clearbit, zoominfo, clay, segment | At least one of: HUBSPOT_*, SALESFORCE_*, CLOSE_API_KEY, OUTREACH_*, CROSSBEAM_*, APOLLO_*, CLEARBIT_*, ZOOMINFO_*, CLAY_API_KEY, SEGMENT_WRITE_KEY |
@@ -374,6 +374,27 @@ Use the [Google OAuth2 Playground](https://developers.google.com/oauthplayground
 
 ---
 
+### PostHog (posthog)
+
+| Key | Description |
+|-----|-------------|
+| `POSTHOG_PROJECT_ID` | Numeric PostHog project ID for Query API reads |
+| `POSTHOG_API_KEY` | Personal API key for Query API, persons, insights, flags, and experiments reads |
+| `POSTHOG_PROJECT_API_KEY` | Project API key for event capture and public flag evaluation |
+| `POSTHOG_HOST` | Optional shared PostHog host override |
+| `POSTHOG_APP_HOST` | Optional private API host; defaults to `https://us.posthog.com` |
+| `POSTHOG_INGEST_HOST` | Optional capture/flags host; defaults to `https://us.i.posthog.com` |
+
+**How to get:**
+
+1. Sign in at [app.posthog.com](https://app.posthog.com) and open your project.
+2. Copy the project ID from **Project settings** or the project URL and set it as `POSTHOG_PROJECT_ID`.
+3. Go to **Project settings → Project variables** and copy the project API key as `POSTHOG_PROJECT_API_KEY`.
+4. Go to your profile or organization API settings, create a personal API key with read access, and set it as `POSTHOG_API_KEY`.
+5. Leave host values unset for PostHog Cloud US. For EU Cloud or self-hosted instances, set `POSTHOG_HOST` as a shared override or set `POSTHOG_APP_HOST` and `POSTHOG_INGEST_HOST` separately.
+
+---
+
 ### HubSpot (hubspot)
 
 | Key | Description |
@@ -602,6 +623,11 @@ After obtaining your API keys, you can configure them in `~/.openclaw/openclaw.j
     "AMPLITUDE_SECRET_KEY": "your-amplitude-secret",
     "HOTJAR_SITE_ID": "your-hotjar-site-id",
     "HOTJAR_API_TOKEN": "your-hotjar-token",
+    "OPTIMIZELY_SDK_KEY": "your-optimizely-sdk-key",
+    "OPTIMIZELY_ACCESS_TOKEN": "your-optimizely-token",
+    "POSTHOG_PROJECT_ID": "12345",
+    "POSTHOG_API_KEY": "your-posthog-personal-api-key",
+    "POSTHOG_PROJECT_API_KEY": "your-posthog-project-api-key",
     "HUBSPOT_ACCESS_TOKEN": "your-hubspot-token",
     "CLOSE_API_KEY": "your-close-key",
     "OUTREACH_CLIENT_ID": "your-outreach-client-id",
