@@ -19,6 +19,7 @@ export { Mixpanel } from './mixpanel.mjs';
 export { Amplitude } from './amplitude.mjs';
 export { Hotjar } from './hotjar.mjs';
 export { Optimizely } from './optimizely.mjs';
+export { PostHog } from './posthog.mjs';
 export { Salesforce } from './salesforce.mjs';
 export { Close } from './close.mjs';
 export { Outreach } from './outreach.mjs';
