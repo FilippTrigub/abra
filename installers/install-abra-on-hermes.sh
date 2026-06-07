@@ -631,16 +631,19 @@ write_soul_md() {
     local dest="$1"
     local skills_path="${CONTAINER_PROFILE_DIR}/skills/abra"
     local workspace_path="${CONTAINER_PROFILE_DIR}/workspace"
+    # Media lives at a symmetric host/container path so the gateway can resolve it.
+    local media_path="${HOST_HERMES_ROOT}/media"
 
     # Adapt the claw-parade SOUL.md to hermes — update paths, remove openclaw-
     # specific platform references, keep persona and objectives intact.
-    python3 - "$dest" "$skills_path" "$workspace_path" <<'PY'
+    python3 - "$dest" "$skills_path" "$workspace_path" "$media_path" <<'PY'
 from pathlib import Path
 import sys
 
 dest = Path(sys.argv[1])
 skills_path = sys.argv[2]
 workspace_path = sys.argv[3]
+media_path = sys.argv[4]
 
 import os
 script_dir = Path(os.environ.get("SOURCE_ROOT", ""))
@@ -648,11 +651,33 @@ source_soul = script_dir / "SOUL.md" if script_dir.exists() else Path("SOUL.md")
 
 if source_soul.exists():
     text = source_soul.read_text(encoding="utf-8")
-    # Replace openclaw-specific paths with hermes profile paths
+    # Replace openclaw-specific paths with hermes profile paths.
+    # Media uses a symmetric host/container mount path so the gateway can
+    # read files the agent writes there without any path translation.
     text = text.replace("~/.openclaw/workspace-abra/skills", skills_path)
     text = text.replace("~/.openclaw/workspace-abra", workspace_path)
-    text = text.replace("~/.openclaw/media", workspace_path + "/media")
+    text = text.replace("~/.openclaw/media", media_path)
     text = text.replace("~/.openclaw/", workspace_path + "/")
+    # Append a Hermes-specific media delivery note if not already present.
+    if "MEDIA:" not in text:
+        text += f"""
+
+---
+
+## Media Delivery (Hermes)
+
+When producing files to send via Telegram, always write them to `{media_path}/`.
+This directory is bind-mounted at the same path on both the host and inside the
+container, so the gateway can upload them directly.
+
+Use a `MEDIA:` tag with that path, e.g.:
+```
+MEDIA:{media_path}/output.mp4
+```
+
+Files written to `/root/`, `/workspace/`, or `/tmp/` are not visible to the
+gateway on the host and will fail to upload.
+"""
     dest.write_text(text, encoding="utf-8")
 else:
     dest.write_text(
@@ -661,11 +686,91 @@ else:
         "polished, multi-channel social media content. You orchestrate skill "
         "pipelines to process videos, images, and text for personal brand growth.\n\n"
         f"Skills: {skills_path}\n"
-        f"Workspace: {workspace_path}\n",
+        f"Workspace: {workspace_path}\n"
+        f"Media output: {media_path}\n",
         encoding="utf-8",
     )
 PY
     echo "  ✓ SOUL.md"
+}
+
+patch_hermes_config() {
+    local config_file="$1"
+    local media_dir="${HOST_HERMES_ROOT}/media"
+    local host_skill_base="${HOST_PROFILE_DIR}/skills/abra"
+    local container_skill_base="/root/.hermes/skills/abra"
+
+    mkdir -p "${media_dir}"
+
+    python3 - "${config_file}" "${media_dir}" "${host_skill_base}" "${container_skill_base}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    import yaml
+except ImportError:
+    print("  ! pyyaml not available; skipping config patch", file=sys.stderr)
+    sys.exit(0)
+
+config_file   = Path(sys.argv[1])
+media_dir     = sys.argv[2]
+host_skill_base      = Path(sys.argv[3])
+container_skill_base = sys.argv[4]
+
+# ── Collect new volume specs and create host directories ─────────────────────
+new_volumes = [f"{media_dir}:{media_dir}"]
+
+for skill_dir in sorted(host_skill_base.iterdir()):
+    if not skill_dir.is_dir():
+        continue
+    config_json = skill_dir / "config.json"
+    if not config_json.exists():
+        continue
+    try:
+        skill_cfg = json.loads(config_json.read_text(encoding="utf-8"))
+    except Exception:
+        continue
+    skill_name = skill_dir.name
+    for dir_key in ("input_dir", "output_dir"):
+        rel = skill_cfg.get(dir_key, "") or ""
+        if not rel or rel in ("null", "."):
+            continue
+        rel = rel.lstrip("./")
+        if not rel:
+            continue
+        host_path = skill_dir / rel
+        host_path.mkdir(parents=True, exist_ok=True)
+        container_path = f"{container_skill_base}/{skill_name}/{rel}"
+        new_volumes.append(f"{str(host_path)}:{container_path}")
+
+# ── Parse existing config ─────────────────────────────────────────────────────
+cfg = yaml.safe_load(config_file.read_text(encoding="utf-8")) or {}
+
+# ── Augment terminal.docker_volumes ──────────────────────────────────────────
+terminal = cfg.setdefault("terminal", {})
+existing_vols = list(terminal.get("docker_volumes") or [])
+existing_set  = set(str(v) for v in existing_vols)
+for v in new_volumes:
+    if v not in existing_set:
+        existing_vols.append(v)
+        existing_set.add(v)
+terminal["docker_volumes"] = existing_vols
+
+# ── Augment gateway.media_delivery_allow_dirs ────────────────────────────────
+gateway    = cfg.setdefault("gateway", {})
+allow_dirs = list(gateway.get("media_delivery_allow_dirs") or [])
+if media_dir not in allow_dirs:
+    allow_dirs.append(media_dir)
+gateway["media_delivery_allow_dirs"] = allow_dirs
+
+# ── Write back ────────────────────────────────────────────────────────────────
+config_file.write_text(
+    yaml.dump(cfg, default_flow_style=False, allow_unicode=True, sort_keys=False),
+    encoding="utf-8",
+)
+print(f"  ✓ config.yaml patched ({len(new_volumes)} volume(s) added, gateway allowlist set)")
+PY
 }
 
 write_config_yaml() {
@@ -1111,6 +1216,11 @@ if [ -f "${HOST_HERMES_ROOT}/config.yaml" ]; then
 else
     write_config_yaml "${HOST_PROFILE_DIR}/config.yaml"
 fi
+
+# Add media mount, per-skill input/output writable mounts, and gateway allowlist.
+# Skills are mounted :ro by hermes; the more-specific per-skill IO mounts added
+# here take precedence and are writable.
+patch_hermes_config "${HOST_PROFILE_DIR}/config.yaml"
 
 # ---------------------------------------------------------------------------
 # sessions/sessions.json — the real source of truth for telegram channels.
