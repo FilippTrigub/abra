@@ -17,7 +17,11 @@ vi.mock("@/lib/settings/actions", () => ({
 }));
 
 vi.mock("@/lib/agent-config/actions", () => ({
-  loadUserAgentConfig: vi.fn().mockResolvedValue({ configured: false, token: null }),
+  loadUserAgentConfig: vi.fn().mockResolvedValue({
+    configured: false,
+    token: null,
+    allowedUsers: null,
+  }),
   saveUserAgentConfig: vi.fn().mockResolvedValue({ success: true }),
 }));
 

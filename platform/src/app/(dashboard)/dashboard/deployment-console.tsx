@@ -9,7 +9,7 @@ import { initialDeploymentFormState } from "./deployment-form-state";
 interface DeploymentConsoleProps {
   initialDeployment: DashboardDeployment | null;
   persistenceWarning: string | null;
-  hasToken: boolean;
+  hasTelegramConfig: boolean;
 }
 
 const STATUS_BADGES: Record<
@@ -128,7 +128,7 @@ function InstanceStatusBox({ deployment }: { deployment: DashboardDeployment | n
 export function DeploymentConsole({
   initialDeployment,
   persistenceWarning,
-  hasToken,
+  hasTelegramConfig,
 }: DeploymentConsoleProps) {
   const [deployState, deployAction, deployPending] = useActionState(
     submitDeploymentRequest,
@@ -228,7 +228,7 @@ export function DeploymentConsole({
           )}
 
           {shouldShowDeployForm ? (
-            hasToken ? (
+            hasTelegramConfig ? (
               <form action={deployAction} className="mt-8">
                 <div className={`flex flex-wrap items-center justify-between gap-4 px-4 py-4 ${shellInsetClassName}`}>
                   <div>
@@ -245,7 +245,7 @@ export function DeploymentConsole({
                 <div>
                   <p className={shellLabelClassName}>Setup required</p>
                   <p className="mt-1 text-body text-zinc-300">
-                    Connect your Telegram bot before deploying. The runtime needs a bot token to receive messages.
+                    Connect your Telegram bot before deploying. The runtime needs a bot token and TELEGRAM_ALLOWED_USERS to receive messages safely.
                   </p>
                 </div>
                 <Button

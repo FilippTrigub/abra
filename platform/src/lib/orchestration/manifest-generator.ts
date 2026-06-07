@@ -53,6 +53,7 @@ export interface ManifestInput {
   /** User-supplied agent configuration injected into ConfigMap and Secret */
   agentConfig?: {
     telegramBotToken?: string;
+    telegramAllowedUsers?: string;
   };
 }
 
@@ -530,7 +531,8 @@ function buildOpenClawConfig(input: ManifestInput): string {
   const config: Record<string, unknown> = { gateway: { mode: "local" } };
 
   const token = input.agentConfig?.telegramBotToken?.trim();
-  if (token) {
+  const allowedUsers = input.agentConfig?.telegramAllowedUsers?.trim();
+  if (token && allowedUsers) {
     config.channels = {
       telegram: {
         accounts: {
@@ -570,8 +572,10 @@ function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Rec
 function buildEnvFileContent(input: ManifestInput): string {
   const lines: string[] = [];
   const token = input.agentConfig?.telegramBotToken?.trim();
-  if (token) {
+  const allowedUsers = input.agentConfig?.telegramAllowedUsers?.trim();
+  if (token && allowedUsers) {
     lines.push(`TELEGRAM_BOT_TOKEN=${token}`);
+    lines.push(`TELEGRAM_ALLOWED_USERS=${allowedUsers}`);
   }
   return lines.join("\n");
 }

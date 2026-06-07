@@ -798,6 +798,12 @@ export async function dispatchDeploymentRequest(deploymentId: string, authUserId
 
   try {
     const agentConfig = await loadAgentConfig(authUserId);
+    if (!agentConfig) {
+      throw new Error(
+        "Telegram setup is incomplete. Add a bot token and TELEGRAM_ALLOWED_USERS before deploying.",
+      );
+    }
+
     const operation = await dispatchOrchestrationAction(
       "create",
       buildDeploymentOperationInput(deployment, agentConfig),

@@ -16,6 +16,7 @@ const shellLabelClassName =
 export function BotSetupCard() {
   const [configured, setConfigured] = useState(false);
   const [token, setToken] = useState("");
+  const [allowedUsers, setAllowedUsers] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
@@ -27,6 +28,7 @@ export function BotSetupCard() {
       if (cancelled) return;
       setConfigured(result.configured);
       setToken(result.token ?? "");
+      setAllowedUsers(result.allowedUsers ?? "");
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -37,11 +39,11 @@ export function BotSetupCard() {
     setSaveStatus("saving");
     setSaveMessage("");
 
-    const result = await saveUserAgentConfig(token);
+    const result = await saveUserAgentConfig(token, allowedUsers);
     if (result.success) {
       setConfigured(true);
       setSaveStatus("success");
-      setSaveMessage("Bot token saved.");
+      setSaveMessage("Telegram configuration saved.");
     } else {
       setSaveStatus("error");
       setSaveMessage(result.error ?? "Could not save token.");
@@ -121,14 +123,32 @@ export function BotSetupCard() {
           </div>
         </div>
 
+        <div className={`rounded-sm px-4 py-4 ${shellInsetClassName}`}>
+          <p className={shellLabelClassName}>TELEGRAM_ALLOWED_USERS</p>
+          <div className="mt-3 space-y-2">
+            <input
+              type="text"
+              value={allowedUsers}
+              onChange={(e) => setAllowedUsers(e.target.value)}
+              placeholder="123456789"
+              disabled={loading || saveStatus === "saving"}
+              className={inputClassName}
+              autoComplete="off"
+            />
+            <p className="text-caption text-zinc-500">
+              Enter the Telegram user id or allowlist that may talk to this runtime.
+            </p>
+          </div>
+        </div>
+
         <div className="flex justify-end">
           <Button
             variant="primary"
             type="submit"
-            disabled={saveStatus === "saving" || loading || !token.trim()}
+            disabled={saveStatus === "saving" || loading || !token.trim() || !allowedUsers.trim()}
             className="rounded-sm shadow-none"
           >
-            {saveStatus === "saving" ? "Saving…" : "Save token"}
+            {saveStatus === "saving" ? "Saving…" : "Save Telegram config"}
           </Button>
         </div>
       </form>

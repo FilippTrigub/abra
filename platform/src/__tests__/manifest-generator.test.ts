@@ -652,20 +652,25 @@ describe("Runtime prerequisite manifests", () => {
     expect(manifests.secret.stringData.env).toBe("");
   });
 
-  test("with agentConfig.telegramBotToken: configMap references env var, secret env has token", () => {
+  test("with complete Telegram agentConfig: configMap references env var, secret env has Telegram values", () => {
     const manifests = generateKubernetesManifests({
       ...BASE_INPUT,
-      agentConfig: { telegramBotToken: "123456:ABC-DEF" },
+      agentConfig: {
+        telegramBotToken: "123456:ABC-DEF",
+        telegramAllowedUsers: "123456789",
+      },
     });
     const config = JSON.parse(manifests.configMap.data["openclaw.json"]);
     expect(config.channels.telegram.accounts.default.botToken).toBe("${TELEGRAM_BOT_TOKEN}");
-    expect(manifests.secret.stringData.env).toBe("TELEGRAM_BOT_TOKEN=123456:ABC-DEF");
+    expect(manifests.secret.stringData.env).toBe(
+      "TELEGRAM_BOT_TOKEN=123456:ABC-DEF\nTELEGRAM_ALLOWED_USERS=123456789"
+    );
   });
 
-  test("with empty agentConfig.telegramBotToken: behaves like no agentConfig", () => {
+  test("with incomplete Telegram agentConfig: behaves like no agentConfig", () => {
     const manifests = generateKubernetesManifests({
       ...BASE_INPUT,
-      agentConfig: { telegramBotToken: "  " },
+      agentConfig: { telegramBotToken: "  ", telegramAllowedUsers: "123456789" },
     });
     const config = JSON.parse(manifests.configMap.data["openclaw.json"]);
     expect(config).toEqual({ gateway: { mode: "local" } });

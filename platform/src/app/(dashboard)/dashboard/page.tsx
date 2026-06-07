@@ -51,7 +51,7 @@ export default async function DashboardPage() {
   let feedWarning: string | null = null;
   let feedLoadError: string | null = null;
   let currentDeployment: Awaited<ReturnType<typeof getDeploymentFeed>>["currentDeployment"] = null;
-  let hasToken = false;
+  let hasTelegramConfig = false;
 
   try {
     const [feed, tokenConfigured] = await Promise.all([
@@ -60,7 +60,7 @@ export default async function DashboardPage() {
     ]);
     currentDeployment = feed.currentDeployment;
     feedWarning = feed.warning;
-    hasToken = tokenConfigured;
+    hasTelegramConfig = tokenConfigured;
   } catch (err) {
     feedLoadError = err instanceof Error ? err.message : "Could not load deployment feed.";
   }
@@ -211,7 +211,7 @@ export default async function DashboardPage() {
         <DeploymentConsole
           initialDeployment={currentDeployment}
           persistenceWarning={feedWarning}
-          hasToken={hasToken}
+          hasTelegramConfig={hasTelegramConfig}
         />
       </div>
 

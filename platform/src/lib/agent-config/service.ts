@@ -14,9 +14,10 @@ export async function loadAgentConfig(authUserId: string): Promise<AgentConfig |
 
   const data = doc.data() as DocumentData | undefined;
   const token = typeof data?.telegramBotToken === "string" ? data.telegramBotToken.trim() : "";
-  if (!token) return null;
+  const allowedUsers = typeof data?.telegramAllowedUsers === "string" ? data.telegramAllowedUsers.trim() : "";
+  if (!token || !allowedUsers) return null;
 
-  return { telegramBotToken: token };
+  return { telegramBotToken: token, telegramAllowedUsers: allowedUsers };
 }
 
 export async function saveAgentConfig(authUserId: string, config: AgentConfig): Promise<void> {
@@ -25,6 +26,7 @@ export async function saveAgentConfig(authUserId: string, config: AgentConfig): 
   await firestore.doc(docPath(authUserId)).set(
     {
       telegramBotToken: config.telegramBotToken,
+      telegramAllowedUsers: config.telegramAllowedUsers,
       updatedAt: now,
     },
     { merge: true },

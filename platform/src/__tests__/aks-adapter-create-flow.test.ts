@@ -220,7 +220,7 @@ describe("AksOrchestrationAdapter create flow", () => {
     expect(succeeded?.result?.metadata?.aks).toEqual(
       expect.objectContaining({
         podName: "abra-account-1-deployment-1-0",
-        gatewayRoute: "http://abra-account-1-deployment-1-svc.abra.svc.cluster.local:3000",
+        gatewayRoute: "http://abra-account-1-deployment-1-svc.abra.svc.cluster.local:18789",
       })
     );
   });

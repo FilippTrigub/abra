@@ -14,7 +14,7 @@ describe("DeploymentConsole", () => {
       <DeploymentConsole
         initialDeployment={null}
         persistenceWarning={null}
-        hasToken={true}
+        hasTelegramConfig={true}
       />,
     );
 
@@ -55,7 +55,7 @@ describe("DeploymentConsole", () => {
           },
         }}
         persistenceWarning={null}
-        hasToken={true}
+        hasTelegramConfig={true}
       />,
     );
 
