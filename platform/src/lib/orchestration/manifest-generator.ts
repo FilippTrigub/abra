@@ -20,6 +20,8 @@ import {
   getRuntimeNamespace,
 } from "./naming-helpers";
 
+import { createHash } from "node:crypto";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -72,6 +74,29 @@ export interface ManifestNameOverrides {
 
 const DEFAULT_SERVICE_ACCOUNT_NAME = "abra-hermes-sa";
 const HERMES_PROFILE_DIR = "/openclaw-home/.hermes/profiles/abra";
+const LABEL_HASH_LENGTH = 8;
+
+function trimLabelEdge(value: string): string {
+  return value.replace(/^[^A-Za-z0-9]+/, "").replace(/[^A-Za-z0-9]+$/, "");
+}
+
+function toKubernetesLabelValue(value: string): string {
+  const sanitized = trimLabelEdge(value.replace(/[^A-Za-z0-9_.-]/g, "-"));
+  const fallback = sanitized || "unknown";
+  if (fallback.length <= 63) return fallback;
+
+  const hash = createHash("sha256").update(value).digest("hex").slice(0, LABEL_HASH_LENGTH);
+  const prefix = trimLabelEdge(fallback.slice(0, 63 - LABEL_HASH_LENGTH - 1));
+  return `${prefix || "value"}-${hash}`;
+}
+
+function buildRuntimeLabels(accountId: string, deploymentId: string) {
+  return {
+    app: "abra",
+    "abra.io/account-id": toKubernetesLabelValue(accountId),
+    "abra.io/deployment-id": toKubernetesLabelValue(deploymentId),
+  };
+}
 
 /**
  * Kubernetes object base interface.
@@ -377,6 +402,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
   const serviceAccountName = input.nameOverrides?.serviceAccountName ?? resolveServiceAccountName(input);
   const serviceName = input.nameOverrides?.serviceName ?? getServiceName(accountId, deploymentId);
   const hasTelegramConfig = hasCompleteTelegramConfig(input);
+  const runtimeLabels = buildRuntimeLabels(accountId, deploymentId);
 
   // Build container resources if provided
   type ContainerResources = {
@@ -411,28 +437,19 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
     metadata: {
       name: statefulSetName,
       namespace: namespace,
-      labels: {
-        app: "abra",
-        "abra.io/account-id": accountId,
-        "abra.io/deployment-id": deploymentId,
-      },
+      labels: runtimeLabels,
     },
     spec: {
       serviceName,
       replicas: 1,
       selector: {
         matchLabels: {
-          app: "abra",
-          "abra.io/deployment-id": deploymentId,
+          ...runtimeLabels,
         },
       },
       template: {
         metadata: {
-          labels: {
-            app: "abra",
-            "abra.io/account-id": accountId,
-            "abra.io/deployment-id": deploymentId,
-          },
+          labels: runtimeLabels,
         },
         spec: {
           ...(serviceAccountName ? { serviceAccountName } : {}),
@@ -545,17 +562,14 @@ function generateServiceAccount(input: ManifestInput): KubernetesObject | undefi
   }
 
   const { accountId, deploymentId } = input;
+  const runtimeLabels = buildRuntimeLabels(accountId, deploymentId);
   return {
     apiVersion: "v1",
     kind: "ServiceAccount",
     metadata: {
       name: serviceAccountName,
       namespace: input.nameOverrides?.namespace ?? getRuntimeNamespace(),
-      labels: {
-        app: "abra",
-        "abra.io/account-id": accountId,
-        "abra.io/deployment-id": deploymentId,
-      },
+      labels: runtimeLabels,
     },
   };
 }
@@ -610,6 +624,7 @@ function buildOpenClawConfig(input: ManifestInput): string {
 function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Record<string, string> } {
   const { accountId, deploymentId } = input;
   const namespace = input.nameOverrides?.namespace ?? getRuntimeNamespace();
+  const runtimeLabels = buildRuntimeLabels(accountId, deploymentId);
 
   return {
     apiVersion: "v1",
@@ -617,11 +632,7 @@ function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Rec
     metadata: {
       name: input.nameOverrides?.configMapName ?? getConfigMapName(accountId, deploymentId),
       namespace,
-      labels: {
-        app: "abra",
-        "abra.io/account-id": accountId,
-        "abra.io/deployment-id": deploymentId,
-      },
+      labels: runtimeLabels,
     },
     data: {
       "openclaw.json": buildOpenClawConfig(input) + "\n",
@@ -659,6 +670,7 @@ function generateSecret(input: ManifestInput): KubernetesObject & {
 } {
   const { accountId, deploymentId } = input;
   const namespace = input.nameOverrides?.namespace ?? getRuntimeNamespace();
+  const runtimeLabels = buildRuntimeLabels(accountId, deploymentId);
 
   return {
     apiVersion: "v1",
@@ -666,11 +678,7 @@ function generateSecret(input: ManifestInput): KubernetesObject & {
     metadata: {
       name: input.nameOverrides?.secretName ?? getSecretName(accountId, deploymentId),
       namespace,
-      labels: {
-        app: "abra",
-        "abra.io/account-id": accountId,
-        "abra.io/deployment-id": deploymentId,
-      },
+      labels: runtimeLabels,
     },
     type: "Opaque",
     stringData: buildSecretData(input),
@@ -695,6 +703,7 @@ function generateService(input: ManifestInput): KubernetesObject & {
   const { accountId, deploymentId } = input;
   const serviceName = input.nameOverrides?.serviceName ?? getServiceName(accountId, deploymentId);
   const namespace = input.nameOverrides?.namespace ?? getRuntimeNamespace();
+  const runtimeLabels = buildRuntimeLabels(accountId, deploymentId);
 
   const manifest = {
     apiVersion: "v1",
@@ -702,11 +711,7 @@ function generateService(input: ManifestInput): KubernetesObject & {
     metadata: {
       name: serviceName,
       namespace: namespace,
-      labels: {
-        app: "abra",
-        "abra.io/account-id": accountId,
-        "abra.io/deployment-id": deploymentId,
-      },
+      labels: runtimeLabels,
     },
     spec: {
       type: "ClusterIP",
@@ -718,10 +723,7 @@ function generateService(input: ManifestInput): KubernetesObject & {
           name: "http",
         },
       ],
-      selector: {
-        app: "abra",
-        "abra.io/deployment-id": deploymentId,
-      },
+      selector: runtimeLabels,
     },
   };
 
@@ -747,6 +749,7 @@ function generatePVC(input: ManifestInput): KubernetesObject & {
   const { accountId, deploymentId } = input;
   const pvcName = input.nameOverrides?.pvcName ?? getPvcName(accountId, deploymentId);
   const namespace = input.nameOverrides?.namespace ?? getRuntimeNamespace();
+  const runtimeLabels = buildRuntimeLabels(accountId, deploymentId);
 
   const manifest = {
     apiVersion: "v1",
@@ -754,11 +757,7 @@ function generatePVC(input: ManifestInput): KubernetesObject & {
     metadata: {
       name: pvcName,
       namespace: namespace,
-      labels: {
-        app: "abra",
-        "abra.io/account-id": accountId,
-        "abra.io/deployment-id": deploymentId,
-      },
+      labels: runtimeLabels,
     },
     spec: {
       accessModes: ["ReadWriteOnce"],

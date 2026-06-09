@@ -204,7 +204,9 @@ describe("StatefulSet manifest", () => {
     const selector = statefulset.spec.selector;
 
     expect(selector.matchLabels.app).toBe("abra");
+    expect(selector.matchLabels["abra.io/account-id"]).toBe(TEST_ACCOUNT_ID);
     expect(selector.matchLabels["abra.io/deployment-id"]).toBe(TEST_DEPLOYMENT_ID);
+    expect(selector.matchLabels).toEqual(statefulset.spec.template.metadata.labels);
   });
 
   test("has main openclaw container with correct image", () => {
@@ -543,7 +545,24 @@ describe("Service manifest", () => {
     const spec = service.spec;
 
     expect(spec.selector.app).toBe("abra");
+    expect(spec.selector["abra.io/account-id"]).toBe(TEST_ACCOUNT_ID);
     expect(spec.selector["abra.io/deployment-id"]).toBe(TEST_DEPLOYMENT_ID);
+  });
+
+  test("uses Kubernetes-safe bounded selector labels", () => {
+    const manifests = generateKubernetesManifests({
+      ...BASE_INPUT,
+      accountId: "memory:FJYQATlMASRVEFkF0g6lGaJZ9gv2-with-extra-long-suffix-that-needs-compaction",
+      deploymentId: "smoke-hermes-20260609231854-with-extra-long-suffix-that-needs-compaction",
+    });
+
+    for (const value of Object.values(manifests.service.spec.selector)) {
+      expect(value.length).toBeLessThanOrEqual(63);
+      expect(value).toMatch(/^[A-Za-z0-9]([A-Za-z0-9_.-]*[A-Za-z0-9])?$/);
+    }
+    expect(manifests.service.spec.selector).toEqual(
+      manifests.statefulset.spec.selector.matchLabels
+    );
   });
 });
 
