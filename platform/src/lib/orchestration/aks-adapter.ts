@@ -61,6 +61,8 @@ interface AksRuntimeResourceClient {
   ensureServiceAccount(namespace: string, manifest: unknown): Promise<"created" | "existing">;
   ensureConfigMap(namespace: string, manifest: unknown): Promise<"created" | "existing">;
   ensureSecret(namespace: string, manifest: unknown): Promise<"created" | "existing">;
+  patchConfigMap(namespace: string, name: string, patch: Record<string, unknown>): Promise<void>;
+  patchSecret(namespace: string, name: string, patch: Record<string, unknown>): Promise<void>;
   ensurePersistentVolumeClaim(namespace: string, manifest: unknown): Promise<"created" | "existing">;
   ensureService(namespace: string, manifest: unknown): Promise<"created" | "existing">;
   ensureStatefulSet(namespace: string, manifest: unknown): Promise<"created" | "existing">;
@@ -108,7 +110,8 @@ function readAgentConfig(payload: Record<string, unknown>): ManifestInput["agent
   const telegramBotToken = readOptionalString(raw.telegramBotToken);
   const telegramHomeChannel = readOptionalString(raw.telegramHomeChannel);
   if (!telegramBotToken || !telegramHomeChannel) return undefined;
-  return { telegramBotToken, telegramHomeChannel };
+  const telegramAllowedUsers = readOptionalString(raw.telegramAllowedUsers) ?? telegramHomeChannel;
+  return { telegramBotToken, telegramHomeChannel, telegramAllowedUsers };
 }
 
 function buildManifestInput(input: {
@@ -508,6 +511,22 @@ function createDefaultResourceClient(client: AkSKubernetesClient): AksRuntimeRes
       return "created";
     },
 
+    async patchConfigMap(namespace, name, patch) {
+      await coreApi.patchNamespacedConfigMap({
+        name,
+        namespace,
+        body: patch as never,
+      });
+    },
+
+    async patchSecret(namespace, name, patch) {
+      await coreApi.patchNamespacedSecret({
+        name,
+        namespace,
+        body: patch as never,
+      });
+    },
+
     async ensurePersistentVolumeClaim(namespace, manifest) {
       const name = (manifest as { metadata?: { name?: string } }).metadata?.name;
       if (!name) {
@@ -855,6 +874,14 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
         },
       });
 
+      await client.patchConfigMap(manifests.names.namespace, manifests.names.configMapName, {
+        data: manifests.configMap.data,
+      });
+      await client.patchSecret(manifests.names.namespace, manifests.names.secretName, {
+        stringData: manifests.secret.stringData,
+      });
+
+      const runtimeContainer = manifests.statefulset.spec.template.spec.containers[0];
       await client.patchStatefulSet(manifests.names.namespace, manifests.names.statefulSetName, {
         spec: {
           template: {
@@ -864,13 +891,25 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
                 "abra.io/restarted-at": runningOperation.updatedAt,
               },
             },
+            spec: {
+              containers: [
+                {
+                  name: runtimeContainer.name,
+                  image: runtimeContainer.image,
+                  imagePullPolicy: runtimeContainer.imagePullPolicy,
+                  command: runtimeContainer.command,
+                  args: runtimeContainer.args,
+                  env: runtimeContainer.env,
+                },
+              ],
+            },
           },
         },
       });
 
       return this.persistSimpleActionUpdate(runningOperation, {
         status: "succeeded",
-        summary: `Config revision ${nextRevision} reconciled and StatefulSet rollout triggered.`,
+        summary: `Config revision ${nextRevision} reconciled and StatefulSet rollout triggered with image ${image}.`,
         completed: true,
         resultMessage: "AKS configuration update applied.",
         runtimeMetadata: {

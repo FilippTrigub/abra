@@ -54,6 +54,8 @@ function createResourceClient(overrides: Record<string, unknown> = {}) {
     ensureServiceAccount: vi.fn(async () => "created" as const),
     ensureConfigMap: vi.fn(async () => "created" as const),
     ensureSecret: vi.fn(async () => "created" as const),
+    patchConfigMap: vi.fn(async () => undefined),
+    patchSecret: vi.fn(async () => undefined),
     ensurePersistentVolumeClaim: vi.fn(async () => "created" as const),
     ensureService: vi.fn(async () => "created" as const),
     ensureStatefulSet: vi.fn(async () => "created" as const),
@@ -572,8 +574,26 @@ describe("AksOrchestrationAdapter create flow", () => {
     expect(operation.steps.map((step) => step.summary)).toEqual([
       "AKS update request persisted. Config revision reconciliation will start immediately.",
       "Reconciling StatefulSet for config revision 5.",
-      "Config revision 5 reconciled and StatefulSet rollout triggered.",
+      "Config revision 5 reconciled and StatefulSet rollout triggered with image ghcr.io/abra/runtime:latest.",
     ]);
+    expect(resourceClient.patchConfigMap).toHaveBeenCalledWith(
+      "abra",
+      "abra-account-1-deployment-1-config",
+      expect.objectContaining({
+        data: expect.objectContaining({
+          "openclaw.json": expect.any(String),
+        }),
+      })
+    );
+    expect(resourceClient.patchSecret).toHaveBeenCalledWith(
+      "abra",
+      "abra-account-1-deployment-1-secrets",
+      expect.objectContaining({
+        stringData: expect.objectContaining({
+          env: expect.any(String),
+        }),
+      })
+    );
     expect(resourceClient.patchStatefulSet).toHaveBeenCalledWith(
       "abra",
       "abra-account-1-deployment-1",
@@ -585,6 +605,16 @@ describe("AksOrchestrationAdapter create flow", () => {
                 "abra.io/config-revision": "5",
                 "abra.io/restarted-at": "2026-04-24T12:01:00.000Z",
               }),
+            },
+            spec: {
+              containers: [
+                expect.objectContaining({
+                  name: "openclaw",
+                  image: "ghcr.io/abra/runtime:latest",
+                  command: undefined,
+                  args: ["gateway", "run"],
+                }),
+              ],
             },
           },
         },
