@@ -44,6 +44,7 @@ export async function saveUserAgentConfig(
   await saveAgentConfig(authResult.user.id, {
     telegramBotToken: trimmed,
     telegramHomeChannel: trimmedHomeChannel,
+    telegramAllowedUsers: trimmedHomeChannel,
   });
   return { success: true };
 }

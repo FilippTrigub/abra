@@ -20,9 +20,13 @@ export async function loadAgentConfig(authUserId: string): Promise<AgentConfig |
       : typeof data?.telegramAllowedUsers === "string"
         ? data.telegramAllowedUsers.trim()
         : "";
+  const allowedUsers =
+    typeof data?.telegramAllowedUsers === "string"
+      ? data.telegramAllowedUsers.trim()
+      : homeChannel;
   if (!token || !homeChannel) return null;
 
-  return { telegramBotToken: token, telegramHomeChannel: homeChannel };
+  return { telegramBotToken: token, telegramHomeChannel: homeChannel, telegramAllowedUsers: allowedUsers };
 }
 
 export async function saveAgentConfig(authUserId: string, config: AgentConfig): Promise<void> {
@@ -32,6 +36,7 @@ export async function saveAgentConfig(authUserId: string, config: AgentConfig): 
     {
       telegramBotToken: config.telegramBotToken,
       telegramHomeChannel: config.telegramHomeChannel,
+      telegramAllowedUsers: config.telegramAllowedUsers,
       updatedAt: now,
     },
     { merge: true },
