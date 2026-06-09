@@ -1,0 +1,38 @@
+{
+  "_comment": "Copy this file to brief.json and fill in your values. Remove this _comment field.",
+
+  "campaign_name": "June Newsletter",
+  "subject": "How to post without it becoming a second job",
+  "from_name": "Filip",
+  "from_email": "filip@example.com",
+  "reply_to": "filip@example.com",
+
+  "body_html": "<p>Hi,</p><p>Your email body here. HTML is supported.</p><p>— Filip</p>",
+  "body_text": "Hi,\n\nYour email body here. Plain text fallback.\n\n— Filip",
+
+  "_recipients_comment": "Use 'to' for direct sends (Resend, SendGrid). Use list/audience/segment IDs for broadcast sends.",
+  "to": ["recipient@example.com"],
+
+  "_mailchimp_comment": "Mailchimp and Kit use list_id / audience_id instead of 'to'.",
+  "list_id": "abc123def",
+  "audience_id": "abc123def",
+
+  "_resend_broadcast_comment": "Resend broadcasts (campaigns to a segment) use segment_id instead of 'to'.",
+  "segment_id": "seg_xxxxxxxx",
+
+  "_provider_comment": "Optional. If not set, the first provider with a matching env key is used.",
+  "provider": "resend",
+
+  "_tags_comment": "Optional tags for Resend email tracking.",
+  "tags": ["newsletter", "june-2026"],
+
+  "_scheduling_comment": "Optional ISO 8601 datetime to schedule the send.",
+  "scheduled_at": "2026-06-15T09:00:00Z",
+
+  "_dub_comment": "Set track_links + cta_links to wrap CTAs with Dub short links. Requires DUB_API_KEY.",
+  "track_links": true,
+  "cta_links": [
+    "https://yoursite.com/offer",
+    "https://yoursite.com/book-call"
+  ]
+}

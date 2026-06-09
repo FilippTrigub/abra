@@ -743,7 +743,7 @@ uv run python scripts/funnel.py --input ./input --output ./output
 - Resend: `RESEND_API_KEY`
 - Mailchimp: `MAILCHIMP_API_KEY`, `MAILCHIMP_SERVER_PREFIX`
 - SendGrid: `SENDGRID_API_KEY`
-- Kit: `KIT_API_KEY`
+- Kit: `KIT_API_SECRET` (broadcasts are created as drafts; publish manually in the Kit dashboard)
 - Dub: `DUB_API_KEY`
 
 **Location:** `skills/email-campaigner/`
