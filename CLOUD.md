@@ -89,20 +89,20 @@ Agent config is required before any deployment is allowed. The platform reads it
 Each user deployment creates a set of K8s resources in that namespace:
 
 - **Namespace** — `abra`
-- **ConfigMap** — `abra-{accountId}-{deploymentId}-config` — contains `openclaw.json` (gateway + channel config)
-- **Secret** — `abra-{accountId}-{deploymentId}-secrets` — contains `.env` file with `TELEGRAM_BOT_TOKEN` and `TELEGRAM_HOME_CHANNEL`
-- **StatefulSet** — `abra-{accountId}-{deploymentId}` — runs the OpenClaw container; init container hydrates `~/.openclaw` from ConfigMap + Secret before main container starts
+- **ConfigMap** — `abra-{accountId}-{deploymentId}-config` — contains the legacy `openclaw.json` compatibility config
+- **Secret** — `abra-{accountId}-{deploymentId}-secrets` — contains `.env` plus direct Secret keys for `TELEGRAM_BOT_TOKEN`, `TELEGRAM_HOME_CHANNEL`, and `TELEGRAM_ALLOWED_USERS`
+- **StatefulSet** — `abra-{accountId}-{deploymentId}` — runs the Hermes Abra image; init container hydrates the Hermes profile and legacy `~/.openclaw` compatibility files before main container starts
 - **Service** — ClusterIP on port 18789
 - **PVC** — 1 GiB for `~/.openclaw` persistence
 
-The init container (`busybox:latest`) copies `openclaw.json` and `.env` into the PVC-backed volume before the main container starts.
+The init container (`busybox:latest`) writes a minimal Hermes profile under the PVC-backed runtime home, copies `.env` into both Hermes and legacy OpenClaw-compatible locations, then the main container starts with `gateway run`.
 
 ### Container Registry — `abraacr914f`
 
 - **Login server**: `abraacr914f.azurecr.io`
 - **SKU**: Standard
 - **Repository**: `abra` (single repo)
-- **Current deployed tag**: `5721f18` (set via `AKS_RUNTIME_IMAGE` in Vercel)
+- **Current deployed tag**: `hermes-202606092229-3277038` (set via `AKS_RUNTIME_IMAGE` in Vercel / the StatefulSet image in AKS)
 - An ACR task `purge-old-images` runs to clean up old tags.
 
 To check the current image in use:
@@ -112,7 +112,7 @@ vercel env ls  # look for AKS_RUNTIME_IMAGE
 
 To push a new image:
 ```bash
-az acr build -r abraacr914f -t abra:<tag> .
+az acr build -r abraacr914f -t abra:<tag> -f Dockerfile.hermes .
 # Then update AKS_RUNTIME_IMAGE in Vercel and redeploy
 ```
 
@@ -147,12 +147,13 @@ Provisioned for future async job dispatch.
 
 ## Telegram runtime contract
 
-The deployed container reads these env vars from `~/.openclaw/.env`:
+The deployed Hermes container receives these env vars directly from the Kubernetes Secret and also gets them in the hydrated profile `.env`:
 
 | Env var | Source | Description |
 |---------|--------|-------------|
 | `TELEGRAM_BOT_TOKEN` | Firestore `agent-config/current.telegramBotToken` | Token from @BotFather |
 | `TELEGRAM_HOME_CHANNEL` | Firestore `agent-config/current.telegramHomeChannel` | Channel/chat ID where the runtime operates (e.g. `388259993`) |
+| `TELEGRAM_ALLOWED_USERS` | Firestore `agent-config/current.telegramAllowedUsers`, falling back to `telegramHomeChannel` | Comma-separated user/chat IDs authorized to use the bot |
 
 These are set in the platform Settings → Telegram setup card and injected into the K8s Secret at deploy time. If either is missing, the deployment is blocked at the server action level.
 
@@ -165,7 +166,8 @@ These are set in the platform Settings → Telegram setup card and injected into
 | Deployment stuck / failed | Firestore `accounts/{userId}/deployments/{id}` — `errorMessage` field |
 | Pod not starting | `kubectl get pods -n abra` / `kubectl describe pod <name> -n abra` |
 | Init container failing | `kubectl logs <pod> -n abra -c init-hydration` |
-| Bot not responding | Check `TELEGRAM_HOME_CHANNEL` is set in Settings, then redeploy |
+| Bot says user is not authorized | Check `TELEGRAM_ALLOWED_USERS` is set in the pod env/Secret, then redeploy or update the StatefulSet |
+| Bot not responding | Check `TELEGRAM_BOT_TOKEN` and `TELEGRAM_HOME_CHANNEL` are set in Settings, then redeploy |
 | Image error | Verify `AKS_RUNTIME_IMAGE` in Vercel dashboard → Settings → Env Vars |
 | K8s auth failing | Check `KUBECONFIG_B64` is current in Vercel; re-export from AKS if expired |
-| New image to deploy | Build via `az acr build`, update `AKS_RUNTIME_IMAGE` in Vercel, delete + redeploy instance |
+| New image to deploy | Build via `az acr build -f Dockerfile.hermes`, update `AKS_RUNTIME_IMAGE` in Vercel, then run update/redeploy or patch the StatefulSet image |

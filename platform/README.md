@@ -111,6 +111,13 @@ When the AKS adapter is used, the runtime image is resolved in this order:
 
 If none of those values is set, create requests fail with a clear missing-image error.
 
+The runtime image should be the Hermes Abra image published to ACR, for example
+`abraacr914f.azurecr.io/abra:<tag>`. The generated Kubernetes Secret exposes
+`TELEGRAM_BOT_TOKEN`, `TELEGRAM_HOME_CHANNEL`, and `TELEGRAM_ALLOWED_USERS` as
+pod environment variables and as the hydrated profile `.env`; the allowlist
+falls back to the saved home-channel value until the settings surface stores a
+separate allowlist.
+
 ### AKS backend contract
 
 Hosted AKS mode requires the documented production env set, including the AKS runtime image plus Kubernetes auth through in-cluster auth, `KUBECONFIG`, or `KUBECONFIG_B64`. AKS remains the default backend when `ORCHESTRATION_BACKEND` is unset. Set `ORCHESTRATION_BACKEND=mock` only when intentionally running the simulator.
