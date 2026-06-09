@@ -6,26 +6,48 @@ vi.mock("@/app/(dashboard)/dashboard/actions", () => ({
   submitDeploymentRequest: vi.fn(),
 }));
 
+vi.mock("@/lib/agent-config/actions", () => ({
+  loadUserAgentConfig: vi.fn(),
+  saveUserAgentConfig: vi.fn(),
+}));
+
 describe("DeploymentConsole", () => {
-  it("renders with the shared initial form state", async () => {
-    const { DeploymentConsole } = await import("@/app/(dashboard)/dashboard/deployment-console");
+  it("renders the deploy button when Telegram config is already saved", async () => {
+    const { loadUserAgentConfig } = await import("@/lib/agent-config/actions");
+    vi.mocked(loadUserAgentConfig).mockResolvedValue({
+      configured: true,
+      token: "bot123:token",
+      allowedUsers: "123456789",
+    });
+
+    const { DeploymentConsole } = await import(
+      "@/app/(dashboard)/dashboard/deployment-console"
+    );
 
     render(
       <DeploymentConsole
         initialDeployment={null}
         persistenceWarning={null}
-        hasTelegramConfig={true}
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Deploy Abra" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Deploy Abra" })).toBeTruthy();
     expect(screen.queryByLabelText("Instance name")).toBeNull();
     expect(screen.queryByLabelText("Environment")).toBeNull();
     expect(screen.queryByLabelText("Branch / tag / version")).toBeNull();
   });
 
-  it("shows a single ready instance with a delete control", async () => {
-    const { DeploymentConsole } = await import("@/app/(dashboard)/dashboard/deployment-console");
+  it("shows a delete control for a ready instance", async () => {
+    const { loadUserAgentConfig } = await import("@/lib/agent-config/actions");
+    vi.mocked(loadUserAgentConfig).mockResolvedValue({
+      configured: true,
+      token: "bot123:token",
+      allowedUsers: "123456789",
+    });
+
+    const { DeploymentConsole } = await import(
+      "@/app/(dashboard)/dashboard/deployment-console"
+    );
 
     render(
       <DeploymentConsole
@@ -55,12 +77,36 @@ describe("DeploymentConsole", () => {
           },
         }}
         persistenceWarning={null}
-        hasTelegramConfig={true}
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Abra runtime" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Abra runtime" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Delete instance" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Deploy Abra" })).toBeNull();
+  });
+
+  it("shows inline Telegram config form when no config is saved yet", async () => {
+    const { loadUserAgentConfig } = await import("@/lib/agent-config/actions");
+    vi.mocked(loadUserAgentConfig).mockResolvedValue({
+      configured: false,
+      token: null,
+      allowedUsers: null,
+    });
+
+    const { DeploymentConsole } = await import(
+      "@/app/(dashboard)/dashboard/deployment-console"
+    );
+
+    render(
+      <DeploymentConsole
+        initialDeployment={null}
+        persistenceWarning={null}
+      />,
+    );
+
+    expect(await screen.findByPlaceholderText("123456:ABC-DEF...")).toBeTruthy();
+    expect(screen.getByPlaceholderText("123456789")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save Telegram config" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Deploy Abra" })).toBeNull();
   });
 });

@@ -5,11 +5,11 @@ import { Badge, Button, Card, Panel } from "@/components/ui";
 import type { DashboardDeployment } from "@/lib/deployments";
 import { deleteAbraInstance, submitDeploymentRequest } from "./actions";
 import { initialDeploymentFormState } from "./deployment-form-state";
+import { loadUserAgentConfig, saveUserAgentConfig } from "@/lib/agent-config/actions";
 
 interface DeploymentConsoleProps {
   initialDeployment: DashboardDeployment | null;
   persistenceWarning: string | null;
-  hasTelegramConfig: boolean;
 }
 
 const STATUS_BADGES: Record<
@@ -128,7 +128,6 @@ function InstanceStatusBox({ deployment }: { deployment: DashboardDeployment | n
 export function DeploymentConsole({
   initialDeployment,
   persistenceWarning,
-  hasTelegramConfig,
 }: DeploymentConsoleProps) {
   const [deployState, deployAction, deployPending] = useActionState(
     submitDeploymentRequest,
@@ -139,6 +138,65 @@ export function DeploymentConsole({
     initialDeploymentFormState,
   );
   const [polledDeployment, setPolledDeployment] = useState<DashboardDeployment | null>(null);
+
+  /* ── Telegram config (self-contained, no settings link) ── */
+  const [telegramState, setTelegramState] = useState<{
+    loaded: boolean;
+    configured: boolean;
+    token: string;
+    allowedUsers: string;
+    saveStatus: "idle" | "saving" | "success" | "error";
+    saveMessage: string;
+    revealed: boolean;
+  }>({
+    loaded: false,
+    configured: false,
+    token: "",
+    allowedUsers: "",
+    saveStatus: "idle",
+    saveMessage: "",
+    revealed: false,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    loadUserAgentConfig().then((result) => {
+      if (cancelled) return;
+      setTelegramState((prev) => ({
+        ...prev,
+        loaded: true,
+        configured: result.configured,
+        token: result.token ?? "",
+        allowedUsers: result.allowedUsers ?? "",
+      }));
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  async function handleTelegramSave(e: React.FormEvent) {
+    e.preventDefault();
+    setTelegramState((prev) => ({ ...prev, saveStatus: "saving", saveMessage: "" }));
+
+    const result = await saveUserAgentConfig(telegramState.token, telegramState.allowedUsers);
+    if (result.success) {
+      setTelegramState((prev) => ({
+        ...prev,
+        configured: true,
+        saveStatus: "success",
+        saveMessage: "Telegram configuration saved.",
+      }));
+    } else {
+      setTelegramState((prev) => ({
+        ...prev,
+        saveStatus: "error",
+        saveMessage: result.error ?? "Could not save Telegram config.",
+      }));
+    }
+
+    setTimeout(() => {
+      setTelegramState((prev) => ({ ...prev, saveStatus: "idle", saveMessage: "" }));
+    }, 4000);
+  }
 
   const deployment = useMemo(
     () => [initialDeployment, deployState.deployment, deleteState.deployment, polledDeployment]
@@ -228,7 +286,7 @@ export function DeploymentConsole({
           )}
 
           {shouldShowDeployForm ? (
-            hasTelegramConfig ? (
+            telegramState.loaded && telegramState.configured ? (
               <form action={deployAction} className="mt-8">
                 <div className={`flex flex-wrap items-center justify-between gap-4 px-4 py-4 ${shellInsetClassName}`}>
                   <div>
@@ -240,21 +298,85 @@ export function DeploymentConsole({
                   <SubmitButton pending={deployPending} />
                 </div>
               </form>
-            ) : (
-              <div className={`mt-8 flex flex-wrap items-center justify-between gap-4 px-4 py-4 ${shellInsetClassName}`}>
-                <div>
-                  <p className={shellLabelClassName}>Setup required</p>
-                  <p className="mt-1 text-body text-zinc-300">
-                    Connect your Telegram bot before deploying. The runtime needs a bot token and TELEGRAM_ALLOWED_USERS to receive messages safely.
-                  </p>
+            ) : telegramState.loaded ? (
+              <form onSubmit={handleTelegramSave} className="mt-8 space-y-4">
+                <div className={`rounded-sm px-4 py-4 ${shellInsetClassName}`}>
+                  <p className={shellLabelClassName}>botToken</p>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type={telegramState.revealed ? "text" : "password"}
+                        value={telegramState.token}
+                        onChange={(e) =>
+                          setTelegramState((prev) => ({ ...prev, token: e.target.value }))
+                        }
+                        placeholder="123456:ABC-DEF..."
+                        disabled={telegramState.saveStatus === "saving"}
+                        className="w-full rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 px-3 py-2 text-body text-white transition-all duration-150 ease-smooth placeholder:text-zinc-500 hover:border-white/20 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-200"
+                        autoComplete="off"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTelegramState((prev) => ({ ...prev, revealed: !prev.revealed }))
+                        }
+                        className="shrink-0 rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-400 hover:border-white/20 hover:text-white"
+                      >
+                        {telegramState.revealed ? "Hide" : "Show"}
+                      </button>
+                    </div>
+                    <p className="text-caption text-zinc-500">
+                      Enter the token from @BotFather. Stored securely and injected at deploy time.
+                    </p>
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  href="/dashboard/settings#bot-setup"
-                  className="rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 text-zinc-100 shadow-none hover:border-white/25 hover:bg-white/[0.06] hover:text-white"
-                >
-                  Connect Telegram bot
-                </Button>
+
+                <div className={`rounded-sm px-4 py-4 ${shellInsetClassName}`}>
+                  <p className={shellLabelClassName}>TELEGRAM_ALLOWED_USERS</p>
+                  <div className="mt-3 space-y-2">
+                    <input
+                      type="text"
+                      value={telegramState.allowedUsers}
+                      onChange={(e) =>
+                        setTelegramState((prev) => ({ ...prev, allowedUsers: e.target.value }))
+                      }
+                      placeholder="123456789"
+                      disabled={telegramState.saveStatus === "saving"}
+                      className="w-full rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 px-3 py-2 text-body text-white transition-all duration-150 ease-smooth placeholder:text-zinc-500 hover:border-white/20 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-200"
+                      autoComplete="off"
+                    />
+                    <p className="text-caption text-zinc-500">
+                      Enter the Telegram user id or allowlist that may talk to this runtime.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    {telegramState.saveStatus === "success" && (
+                      <p className="text-caption text-success-400">{telegramState.saveMessage}</p>
+                    )}
+                    {telegramState.saveStatus === "error" && (
+                      <p className="text-caption text-danger-400">{telegramState.saveMessage}</p>
+                    )}
+                  </div>
+                  <Button
+                    variant="primary"
+                    type="submit"
+                    disabled={
+                      telegramState.saveStatus === "saving" ||
+                      !telegramState.token.trim() ||
+                      !telegramState.allowedUsers.trim()
+                    }
+                    className="rounded-sm shadow-none"
+                  >
+                    {telegramState.saveStatus === "saving" ? "Saving…" : "Save Telegram config"}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className={`mt-8 px-4 py-4 ${shellInsetClassName}`}>
+                <p className="text-body text-zinc-400">Checking Telegram configuration…</p>
               </div>
             )
           ) : (

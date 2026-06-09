@@ -8,6 +8,7 @@ import {
   dispatchDeploymentRequest,
 } from "@/lib/deployments";
 import { getUser } from "@/lib/auth/firebase-auth";
+import { loadAgentConfig } from "@/lib/agent-config/service";
 import {
   initialDeploymentFormState,
   type DeploymentFormState,
@@ -34,6 +35,15 @@ export async function submitDeploymentRequest(
       ...initialDeploymentFormState,
       status: "error",
       message: "Your session expired. Sign in again to queue a deployment.",
+    };
+  }
+
+  const agentConfig = await loadAgentConfig(user.id);
+  if (!agentConfig) {
+    return {
+      ...initialDeploymentFormState,
+      status: "error",
+      message: "Add a Telegram bot token and allowed user list before deploying Abra.",
     };
   }
 

@@ -1,7 +1,6 @@
 import { Badge, Button, Card, Panel } from "@/components/ui";
 import { getUser } from "@/lib/auth/firebase-auth";
 import { getDeploymentFeed } from "@/lib/deployments";
-import { hasAgentConfig } from "@/lib/agent-config/service";
 import { DeploymentConsole } from "./deployment-console";
 import { startAbraInstance, stopAbraInstance } from "./actions";
 
@@ -51,16 +50,11 @@ export default async function DashboardPage() {
   let feedWarning: string | null = null;
   let feedLoadError: string | null = null;
   let currentDeployment: Awaited<ReturnType<typeof getDeploymentFeed>>["currentDeployment"] = null;
-  let hasTelegramConfig = false;
 
   try {
-    const [feed, tokenConfigured] = await Promise.all([
-      getDeploymentFeed(user.id),
-      hasAgentConfig(user.id),
-    ]);
+    const feed = await getDeploymentFeed(user.id);
     currentDeployment = feed.currentDeployment;
     feedWarning = feed.warning;
-    hasTelegramConfig = tokenConfigured;
   } catch (err) {
     feedLoadError = err instanceof Error ? err.message : "Could not load deployment feed.";
   }
@@ -211,7 +205,6 @@ export default async function DashboardPage() {
         <DeploymentConsole
           initialDeployment={currentDeployment}
           persistenceWarning={feedWarning}
-          hasTelegramConfig={hasTelegramConfig}
         />
       </div>
 
