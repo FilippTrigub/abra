@@ -769,6 +769,39 @@ describe("AksOrchestrationAdapter create flow", () => {
     }
   });
 
+  it("does not persist Telegram bot tokens from destroy payloads", async () => {
+    const resourceClient = createResourceClient();
+    const adapter = new AksOrchestrationAdapter({
+      operationStore: store as never,
+      now: nextTimestamp,
+      createOperationId: () => "op-destroy-redacted",
+      loadKubernetesClient: vi.fn(async () => ({}) as never),
+      createResourceClient: vi.fn(() => resourceClient),
+    });
+
+    const operation = await adapter.destroy(
+      createInput({
+        requestId: "request-destroy-redacted",
+        payload: {
+          name: "Abra runtime",
+          agentConfig: {
+            telegramBotToken: "123456:SECRET",
+            telegramHomeChannel: "388259993",
+            telegramAllowedUsers: "388259993",
+          },
+        },
+      })
+    );
+    const persisted = await store.getStatus("op-destroy-redacted");
+
+    expect(operation.payload.agentConfig).toBeUndefined();
+    expect(operation.payload.agentConfigRef).toBe("account-current");
+    expect(JSON.stringify(operation.payload)).not.toContain("SECRET");
+    expect(JSON.stringify(persisted?.payload)).not.toContain("SECRET");
+    expect(persisted?.payload.agentConfig).toBeUndefined();
+    expect(persisted?.payload.agentConfigRef).toBe("account-current");
+  });
+
   it("deletes the PVC during destroy when retention is disabled", async () => {
     const previousRetention = process.env.AKS_PVC_RETENTION_DAYS;
     process.env.AKS_PVC_RETENTION_DAYS = "0";

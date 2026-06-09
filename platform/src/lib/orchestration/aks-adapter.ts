@@ -1061,10 +1061,10 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
     const retentionDays = resolvePvcRetentionDays();
     const operation = await this.createActionOperation({
       input,
-      payload: {
+      payload: sanitizePayloadForPersistence({
         ...payload,
         configRevision: currentRevision,
-      },
+      }),
       action: "destroy",
       resultMessage: "AKS runtime destroy queued.",
       stepSummary: "AKS destroy request persisted. Compute cleanup will start immediately.",
