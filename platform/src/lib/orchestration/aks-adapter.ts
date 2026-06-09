@@ -114,6 +114,14 @@ function readAgentConfig(payload: Record<string, unknown>): ManifestInput["agent
   return { telegramBotToken, telegramHomeChannel, telegramAllowedUsers };
 }
 
+function sanitizePayloadForPersistence(payload: Record<string, unknown>): Record<string, unknown> {
+  if (!isRecord(payload.agentConfig)) return payload;
+
+  const { agentConfig: _agentConfig, ...safePayload } = payload;
+  void _agentConfig;
+  return { ...safePayload, agentConfigRef: "account-current" };
+}
+
 function buildManifestInput(input: {
   accountId: string;
   deploymentId: string;
@@ -121,10 +129,11 @@ function buildManifestInput(input: {
   image: string;
   configRevision: number;
   nameOverrides?: ManifestNameOverrides;
+  agentConfig?: ManifestInput["agentConfig"];
 }): ManifestInput {
   const serviceAccountName = readOptionalString(input.payload.serviceAccountName) ?? undefined;
   const useServiceAccount = readOptionalBoolean(input.payload.useServiceAccount);
-  const agentConfig = readAgentConfig(input.payload);
+  const agentConfig = input.agentConfig ?? readAgentConfig(input.payload);
 
   return {
     accountId: input.accountId,
@@ -136,6 +145,24 @@ function buildManifestInput(input: {
     ...(useServiceAccount !== undefined ? { useServiceAccount } : {}),
     ...(agentConfig ? { agentConfig } : {}),
   };
+}
+
+async function resolveAgentConfigForOperation(
+  accountId: string,
+  payload: Record<string, unknown>,
+): Promise<ManifestInput["agentConfig"] | undefined> {
+  const payloadAgentConfig = readAgentConfig(payload);
+  if (payloadAgentConfig && payloadAgentConfig.telegramBotToken !== "[redacted]") {
+    return payloadAgentConfig;
+  }
+
+  if (payload.agentConfigRef === "account-current") {
+    const { loadAgentConfig } = await import("@/lib/agent-config/service");
+    const storedAgentConfig = await loadAgentConfig(accountId);
+    return storedAgentConfig ?? undefined;
+  }
+
+  return undefined;
 }
 
 function readPersistedAksNames(payload: Record<string, unknown>): ManifestNameOverrides | undefined {
@@ -618,16 +645,12 @@ function createDefaultResourceClient(client: AkSKubernetesClient): AksRuntimeRes
         };
       }
 
-      const deploymentId = operation.target.deploymentId;
       const podList = await coreApi.listNamespacedPod({
         namespace: aks.namespace,
-        labelSelector: deploymentId
-          ? `app=abra,abra.io/deployment-id=${deploymentId}`
-          : "app=abra",
+        labelSelector: "app=abra",
       });
 
-      const pod = podList.items.find((candidate) => candidate.metadata?.name === aks.podName)
-        ?? podList.items[0];
+      const pod = podList.items.find((candidate) => candidate.metadata?.name === aks.podName);
 
       if (!pod) {
         return {
@@ -739,6 +762,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
     const deploymentId = readRequiredString(input.target.deploymentId, "target.deploymentId");
     const payload = isRecord(input.payload) ? { ...input.payload } : {};
     const image = resolveRuntimeImage(payload);
+    const agentConfig = readAgentConfig(payload);
     const manifests = generateKubernetesManifests(buildManifestInput({
       accountId,
       deploymentId,
@@ -746,6 +770,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       image,
       configRevision: DEFAULT_CONFIG_REVISION,
       nameOverrides: readPersistedAksNames(payload),
+      agentConfig,
     }));
     const now = this.dependencies.now();
     const resourceHandle = buildResourceHandle(manifests.names);
@@ -760,10 +785,10 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
         agentId: input.target.agentId,
         deploymentId,
       },
-      payload: {
+      payload: sanitizePayloadForPersistence({
         ...payload,
         image,
-      },
+      }),
       status: "queued",
       createdAt: now,
       updatedAt: now,
@@ -827,6 +852,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
     const accountId = readRequiredString(input.target.accountId, "target.accountId");
     const image = resolveRuntimeImage(payload);
     const nextRevision = resolveConfigRevision(payload) + 1;
+    const agentConfig = readAgentConfig(payload);
     const manifests = generateKubernetesManifests(buildManifestInput({
       accountId,
       deploymentId,
@@ -834,14 +860,15 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       image,
       configRevision: nextRevision,
       nameOverrides: readPersistedAksNames(payload),
+      agentConfig,
     }));
     const operation = await this.createActionOperation({
       input,
-      payload: {
+      payload: sanitizePayloadForPersistence({
         ...payload,
         image,
         configRevision: nextRevision,
-      },
+      }),
       action: "update",
       resultMessage: "AKS runtime update queued.",
       stepSummary:
@@ -933,6 +960,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
     const accountId = readRequiredString(input.target.accountId, "target.accountId");
     const image = resolveRuntimeImage(payload);
     const currentRevision = resolveConfigRevision(payload);
+    const agentConfig = readAgentConfig(payload);
     const manifests = generateKubernetesManifests(buildManifestInput({
       accountId,
       deploymentId,
@@ -940,14 +968,15 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       image,
       configRevision: currentRevision,
       nameOverrides: readPersistedAksNames(payload),
+      agentConfig,
     }));
     const operation = await this.createActionOperation({
       input,
-      payload: {
+      payload: sanitizePayloadForPersistence({
         ...payload,
         image,
         configRevision: currentRevision,
-      },
+      }),
       action: "restart",
       resultMessage: "AKS runtime restart queued.",
       stepSummary: "AKS restart request persisted. StatefulSet restart will start immediately.",
@@ -1132,6 +1161,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       const payload = isRecord(operation.payload) ? operation.payload : {};
       const image = resolveRuntimeImage(payload);
       const deploymentId = readRequiredString(operation.target.deploymentId, "target.deploymentId");
+      const agentConfig = await resolveAgentConfigForOperation(operation.target.accountId, payload);
       const manifests = generateKubernetesManifests(buildManifestInput({
         accountId: operation.target.accountId,
         deploymentId,
@@ -1139,6 +1169,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
         image,
         configRevision: operation.runtimeMetadata?.aks?.configRevision ?? DEFAULT_CONFIG_REVISION,
         nameOverrides: getNameOverridesFromMetadata(operation.runtimeMetadata?.aks),
+        agentConfig,
       }));
       client = this.dependencies.createResourceClient(
         await this.dependencies.loadKubernetesClient()

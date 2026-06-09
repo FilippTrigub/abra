@@ -96,6 +96,7 @@ describe("AksOrchestrationAdapter create flow", () => {
     const persisted = await store.getStatus("op-create-1");
 
     expect(operation.status).toBe("queued");
+    expect(operation.payload.agentConfig).toBeUndefined();
     expect(operation.result?.resourceHandle).toBe(
       "aks-runtime/abra/abra-account-1-deployment-1"
     );
@@ -620,6 +621,36 @@ describe("AksOrchestrationAdapter create flow", () => {
         },
       })
     );
+  });
+
+  it("does not persist Telegram bot tokens from agentConfig payloads", async () => {
+    const adapter = new AksOrchestrationAdapter({
+      operationStore: store as never,
+      now: nextTimestamp,
+      createOperationId: () => "op-create-redacted",
+    });
+
+    const operation = await adapter.create(
+      createInput({
+        payload: {
+          name: "Abra runtime",
+          image: "ghcr.io/abra/runtime:latest",
+          agentConfig: {
+            telegramBotToken: "123456:SECRET",
+            telegramHomeChannel: "388259993",
+            telegramAllowedUsers: "388259993",
+          },
+        },
+      })
+    );
+    const persisted = await store.getStatus("op-create-redacted");
+
+    expect(operation.payload.agentConfig).toBeUndefined();
+    expect(operation.payload.agentConfigRef).toBe("account-current");
+    expect(JSON.stringify(operation.payload)).not.toContain("SECRET");
+    expect(JSON.stringify(persisted?.payload)).not.toContain("SECRET");
+    expect(persisted?.payload.agentConfig).toBeUndefined();
+    expect(persisted?.payload.agentConfigRef).toBe("account-current");
   });
 
   it("patches the StatefulSet for restart without deleting the PVC", async () => {
