@@ -779,7 +779,7 @@ describe("Names consistency", () => {
       image: TEST_IMAGE,
     });
 
-    expect(manifests.names.statefulSetName.length).toBeLessThanOrEqual(55);
+    expect(manifests.names.statefulSetName.length).toBeLessThanOrEqual(52);
     expect(manifests.names.serviceName.length).toBeLessThanOrEqual(63);
     expect(manifests.names.pvcName.length).toBeLessThanOrEqual(63);
     expect(manifests.names.configMapName.length).toBeLessThanOrEqual(63);

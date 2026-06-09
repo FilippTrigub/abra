@@ -124,8 +124,17 @@ describe("getStatefulSetName", () => {
     const name2 = getStatefulSetName(accountId, deploymentId);
 
     expect(name1).toBe(name2);
-    expect(name1.length).toBeLessThanOrEqual(55);
+    expect(name1.length).toBeLessThanOrEqual(52);
     expect(name1.startsWith("abra-")).toBe(true);
+  });
+
+  test("leaves room for StatefulSet controller-revision-hash label values", () => {
+    const name = getStatefulSetName(
+      "fjyqatlmasrvefkf0g6lgajz9gv2",
+      "smoke-hermes-20260609230612"
+    );
+
+    expect(`${name}-6c6cbf7f85`.length).toBeLessThanOrEqual(63);
   });
 });
 

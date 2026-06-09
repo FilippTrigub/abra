@@ -26,8 +26,14 @@ const MAX_NAME_LENGTH = 253;
 /** Maximum length for Kubernetes DNS labels used by Service/StatefulSet names */
 const MAX_DNS_LABEL_LENGTH = 63;
 
-/** Longest suffix appended to the shared AKS runtime base name. */
-const LONGEST_RUNTIME_SUFFIX = "-secrets";
+/**
+ * Longest suffix appended to the shared AKS runtime base name.
+ *
+ * Kubernetes StatefulSets add a controller-revision-hash label value in the
+ * form `{statefulSetName}-{10-char-hash}`. Label values are capped at 63
+ * characters, so the StatefulSet name itself must leave room for that suffix.
+ */
+const LONGEST_RUNTIME_SUFFIX = "-0000000000";
 
 /** Shared runtime base name budget so all derived AKS resource names stay <= 63 chars. */
 const MAX_RUNTIME_BASE_NAME_LENGTH = MAX_DNS_LABEL_LENGTH - LONGEST_RUNTIME_SUFFIX.length;
