@@ -702,7 +702,25 @@ patch_hermes_config() {
 
     mkdir -p "${media_dir}"
 
-    python3 - "${config_file}" "${media_dir}" "${host_skill_base}" "${container_skill_base}" <<'PY'
+    # Ensure pn-home/.bash_profile exists — it sets PATH and sources
+    # /hermes-profile.env (the profile .env mounted read-only into the container).
+    # docker_forward_env is also populated so non-login shells get the keys too.
+    local pn_home_dir="${HOST_PROFILE_DIR}/sandboxes/docker/default/pn-home"
+    mkdir -p "${pn_home_dir}"
+    if [ ! -f "${pn_home_dir}/.bash_profile" ]; then
+        cat > "${pn_home_dir}/.bash_profile" <<'BASHPROFILE'
+export PATH="/hermes-init:/host-node24/bin:$PATH"
+
+if [ -f /hermes-profile.env ]; then
+    set -a
+    . /hermes-profile.env
+    set +a
+fi
+BASHPROFILE
+        echo "  ✓ sandboxes/docker/default/pn-home/.bash_profile"
+    fi
+
+    python3 - "${config_file}" "${media_dir}" "${host_skill_base}" "${container_skill_base}" "${HOST_PROFILE_DIR}" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -717,9 +735,19 @@ config_file   = Path(sys.argv[1])
 media_dir     = sys.argv[2]
 host_skill_base      = Path(sys.argv[3])
 container_skill_base = sys.argv[4]
+host_profile_dir     = Path(sys.argv[5])
 
-# ── Collect new volume specs and create host directories ─────────────────────
-new_volumes = [f"{media_dir}:{media_dir}"]
+# ── Standard mounts — always ensured by installer ────────────────────────────
+# The .env is mounted read-only so .bash_profile can source all API keys.
+# docker_forward_env is populated separately below for non-login shells.
+pn_home_dir = host_profile_dir / "sandboxes" / "docker" / "default" / "pn-home"
+new_volumes = [
+    f"{str(host_profile_dir)}/.env:/hermes-profile.env:ro",
+    f"{str(pn_home_dir)}/.bash_profile:/home/pn/.bash_profile:ro",
+    f"{media_dir}:{media_dir}",
+]
+
+# ── Collect skill-specific volume specs and create host directories ───────────
 
 for skill_dir in sorted(host_skill_base.iterdir()):
     if not skill_dir.is_dir():
@@ -764,12 +792,105 @@ if media_dir not in allow_dirs:
     allow_dirs.append(media_dir)
 gateway["media_delivery_allow_dirs"] = allow_dirs
 
+# ── Augment terminal.docker_forward_env ──────────────────────────────────────
+# All keys written by write_env_file; ensures non-login shells also get them.
+profile_env_keys = [
+    "ANTHROPIC_API_KEY",
+    "OPENROUTER_API_KEY",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_ALLOWED_USERS",
+    "TELEGRAM_HOME_CHANNEL",
+    "TELEGRAM_HOME_CHANNEL_NAME",
+    "BRAVE_API_KEY",
+    "GH_TOKEN",
+    "BUFFER_API_KEY",
+    "GIPHY_API_KEY",
+    "FREESOUND_API_KEY",
+    "PIXABAY_API_KEY",
+    "HF_TOKEN",
+    "REPLICATE_API_TOKEN",
+    "RUNPOD_API_KEY",
+    "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR",
+    "RUNPOD_ENDPOINT_ID_VIDEO_MATTE",
+    "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR",
+    "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT",
+    "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER",
+    "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER",
+    "RUNPOD_ENDPOINT_ID_PHOTO_PICKER",
+    "GA4_CLIENT_ID",
+    "GA4_CLIENT_SECRET",
+    "GA4_REFRESH_TOKEN",
+    "GA4_PROPERTY_ID",
+    "GOOGLE_ADS_CLIENT_ID",
+    "GOOGLE_ADS_CLIENT_SECRET",
+    "GOOGLE_ADS_REFRESH_TOKEN",
+    "GOOGLE_ADS_DEVELOPER_TOKEN",
+    "GOOGLE_ADS_CUSTOMER_ID",
+    "GOOGLE_ADS_LOGIN_CUSTOMER_ID",
+    "GSC_CLIENT_ID",
+    "GSC_CLIENT_SECRET",
+    "GSC_REFRESH_TOKEN",
+    "RESEND_API_KEY",
+    "MAILCHIMP_API_KEY",
+    "MAILCHIMP_SERVER_PREFIX",
+    "SENDGRID_API_KEY",
+    "KIT_API_KEY",
+    "KIT_API_SECRET",
+    "DUB_API_KEY",
+    "SEMRUSH_API_KEY",
+    "AHREFS_API_KEY",
+    "DATAFORSEO_LOGIN",
+    "DATAFORSEO_PASSWORD",
+    "KEYWORDS_EVERYWHERE_API_KEY",
+    "PLAUSIBLE_API_KEY",
+    "PLAUSIBLE_SITE_ID",
+    "MIXPANEL_SA_USERNAME",
+    "MIXPANEL_SECRET",
+    "AMPLITUDE_API_KEY",
+    "AMPLITUDE_SECRET_KEY",
+    "HOTJAR_SITE_ID",
+    "HOTJAR_API_TOKEN",
+    "OPTIMIZELY_SDK_KEY",
+    "OPTIMIZELY_ACCESS_TOKEN",
+    "POSTHOG_PROJECT_ID",
+    "POSTHOG_PERSONAL_API_KEY",
+    "POSTHOG_PROJECT_TOKEN",
+    "POSTHOG_HOST",
+    "HUBSPOT_ACCESS_TOKEN",
+    "SALESFORCE_CLIENT_ID",
+    "SALESFORCE_CLIENT_SECRET",
+    "SALESFORCE_USERNAME",
+    "SALESFORCE_PASSWORD",
+    "SALESFORCE_SECURITY_TOKEN",
+    "CLOSE_API_KEY",
+    "OUTREACH_CLIENT_ID",
+    "OUTREACH_CLIENT_SECRET",
+    "OUTREACH_REFRESH_TOKEN",
+    "CROSSBEAM_API_KEY",
+    "APOLLO_API_KEY",
+    "CLEARBIT_API_KEY",
+    "ZOOMINFO_USERNAME",
+    "ZOOMINFO_PASSWORD",
+    "CLAY_API_KEY",
+    "SEGMENT_WRITE_KEY",
+    "FAL_API_KEY",
+]
+existing_fwd = list(terminal.get("docker_forward_env") or [])
+existing_fwd_set = set(existing_fwd)
+added_fwd = 0
+for key in profile_env_keys:
+    if key not in existing_fwd_set:
+        existing_fwd.append(key)
+        existing_fwd_set.add(key)
+        added_fwd += 1
+terminal["docker_forward_env"] = existing_fwd
+
 # ── Write back ────────────────────────────────────────────────────────────────
 config_file.write_text(
     yaml.dump(cfg, default_flow_style=False, allow_unicode=True, sort_keys=False),
     encoding="utf-8",
 )
-print(f"  ✓ config.yaml patched ({len(new_volumes)} volume(s) added, gateway allowlist set)")
+print(f"  ✓ config.yaml patched ({len(new_volumes)} volume spec(s) ensured, {added_fwd} docker_forward_env key(s) added, gateway allowlist set)")
 PY
 }
 
@@ -1207,14 +1328,20 @@ done
 echo "  ✓ skills/abra/"
 
 # ---------------------------------------------------------------------------
-# config.yaml — copy from ~/.hermes/config.yaml if present, otherwise generate
+# config.yaml — only write on first install; preserve on reinstall so manual
+# edits (model overrides, custom mcp_servers, etc.) are not clobbered.
+# patch_hermes_config always runs afterwards to add/ensure volume mounts.
 # ---------------------------------------------------------------------------
 
-if [ -f "${HOST_HERMES_ROOT}/config.yaml" ]; then
-    cp "${HOST_HERMES_ROOT}/config.yaml" "${HOST_PROFILE_DIR}/config.yaml"
-    echo "  ✓ config.yaml (copied from ${HOST_HERMES_ROOT}/config.yaml)"
+if [ ! -f "${HOST_PROFILE_DIR}/config.yaml" ]; then
+    if [ -f "${HOST_HERMES_ROOT}/config.yaml" ]; then
+        cp "${HOST_HERMES_ROOT}/config.yaml" "${HOST_PROFILE_DIR}/config.yaml"
+        echo "  ✓ config.yaml (copied from ${HOST_HERMES_ROOT}/config.yaml)"
+    else
+        write_config_yaml "${HOST_PROFILE_DIR}/config.yaml"
+    fi
 else
-    write_config_yaml "${HOST_PROFILE_DIR}/config.yaml"
+    echo "  ✓ config.yaml (existing, preserved)"
 fi
 
 # Add media mount, per-skill input/output writable mounts, and gateway allowlist.
