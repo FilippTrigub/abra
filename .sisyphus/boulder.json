@@ -36,7 +36,15 @@
     "ses_192321ed8ffeAAwc59LI5qbIkW",
     "ses_1922b6837ffeFz34zS6aVHHQaG",
     "ses_19224f550ffeqFx0fBuXzZeaSM",
-    "ses_1519c4c40ffeWkUQVNPcrK1fvc"
+    "ses_1519c4c40ffeWkUQVNPcrK1fvc",
+    "ses_1514efa25ffeGHKgEA1nlRi0mH",
+    "ses_1514ef998ffeMrHGtt2yoBnSzs",
+    "ses_1514efa7cffeO4Vm6SJ1cgNCPm",
+    "ses_1514efacaffej65jACmPBHn83t",
+    "ses_1513eb0a1ffeZa8iHV4DpIfjo4",
+    "ses_1513eb18dffek3EdJgHZzafiqb",
+    "ses_1513eb110ffeqxUgKTyX2wwWS9",
+    "ses_1513eb212ffeqsym1uul7ivSDK"
   ],
   "plan_name": "simple-aks-migration-deployment",
   "agent": "hephaestus",

@@ -1,0 +1,56 @@
+Task 5 rollback / cleanup note — 2026-06-10T01:20:00+02:00
+
+Smoke request context:
+- deployment id: smoke-hermes-20260609233738
+- request id: 2d40bb4e-0a34-4c87-92fb-ac8446d734ef
+- operation id: 907defeb-917f-435b-a9e5-86674fe4e10c
+- adapter: aks
+- final operation status: succeeded
+- resource handle: aks-runtime/abra/abra-fjyqatlmasrvefkf0g6lgajz9gv2-smoke-her-6dec2a74
+
+Rollback / cleanup executed:
+
+```bash
+az aks command invoke \
+  --resource-group abra-rg-foundation \
+  --name abra-aks \
+  --command "kubectl delete statefulset,service,pvc,configmap,secret -n abra -l abra.io/deployment-id=smoke-hermes-20260609233738 --ignore-not-found=true"
+```
+
+Deleted resources:
+- statefulset.apps/abra-fjyqatlmasrvefkf0g6lgajz9gv2-smoke-her-6dec2a74
+- service/abra-fjyqatlmasrvefkf0g6lgajz9gv2-smoke-her-6dec2a74-svc
+- persistentvolumeclaim/abra-fjyqatlmasrvefkf0g6lgajz9gv2-smoke-her-6dec2a74-data
+- configmap/abra-fjyqatlmasrvefkf0g6lgajz9gv2-smoke-her-6dec2a74-config
+- secret/abra-fjyqatlmasrvefkf0g6lgajz9gv2-smoke-her-6dec2a74-secrets
+
+Post-cleanup verification:
+
+```bash
+az aks command invoke \
+  --resource-group abra-rg-foundation \
+  --name abra-aks \
+  --command "kubectl get pvc,svc,statefulset,pod,configmap,secret -n abra -l abra.io/deployment-id=smoke-hermes-20260609233738 -o wide"
+```
+
+Result:
+
+```text
+No resources found in abra namespace.
+```
+
+Emergency platform rollback command, not executed because the smoke succeeded:
+
+```bash
+vercel env rm ORCHESTRATION_BACKEND production --yes
+printf 'mock\n' | vercel env add ORCHESTRATION_BACKEND production
+vercel redeploy https://abra-platform.vercel.app --target production
+```
+
+Runtime-image rollback command, not executed because the Hermes image succeeded:
+
+```bash
+vercel env rm AKS_RUNTIME_IMAGE production --yes
+printf '<previous-known-good-image>\n' | vercel env add AKS_RUNTIME_IMAGE production
+vercel redeploy https://abra-platform.vercel.app --target production
+```
