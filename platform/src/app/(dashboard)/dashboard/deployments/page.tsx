@@ -66,7 +66,7 @@ export default async function DeploymentLogsPage() {
 
   return (
     <div className="space-y-8">
-      <section className="overflow-hidden border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_78%,black)] px-6 py-7 text-[var(--color-shell-text-strong)] md:px-8 md:py-8 lg:px-10 lg:py-10">
+      <section className="animate-fade-up overflow-hidden border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_78%,black)] px-6 py-7 text-[var(--color-shell-text-strong)] md:px-8 md:py-8 lg:px-10 lg:py-10">
         <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--color-shell-signal)] sm:text-[13px]">
           Deployment logs
         </p>

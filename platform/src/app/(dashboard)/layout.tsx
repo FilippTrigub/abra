@@ -38,7 +38,7 @@ export default async function DashboardLayout({
   const hasAccount = !!account;
   const subInfo = getSubscriptionInfo(account);
   const shellBadgeClassName =
-    "rounded-sm border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-shell-text-strong)]";
+    "rounded-sm border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-shell-text-strong)]";
   const navItemClassName =
     "min-h-10 rounded-sm px-4 py-2 text-[11px] sm:text-[12px]";
 

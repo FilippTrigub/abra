@@ -15,17 +15,17 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-brand-500 text-white hover:bg-brand-600 active:scale-[0.98] focus-ring-brand",
+    "bg-brand-500 text-white hover:bg-brand-600 hover:-translate-y-0.5 hover:shadow-panel active:scale-[0.97] active:translate-y-0 focus-ring-brand",
   secondary:
-    "bg-secondary-600 text-white hover:bg-secondary-700 active:scale-[0.98] focus-ring-secondary",
+    "bg-secondary-600 text-white hover:bg-secondary-700 hover:-translate-y-0.5 hover:shadow-panel active:scale-[0.97] active:translate-y-0 focus-ring-secondary",
   ghost:
-    "bg-transparent text-content-500 hover:bg-surface-100 hover:text-content-100 active:scale-[0.98] focus-ring-brand",
+    "bg-transparent text-content-500 hover:bg-surface-100 hover:text-content-100 active:scale-[0.97] focus-ring-brand",
   danger:
-    "bg-danger-500 text-white hover:bg-danger-600 active:scale-[0.98] focus-ring-danger",
+    "bg-danger-500 text-white hover:bg-danger-600 hover:-translate-y-0.5 hover:shadow-panel active:scale-[0.97] active:translate-y-0 focus-ring-danger",
   success:
-    "bg-success-500 text-white hover:bg-success-600 active:scale-[0.98] focus-ring-success",
+    "bg-success-500 text-white hover:bg-success-600 hover:-translate-y-0.5 hover:shadow-panel active:scale-[0.97] active:translate-y-0 focus-ring-success",
   warning:
-    "bg-warning-500 text-white hover:bg-warning-600 active:scale-[0.98] focus-ring-brand",
+    "bg-warning-500 text-white hover:bg-warning-600 hover:-translate-y-0.5 hover:shadow-panel active:scale-[0.97] active:translate-y-0 focus-ring-brand",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -50,7 +50,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonPr
   ({ className, variant = "primary", size = "md", disabled, href, children, ...rest }, ref) => {
     const baseClasses = cn(
       "inline-flex items-center justify-center font-semibold",
-      "transition-all duration-150 ease-smooth",
+      "transition-all duration-200 ease-smooth",
       variantClasses[variant],
       sizeClasses[size],
       sizeRadius[size],

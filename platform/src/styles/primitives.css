@@ -1,3 +1,8 @@
+@keyframes nav-line-in {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
 @layer base {
   /* ═══════════════════════════════════════════════════════
      Global interactive element reset
@@ -113,13 +118,15 @@
   transition: background-color var(--motion-fast) var(--ease-smooth),
               border-color var(--motion-fast) var(--ease-smooth),
               color var(--motion-fast) var(--ease-smooth),
-              box-shadow var(--motion-fast) var(--ease-smooth);
+              box-shadow var(--motion-fast) var(--ease-smooth),
+              transform var(--motion-fast) var(--ease-snappy);
 }
 
 .nav-link:hover {
   background-color: var(--color-shell-panel);
   border-color: var(--color-shell-border-strong);
   color: var(--color-shell-text-strong);
+  transform: translateY(-1px);
 }
 
 .nav-link:focus-visible {
@@ -144,4 +151,13 @@
   height: 2px;
   background-color: var(--color-shell-signal);
   border-radius: var(--radius-full);
+  transform-origin: left center;
+  animation: nav-line-in 280ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
+
+/* ═══════════════════════════════════════════════════════
+   STAGGER DELAY HELPERS — used with animate-scale-in/fade-up
+   ═══════════════════════════════════════════════════════ */
+.stagger-1 { animation-delay: 0ms; }
+.stagger-2 { animation-delay: 80ms; }
+.stagger-3 { animation-delay: 160ms; }

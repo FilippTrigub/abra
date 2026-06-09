@@ -15,8 +15,9 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
         className={cn(
           "bg-surface-default rounded-2xl p-6",
           "shadow-card",
+          "transition-all duration-200 ease-smooth",
           interactive &&
-            "cursor-pointer hover:shadow-panel hover:scale-[1.01] transition-all duration-200 ease-smooth active:scale-[0.99]",
+            "cursor-pointer hover:shadow-elevated hover:-translate-y-1 active:scale-[0.99] active:translate-y-0",
           className
         )}
         {...props}

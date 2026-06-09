@@ -72,6 +72,7 @@ function DeleteButton({ pending, disabled }: { pending: boolean; disabled: boole
 
 function InstanceStatusBox({ deployment }: { deployment: DashboardDeployment | null }) {
   const badge = STATUS_BADGES[deployment?.status ?? "idle"];
+  const isTransitioning = deployment?.status === "queued" || deployment?.status === "running" || deployment?.status === "deleting";
 
   return (
     <Card className={shellCardClassName}>
@@ -87,7 +88,9 @@ function InstanceStatusBox({ deployment }: { deployment: DashboardDeployment | n
               : "Deploy one Abra runtime for this account. History is kept separately from the live instance."}
           </p>
         </div>
-        <Badge variant={badge.variant}>{badge.label}</Badge>
+        <Badge variant={badge.variant} className={isTransitioning ? "animate-pulse-slow" : ""}>
+          {badge.label}
+        </Badge>
       </div>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -232,7 +235,7 @@ export function DeploymentConsole({
   const shouldShowDeployForm = canDeploy(deployment);
 
   return (
-    <div className="space-y-6">
+    <div className="animate-fade-up space-y-6">
         <InstanceStatusBox deployment={deployment} />
 
         <Card className={shellCardClassName}>

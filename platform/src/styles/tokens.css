@@ -42,6 +42,37 @@
   }
 }
 
+/* ═══════════════════════════════════════════════════════
+   ANIMATION KEYFRAMES
+   Referenced by --animate-* tokens below.
+   ═══════════════════════════════════════════════════════ */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.48; }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.93);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @theme {
   /* ═══════════════════════════════════════════════════════
      BRAND — Warm Coral (hero, CTAs, active states)
@@ -218,6 +249,13 @@
   --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   --ease-snappy: cubic-bezier(0.2, 0, 0, 1);
+
+  /* ═══════════════════════════════════════════════════════
+     ANIMATION UTILITIES — creates animate-{name} classes
+     ═══════════════════════════════════════════════════════ */
+  --animate-fade-up: fade-up 0.4s cubic-bezier(0.4, 0, 0.2, 1) both;
+  --animate-pulse-slow: pulse-slow 2s ease-in-out infinite;
+  --animate-scale-in: scale-in 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 /* ═══════════════════════════════════════════════════════

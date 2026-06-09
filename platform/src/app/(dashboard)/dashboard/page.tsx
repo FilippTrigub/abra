@@ -83,11 +83,11 @@ export default async function DashboardPage() {
   const shellGhostButtonClassName =
     "rounded-sm border border-white/12 bg-transparent font-mono text-[12px] uppercase tracking-[0.14em] text-zinc-100 shadow-none hover:border-white/25 hover:bg-white/[0.04] hover:text-white";
   const shellStatusBadgeClassName =
-    "rounded-sm border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em]";
+    "rounded-sm border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em]";
 
   return (
     <div className="space-y-10">
-      <section className="overflow-hidden border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_78%,black)] text-[var(--color-shell-text-strong)]">
+      <section className="animate-fade-up overflow-hidden border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_78%,black)] text-[var(--color-shell-text-strong)]">
         <div className="grid gap-10 px-6 py-7 md:grid-cols-[minmax(0,1.2fr)_minmax(17rem,0.8fr)] md:px-8 md:py-8 lg:px-10 lg:py-10">
           <div>
             <span className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--color-shell-signal)] sm:text-[13px]">
@@ -148,7 +148,7 @@ export default async function DashboardPage() {
       </section>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card className="rounded-[1.25rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
+        <Card className="animate-scale-in stagger-1 rounded-[1.25rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none hover:border-white/[0.14] hover:bg-white/[0.03]">
           <div className="border-l border-[var(--color-shell-border-strong)] pl-4">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
@@ -164,7 +164,7 @@ export default async function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="rounded-[1.25rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
+        <Card className="animate-scale-in stagger-2 rounded-[1.25rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none hover:border-white/[0.14] hover:bg-white/[0.03]">
           <div className="border-l border-[var(--color-shell-border-strong)] pl-4">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
@@ -180,7 +180,7 @@ export default async function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="rounded-[1.25rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none">
+        <Card className="animate-scale-in stagger-3 rounded-[1.25rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none hover:border-white/[0.14] hover:bg-white/[0.03]">
           <div className="border-l border-[var(--color-shell-border-strong)] pl-4">
             <div>
               <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
