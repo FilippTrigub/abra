@@ -2,12 +2,13 @@
  * Kubernetes manifest generator for AKS Abra runtimes.
  *
  * Generates deterministic Kubernetes manifests for:
- * - StatefulSet (OpenClaw runtime workload)
+ * - StatefulSet (Hermes runtime workload)
  * - Service (internal gateway routing)
- * - PersistentVolumeClaim (~/.openclaw persistence)
+ * - PersistentVolumeClaim (runtime profile persistence)
  *
  * The generator encodes the pre-start hydration assumption:
- * An init container hydrates ~/.openclaw before the main OpenClaw container starts.
+ * An init container hydrates Hermes profile state and the legacy ~/.openclaw
+ * compatibility directory before the main Hermes container starts.
  *
  * Uses naming helpers from naming-helpers.ts to ensure consistent resource naming.
  */
@@ -33,20 +34,20 @@ export interface ManifestInput {
   accountId: string;
   /** Deployment identifier (must be valid for naming) */
   deploymentId: string;
-  /** OpenClaw container image (required) */
+  /** Hermes container image (required) */
   image: string;
-  /** OpenClaw container image pull policy (default: IfNotPresent) */
+  /** Hermes container image pull policy (default: IfNotPresent) */
   imagePullPolicy?: "Always" | "IfNotPresent" | "Never";
   /** Config revision number for this deployment (optional) */
   configRevision?: number;
-  /** Resource limits for the OpenClaw container (optional) */
+  /** Resource limits for the Hermes container (optional) */
   resources?: {
     cpu?: string;
     memory?: string;
   };
   /** Whether to use a dedicated service account (default: false) */
   useServiceAccount?: boolean;
-  /** Service account name (if useServiceAccount=true, default: abra-openclaw-sa) */
+  /** Service account name (if useServiceAccount=true, default: abra-hermes-sa) */
   serviceAccountName?: string;
   /** Optional persisted AKS resource names to reuse for reconciliation/migration safety */
   nameOverrides?: ManifestNameOverrides;
@@ -54,6 +55,7 @@ export interface ManifestInput {
   agentConfig?: {
     telegramBotToken?: string;
     telegramHomeChannel?: string;
+    telegramAllowedUsers?: string;
   };
 }
 
@@ -68,7 +70,8 @@ export interface ManifestNameOverrides {
   podName?: string;
 }
 
-const DEFAULT_SERVICE_ACCOUNT_NAME = "abra-openclaw-sa";
+const DEFAULT_SERVICE_ACCOUNT_NAME = "abra-hermes-sa";
+const HERMES_PROFILE_DIR = "/openclaw-home/.hermes/profiles/abra";
 
 /**
  * Kubernetes object base interface.
@@ -103,6 +106,7 @@ interface StatefulSetSpec {
         image: string;
         imagePullPolicy?: string;
         command?: string[];
+        args?: string[];
         securityContext?: {
           runAsUser?: number;
           runAsGroup?: number;
@@ -142,11 +146,23 @@ interface StatefulSetSpec {
           successThreshold: number;
           failureThreshold: number;
         };
-        env?: Array<{
-          name: string;
-          value: string;
-        }>;
+        env?: Array<
+          | {
+              name: string;
+              value: string;
+            }
+          | {
+              name: string;
+              valueFrom: {
+                secretKeyRef: {
+                  name: string;
+                  key: string;
+                };
+              };
+            }
+        >;
         command?: string[];
+        args?: string[];
       }>;
       volumes?: Array<{
         name: string;
@@ -205,11 +221,11 @@ export interface KubernetesManifests {
   configMap: KubernetesObject & { data: Record<string, string> };
   /** Secret consumed by init-hydration */
   secret: KubernetesObject & { stringData: Record<string, string>; type: string };
-  /** StatefulSet manifest for the Abra/OpenClaw runtime */
+  /** StatefulSet manifest for the Abra/Hermes runtime */
   statefulset: KubernetesObject & { spec: StatefulSetSpec };
   /** Service manifest for internal routing */
   service: KubernetesObject & { spec: ServiceSpec };
-  /** PersistentVolumeClaim for ~/.openclaw */
+  /** PersistentVolumeClaim for runtime profile persistence */
   pvc: KubernetesObject & { spec: PVCSpec };
   /** Computed resource names (for verification/debugging) */
   names: {
@@ -299,30 +315,50 @@ function validateInput(input: ManifestInput): void {
 function buildHydrationInitScript(): string {
   return [
     "set -eu",
-    "echo 'Starting ~/.openclaw hydration...'",
+    "echo 'Starting Hermes Abra hydration...'",
     "mkdir -p /openclaw-home/.openclaw",
+    `mkdir -p ${HERMES_PROFILE_DIR}`,
     "if [ -f /config/openclaw.json ]; then",
     "  cp /config/openclaw.json /openclaw-home/.openclaw/",
-    "  echo 'Config loaded from /config/openclaw.json'",
+    "  echo 'Legacy OpenClaw config loaded from /config/openclaw.json'",
     "else",
     "  echo 'Warning: No /config/openclaw.json found, using defaults'",
     "fi",
+    `profile_config_dir=${HERMES_PROFILE_DIR}`,
+    "profile_config_file=${profile_config_dir}/",
+    "profile_config_file=${profile_config_file}config.yaml",
+    "if [ ! -f ${profile_config_file} ]; then",
+    "  cat > ${profile_config_file} <<'EOF'",
+    "# Generated by Abra platform AKS hydration.",
+    "gateway:",
+    "  media_delivery_allow_dirs:",
+    "    - /openclaw-home/media",
+    "terminal:",
+    "  docker_forward_env:",
+    "    - TELEGRAM_BOT_TOKEN",
+    "    - TELEGRAM_ALLOWED_USERS",
+    "    - TELEGRAM_HOME_CHANNEL",
+    "EOF",
+    "fi",
     "if [ -f /secrets/env ]; then",
     "  cp /secrets/env /openclaw-home/.openclaw/.env",
+    `  cp /secrets/env ${HERMES_PROFILE_DIR}/.env`,
     "  echo 'Environment loaded from /secrets/env'",
     "fi",
-    "chown -R 1000:1000 /openclaw-home/.openclaw",
+    "chown -R 10000:10000 /openclaw-home/.openclaw",
+    "chown -R 10000:10000 /openclaw-home/.hermes",
     "chmod 700 /openclaw-home/.openclaw",
+    `chmod 700 ${HERMES_PROFILE_DIR}`,
     "echo 'Hydration complete.'",
   ].join("\n");
 }
 
 /**
- * Generates a StatefulSet manifest for the Abra/OpenClaw runtime.
+ * Generates a StatefulSet manifest for the Abra/Hermes runtime.
  *
  * The manifest includes:
- * - A main OpenClaw container
- * - An init container for pre-start hydration of ~/.openclaw
+ * - A main Hermes container
+ * - An init container for pre-start hydration of the Hermes profile
  * - A readiness probe to verify runtime health
  *
  * @param input The manifest input parameters
@@ -340,6 +376,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
   const secretName = input.nameOverrides?.secretName ?? getSecretName(accountId, deploymentId);
   const serviceAccountName = input.nameOverrides?.serviceAccountName ?? resolveServiceAccountName(input);
   const serviceName = input.nameOverrides?.serviceName ?? getServiceName(accountId, deploymentId);
+  const hasTelegramConfig = hasCompleteTelegramConfig(input);
 
   // Build container resources if provided
   type ContainerResources = {
@@ -432,6 +469,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
               name: "openclaw",
               image: image,
               imagePullPolicy: imagePullPolicy,
+              args: ["gateway", "run"],
               volumeMounts: [
                 {
                   name: "openclaw-home",
@@ -439,27 +477,22 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
                 },
               ],
               resources: containerResources,
-              readinessProbe: {
-                exec: { command: ["curl", "-sf", "http://localhost:18789/health"] },
-                initialDelaySeconds: 10,
-                periodSeconds: 5,
-                timeoutSeconds: 3,
-                successThreshold: 1,
-                failureThreshold: 3,
-              },
-              livenessProbe: {
-                exec: { command: ["curl", "-sf", "http://localhost:18789/health"] },
-                initialDelaySeconds: 30,
-                periodSeconds: 10,
-                timeoutSeconds: 5,
-                successThreshold: 1,
-                failureThreshold: 3,
-              },
               env: [
                 {
                   name: "OPENCLAW_HOME",
                   value: "/openclaw-home",
                 },
+                {
+                  name: "HERMES_HOME",
+                  value: HERMES_PROFILE_DIR,
+                },
+                ...(hasTelegramConfig
+                  ? [
+                      buildSecretEnvVar("TELEGRAM_BOT_TOKEN", secretName),
+                      buildSecretEnvVar("TELEGRAM_HOME_CHANNEL", secretName),
+                      buildSecretEnvVar("TELEGRAM_ALLOWED_USERS", secretName),
+                    ]
+                  : []),
               ],
             },
           ],
@@ -527,12 +560,39 @@ function generateServiceAccount(input: ManifestInput): KubernetesObject | undefi
   };
 }
 
+function getTelegramValues(input: ManifestInput): {
+  token: string;
+  homeChannel: string;
+  allowedUsers: string;
+} | null {
+  const token = input.agentConfig?.telegramBotToken?.trim();
+  const homeChannel = input.agentConfig?.telegramHomeChannel?.trim();
+  const allowedUsers = input.agentConfig?.telegramAllowedUsers?.trim() || homeChannel;
+  if (!token || !homeChannel || !allowedUsers) return null;
+
+  return { token, homeChannel, allowedUsers };
+}
+
+function hasCompleteTelegramConfig(input: ManifestInput): boolean {
+  return getTelegramValues(input) !== null;
+}
+
+function buildSecretEnvVar(name: string, secretName: string) {
+  return {
+    name,
+    valueFrom: {
+      secretKeyRef: {
+        name: secretName,
+        key: name,
+      },
+    },
+  };
+}
+
 function buildOpenClawConfig(input: ManifestInput): string {
   const config: Record<string, unknown> = { gateway: { mode: "local" } };
 
-  const token = input.agentConfig?.telegramBotToken?.trim();
-  const homeChannel = input.agentConfig?.telegramHomeChannel?.trim();
-  if (token && homeChannel) {
+  if (hasCompleteTelegramConfig(input)) {
     config.channels = {
       telegram: {
         accounts: {
@@ -571,13 +631,26 @@ function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Rec
 
 function buildEnvFileContent(input: ManifestInput): string {
   const lines: string[] = [];
-  const token = input.agentConfig?.telegramBotToken?.trim();
-  const homeChannel = input.agentConfig?.telegramHomeChannel?.trim();
-  if (token && homeChannel) {
-    lines.push(`TELEGRAM_BOT_TOKEN=${token}`);
-    lines.push(`TELEGRAM_HOME_CHANNEL=${homeChannel}`);
+  const telegram = getTelegramValues(input);
+  if (telegram) {
+    lines.push(`TELEGRAM_BOT_TOKEN=${telegram.token}`);
+    lines.push(`TELEGRAM_HOME_CHANNEL=${telegram.homeChannel}`);
+    lines.push(`TELEGRAM_ALLOWED_USERS=${telegram.allowedUsers}`);
   }
   return lines.join("\n");
+}
+
+function buildSecretData(input: ManifestInput): Record<string, string> {
+  const env = buildEnvFileContent(input);
+  const telegram = getTelegramValues(input);
+  if (!telegram) return { env };
+
+  return {
+    env,
+    TELEGRAM_BOT_TOKEN: telegram.token,
+    TELEGRAM_HOME_CHANNEL: telegram.homeChannel,
+    TELEGRAM_ALLOWED_USERS: telegram.allowedUsers,
+  };
 }
 
 function generateSecret(input: ManifestInput): KubernetesObject & {
@@ -600,9 +673,7 @@ function generateSecret(input: ManifestInput): KubernetesObject & {
       },
     },
     type: "Opaque",
-    stringData: {
-      env: buildEnvFileContent(input),
-    },
+    stringData: buildSecretData(input),
   };
 }
 
@@ -707,7 +778,7 @@ function generatePVC(input: ManifestInput): KubernetesObject & {
 // ---------------------------------------------------------------------------
 
 /**
- * Generates all Kubernetes manifests for an Abra/OpenClaw runtime.
+ * Generates all Kubernetes manifests for an Abra/Hermes runtime.
  *
  * This is the main entry point for manifest generation. It:
  * 1. Validates the input parameters

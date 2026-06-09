@@ -52,7 +52,11 @@ function rewriteHydrationScriptForTest(script: string) {
       .replaceAll("/config", configDir)
       .replaceAll("/secrets", secretsDir)
       .replace(
-        `chown -R 1000:1000 ${openclawHome}/.openclaw`,
+        `chown -R 10000:10000 ${openclawHome}/.openclaw`,
+        "true # chown skipped in test"
+      )
+      .replace(
+        `chown -R 10000:10000 ${openclawHome}/.hermes`,
         "true # chown skipped in test"
       ),
     hydratedConfigPath: join(openclawHome, ".openclaw", "openclaw.json"),
@@ -351,7 +355,7 @@ describe("StatefulSet manifest", () => {
     );
   });
 
-  test("has readiness probe configured", () => {
+  test("does not configure OpenClaw HTTP readiness probes for Hermes", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
     const spec = statefulset.spec;
@@ -361,11 +365,10 @@ describe("StatefulSet manifest", () => {
       (c) => c.name === "openclaw"
     );
     expectDefined(openclawContainer, "openclaw container should exist");
-    expectDefined(openclawContainer.readinessProbe, "readiness probe should exist");
-    expect(openclawContainer.readinessProbe.exec.command).toEqual(["curl", "-sf", "http://localhost:18789/health"]);
+    expect(openclawContainer.readinessProbe).toBeUndefined();
   });
 
-  test("has liveness probe configured", () => {
+  test("does not configure OpenClaw HTTP liveness probes for Hermes", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
     const spec = statefulset.spec;
@@ -375,8 +378,7 @@ describe("StatefulSet manifest", () => {
       (c) => c.name === "openclaw"
     );
     expectDefined(openclawContainer, "openclaw container should exist");
-    expectDefined(openclawContainer.livenessProbe, "liveness probe should exist");
-    expect(openclawContainer.livenessProbe.exec.command).toEqual(["curl", "-sf", "http://localhost:18789/health"]);
+    expect(openclawContainer.livenessProbe).toBeUndefined();
   });
 
   test("has init-hydration command with hydration logic", () => {
@@ -396,7 +398,9 @@ describe("StatefulSet manifest", () => {
     // Command is ['/bin/sh', '-c', 'script'] so check the script portion
     expect(command.length).toBe(3);
     expect(command[2]).toContain("mkdir -p /openclaw-home/.openclaw");
+    expect(command[2]).toContain("mkdir -p /openclaw-home/.hermes/profiles/abra");
     expect(command[2]).toContain("cp /config/openclaw.json /openclaw-home/.openclaw/");
+    expect(command[2]).toContain("cp /secrets/env /openclaw-home/.hermes/profiles/abra/.env");
   });
 
   test("generates an init-hydration script that executes successfully", () => {
@@ -663,8 +667,47 @@ describe("Runtime prerequisite manifests", () => {
     const config = JSON.parse(manifests.configMap.data["openclaw.json"]);
     expect(config.channels.telegram.accounts.default.botToken).toBe("${TELEGRAM_BOT_TOKEN}");
     expect(manifests.secret.stringData.env).toBe(
-      "TELEGRAM_BOT_TOKEN=123456:ABC-DEF\nTELEGRAM_HOME_CHANNEL=123456789"
+      "TELEGRAM_BOT_TOKEN=123456:ABC-DEF\nTELEGRAM_HOME_CHANNEL=123456789\nTELEGRAM_ALLOWED_USERS=123456789"
     );
+    expect(manifests.secret.stringData.TELEGRAM_BOT_TOKEN).toBe("123456:ABC-DEF");
+    expect(manifests.secret.stringData.TELEGRAM_HOME_CHANNEL).toBe("123456789");
+    expect(manifests.secret.stringData.TELEGRAM_ALLOWED_USERS).toBe("123456789");
+
+    const openclawContainer = manifests.statefulset.spec.template.spec.containers.find(
+      (c) => c.name === "openclaw"
+    );
+    expectDefined(openclawContainer, "openclaw container should exist");
+    expect(openclawContainer.command).toBeUndefined();
+    expect(openclawContainer.args).toEqual(["gateway", "run"]);
+    expect(openclawContainer.env).toEqual(
+      expect.arrayContaining([
+        { name: "HERMES_HOME", value: "/openclaw-home/.hermes/profiles/abra" },
+        expect.objectContaining({
+          name: "TELEGRAM_ALLOWED_USERS",
+          valueFrom: {
+            secretKeyRef: {
+              name: "abra-user123-abra-main-secrets",
+              key: "TELEGRAM_ALLOWED_USERS",
+            },
+          },
+        }),
+      ])
+    );
+  });
+
+  test("with explicit Telegram allowed users: secret env uses the allowlist separately from the home channel", () => {
+    const manifests = generateKubernetesManifests({
+      ...BASE_INPUT,
+      agentConfig: {
+        telegramBotToken: "123456:ABC-DEF",
+        telegramHomeChannel: "-1001234567890",
+        telegramAllowedUsers: "388259993,123456789",
+      },
+    });
+
+    expect(manifests.secret.stringData.env).toContain("TELEGRAM_HOME_CHANNEL=-1001234567890");
+    expect(manifests.secret.stringData.env).toContain("TELEGRAM_ALLOWED_USERS=388259993,123456789");
+    expect(manifests.secret.stringData.TELEGRAM_ALLOWED_USERS).toBe("388259993,123456789");
   });
 
   test("with incomplete Telegram agentConfig: behaves like no agentConfig", () => {
