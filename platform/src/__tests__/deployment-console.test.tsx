@@ -17,7 +17,7 @@ describe("DeploymentConsole", () => {
     vi.mocked(loadUserAgentConfig).mockResolvedValue({
       configured: true,
       token: "bot123:token",
-      allowedUsers: "123456789",
+      homeChannel: "123456789",
     });
 
     const { DeploymentConsole } = await import(
@@ -42,7 +42,7 @@ describe("DeploymentConsole", () => {
     vi.mocked(loadUserAgentConfig).mockResolvedValue({
       configured: true,
       token: "bot123:token",
-      allowedUsers: "123456789",
+      homeChannel: "123456789",
     });
 
     const { DeploymentConsole } = await import(
@@ -90,7 +90,7 @@ describe("DeploymentConsole", () => {
     vi.mocked(loadUserAgentConfig).mockResolvedValue({
       configured: false,
       token: null,
-      allowedUsers: null,
+      homeChannel: null,
     });
 
     const { DeploymentConsole } = await import(
@@ -105,7 +105,7 @@ describe("DeploymentConsole", () => {
     );
 
     expect(await screen.findByPlaceholderText("123456:ABC-DEF...")).toBeTruthy();
-    expect(screen.getByPlaceholderText("123456789")).toBeTruthy();
+    expect(screen.getByPlaceholderText("388259993")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Save Telegram config" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Deploy Abra" })).toBeNull();
   });

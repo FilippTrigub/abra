@@ -16,7 +16,7 @@ const shellLabelClassName =
 export function BotSetupCard() {
   const [configured, setConfigured] = useState(false);
   const [token, setToken] = useState("");
-  const [allowedUsers, setAllowedUsers] = useState("");
+  const [homeChannel, setHomeChannel] = useState("");
   const [revealed, setRevealed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "success" | "error">("idle");
@@ -28,7 +28,7 @@ export function BotSetupCard() {
       if (cancelled) return;
       setConfigured(result.configured);
       setToken(result.token ?? "");
-      setAllowedUsers(result.allowedUsers ?? "");
+      setHomeChannel(result.homeChannel ?? "");
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -39,7 +39,7 @@ export function BotSetupCard() {
     setSaveStatus("saving");
     setSaveMessage("");
 
-    const result = await saveUserAgentConfig(token, allowedUsers);
+    const result = await saveUserAgentConfig(token, homeChannel);
     if (result.success) {
       setConfigured(true);
       setSaveStatus("success");
@@ -124,19 +124,19 @@ export function BotSetupCard() {
         </div>
 
         <div className={`rounded-sm px-4 py-4 ${shellInsetClassName}`}>
-          <p className={shellLabelClassName}>TELEGRAM_ALLOWED_USERS</p>
+          <p className={shellLabelClassName}>TELEGRAM_HOME_CHANNEL</p>
           <div className="mt-3 space-y-2">
             <input
               type="text"
-              value={allowedUsers}
-              onChange={(e) => setAllowedUsers(e.target.value)}
-              placeholder="123456789"
+              value={homeChannel}
+              onChange={(e) => setHomeChannel(e.target.value)}
+              placeholder="388259993"
               disabled={loading || saveStatus === "saving"}
               className={inputClassName}
               autoComplete="off"
             />
             <p className="text-caption text-zinc-500">
-              Enter the Telegram user id or allowlist that may talk to this runtime.
+              Enter the Telegram channel or chat ID where this runtime will operate.
             </p>
           </div>
         </div>
@@ -145,7 +145,7 @@ export function BotSetupCard() {
           <Button
             variant="primary"
             type="submit"
-            disabled={saveStatus === "saving" || loading || !token.trim() || !allowedUsers.trim()}
+            disabled={saveStatus === "saving" || loading || !token.trim() || !homeChannel.trim()}
             className="rounded-sm shadow-none"
           >
             {saveStatus === "saving" ? "Saving…" : "Save Telegram config"}

@@ -657,20 +657,20 @@ describe("Runtime prerequisite manifests", () => {
       ...BASE_INPUT,
       agentConfig: {
         telegramBotToken: "123456:ABC-DEF",
-        telegramAllowedUsers: "123456789",
+        telegramHomeChannel: "123456789",
       },
     });
     const config = JSON.parse(manifests.configMap.data["openclaw.json"]);
     expect(config.channels.telegram.accounts.default.botToken).toBe("${TELEGRAM_BOT_TOKEN}");
     expect(manifests.secret.stringData.env).toBe(
-      "TELEGRAM_BOT_TOKEN=123456:ABC-DEF\nTELEGRAM_ALLOWED_USERS=123456789"
+      "TELEGRAM_BOT_TOKEN=123456:ABC-DEF\nTELEGRAM_HOME_CHANNEL=123456789"
     );
   });
 
   test("with incomplete Telegram agentConfig: behaves like no agentConfig", () => {
     const manifests = generateKubernetesManifests({
       ...BASE_INPUT,
-      agentConfig: { telegramBotToken: "  ", telegramAllowedUsers: "123456789" },
+      agentConfig: { telegramBotToken: "  ", telegramHomeChannel: "123456789" },
     });
     const config = JSON.parse(manifests.configMap.data["openclaw.json"]);
     expect(config).toEqual({ gateway: { mode: "local" } });

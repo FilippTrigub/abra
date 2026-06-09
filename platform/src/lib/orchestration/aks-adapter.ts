@@ -106,9 +106,9 @@ function readAgentConfig(payload: Record<string, unknown>): ManifestInput["agent
   const raw = payload.agentConfig;
   if (!isRecord(raw)) return undefined;
   const telegramBotToken = readOptionalString(raw.telegramBotToken);
-  const telegramAllowedUsers = readOptionalString(raw.telegramAllowedUsers);
-  if (!telegramBotToken || !telegramAllowedUsers) return undefined;
-  return { telegramBotToken, telegramAllowedUsers };
+  const telegramHomeChannel = readOptionalString(raw.telegramHomeChannel);
+  if (!telegramBotToken || !telegramHomeChannel) return undefined;
+  return { telegramBotToken, telegramHomeChannel };
 }
 
 function buildManifestInput(input: {

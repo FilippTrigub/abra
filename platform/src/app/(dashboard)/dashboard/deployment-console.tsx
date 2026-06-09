@@ -147,7 +147,7 @@ export function DeploymentConsole({
     loaded: boolean;
     configured: boolean;
     token: string;
-    allowedUsers: string;
+    homeChannel: string;
     saveStatus: "idle" | "saving" | "success" | "error";
     saveMessage: string;
     revealed: boolean;
@@ -155,7 +155,7 @@ export function DeploymentConsole({
     loaded: false,
     configured: false,
     token: "",
-    allowedUsers: "",
+    homeChannel: "",
     saveStatus: "idle",
     saveMessage: "",
     revealed: false,
@@ -170,7 +170,7 @@ export function DeploymentConsole({
         loaded: true,
         configured: result.configured,
         token: result.token ?? "",
-        allowedUsers: result.allowedUsers ?? "",
+        homeChannel: result.homeChannel ?? "",
       }));
     });
     return () => { cancelled = true; };
@@ -180,7 +180,7 @@ export function DeploymentConsole({
     e.preventDefault();
     setTelegramState((prev) => ({ ...prev, saveStatus: "saving", saveMessage: "" }));
 
-    const result = await saveUserAgentConfig(telegramState.token, telegramState.allowedUsers);
+    const result = await saveUserAgentConfig(telegramState.token, telegramState.homeChannel);
     if (result.success) {
       setTelegramState((prev) => ({
         ...prev,
@@ -335,21 +335,21 @@ export function DeploymentConsole({
                 </div>
 
                 <div className={`rounded-sm px-4 py-4 ${shellInsetClassName}`}>
-                  <p className={shellLabelClassName}>TELEGRAM_ALLOWED_USERS</p>
+                  <p className={shellLabelClassName}>TELEGRAM_HOME_CHANNEL</p>
                   <div className="mt-3 space-y-2">
                     <input
                       type="text"
-                      value={telegramState.allowedUsers}
+                      value={telegramState.homeChannel}
                       onChange={(e) =>
-                        setTelegramState((prev) => ({ ...prev, allowedUsers: e.target.value }))
+                        setTelegramState((prev) => ({ ...prev, homeChannel: e.target.value }))
                       }
-                      placeholder="123456789"
+                      placeholder="388259993"
                       disabled={telegramState.saveStatus === "saving"}
                       className="w-full rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 px-3 py-2 text-body text-white transition-all duration-150 ease-smooth placeholder:text-zinc-500 hover:border-white/20 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-200"
                       autoComplete="off"
                     />
                     <p className="text-caption text-zinc-500">
-                      Enter the Telegram user id or allowlist that may talk to this runtime.
+                      Enter the Telegram channel or chat ID where this runtime will operate.
                     </p>
                   </div>
                 </div>
@@ -369,7 +369,7 @@ export function DeploymentConsole({
                     disabled={
                       telegramState.saveStatus === "saving" ||
                       !telegramState.token.trim() ||
-                      !telegramState.allowedUsers.trim()
+                      !telegramState.homeChannel.trim()
                     }
                     className="rounded-sm shadow-none"
                   >

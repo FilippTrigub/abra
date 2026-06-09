@@ -6,11 +6,11 @@ import { loadAgentConfig, saveAgentConfig } from "./service";
 export async function loadUserAgentConfig(): Promise<{
   configured: boolean;
   token: string | null;
-  allowedUsers: string | null;
+  homeChannel: string | null;
 }> {
   const authResult = await requireApiAuth();
   if ("error" in authResult) {
-    return { configured: false, token: null, allowedUsers: null };
+    return { configured: false, token: null, homeChannel: null };
   }
 
   const config = await loadAgentConfig(authResult.user.id);
@@ -18,14 +18,14 @@ export async function loadUserAgentConfig(): Promise<{
     ? {
         configured: true,
         token: config.telegramBotToken,
-        allowedUsers: config.telegramAllowedUsers,
+        homeChannel: config.telegramHomeChannel,
       }
-    : { configured: false, token: null, allowedUsers: null };
+    : { configured: false, token: null, homeChannel: null };
 }
 
 export async function saveUserAgentConfig(
   token: string,
-  allowedUsers: string,
+  homeChannel: string,
 ): Promise<{ success: boolean; error?: string }> {
   const authResult = await requireApiAuth();
   if ("error" in authResult) {
@@ -33,17 +33,17 @@ export async function saveUserAgentConfig(
   }
 
   const trimmed = token.trim();
-  const trimmedAllowedUsers = allowedUsers.trim();
+  const trimmedHomeChannel = homeChannel.trim();
   if (!trimmed) {
     return { success: false, error: "Bot token cannot be empty." };
   }
-  if (!trimmedAllowedUsers) {
-    return { success: false, error: "Allowed Telegram users cannot be empty." };
+  if (!trimmedHomeChannel) {
+    return { success: false, error: "Home channel cannot be empty." };
   }
 
   await saveAgentConfig(authResult.user.id, {
     telegramBotToken: trimmed,
-    telegramAllowedUsers: trimmedAllowedUsers,
+    telegramHomeChannel: trimmedHomeChannel,
   });
   return { success: true };
 }
