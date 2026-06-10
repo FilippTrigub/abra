@@ -123,6 +123,11 @@ To check the current image in use:
 vercel env ls  # look for AKS_RUNTIME_IMAGE
 ```
 
+To retrieve the Azure Foundry API key (lives in the `SonaAndAtla` resource group, not `abra-rg-foundation`):
+```bash
+az cognitiveservices account keys list --name azure-openai-746596 --resource-group SonaAndAtla --query key1 -o tsv
+```
+
 To push a new image:
 ```bash
 az acr build -r abraacr914f -t abra:<tag> -f Dockerfile.hermes .
@@ -264,7 +269,7 @@ Do not store the raw key in `auth.json` or the ConfigMap. The raw value belongs 
 | Agent has no Abra skills / wrong persona | Check `kubectl logs <pod> -n abra -c init-hydration` for "Abra SOUL.md hydrated" and "Abra skills hydrated"; if missing, image predates the `/opt/abra` bake-in — rebuild from `Dockerfile.hermes` |
 | Bot says user is not authorized | Check `TELEGRAM_ALLOWED_USERS` is set in the pod env/Secret, then redeploy or update the StatefulSet |
 | Bot not responding | Check `TELEGRAM_BOT_TOKEN` and `TELEGRAM_HOME_CHANNEL` are set in Settings, then redeploy |
-| Provider authentication failed | Check `config.yaml` provider settings, Hermes `auth.json`, Hermes `.env`, pod process env, and K8s Secret all include the Azure Foundry credential path |
+| Provider authentication failed | Most likely cause: `AZURE_FOUNDRY_API_KEY` missing from Vercel → manifest generator emits empty credential pool → init container overwrites the profile's `auth.json` with an empty one on every pod start. Verify with `vercel env ls production \| grep AZURE_FOUNDRY`, then check `kubectl get secret … -o jsonpath='{.data.AZURE_FOUNDRY_API_KEY}' \| base64 -d \| sha256sum` matches `db1ad608e95d1843`. To recover the raw key: `az cognitiveservices account keys list --name azure-openai-746596 --resource-group SonaAndAtla --query key1 -o tsv` |
 | Image error | Verify `AKS_RUNTIME_IMAGE` in Vercel dashboard → Settings → Env Vars |
 | K8s auth failing | Check `KUBECONFIG_B64` is current in Vercel; re-export from AKS if expired |
 | New image to deploy | Build via `az acr build -f Dockerfile.hermes`, update `AKS_RUNTIME_IMAGE` in Vercel, then `kubectl set image` both `openclaw` and `init-hydration` containers on the StatefulSet |
