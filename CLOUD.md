@@ -12,7 +12,7 @@ Three planes:
 |-------|---------|---------|
 | **Platform UI** | Vercel (Next.js) | Dashboard for deploying/managing Abra instances |
 | **Auth + Config DB** | Firebase (Firestore) | User auth, agent config, deployment records |
-| **Runtime** | Azure AKS | Runs the OpenClaw/Abra container per user deployment |
+| **Runtime** | Azure AKS | Runs the Hermes/Abra container per user deployment |
 
 ---
 
@@ -116,7 +116,8 @@ The StatefulSet also exposes selected Secret keys directly as process env vars f
 - **Login server**: `abraacr914f.azurecr.io`
 - **SKU**: Standard
 - **Repository**: `abra` (single repo)
-- **Current deployed tag**: `hermes-202606101148-ed0ea3d` (set via `AKS_RUNTIME_IMAGE` in Vercel / the StatefulSet image in AKS)
+- **Current deployed tag**: `hermes-202606102349-a19781e` (set via `AKS_RUNTIME_IMAGE` in Vercel / the StatefulSet image in AKS)
+- **Image contents** (on top of `nousresearch/hermes-agent:latest`): `curl`, `jq`, `golang-go`, `libcairo2-dev`, `libpango1.0-dev`, `ffmpeg`, TeX Live (latex-base, fonts-recommended, latex-extra, science, dvisvgm, dvipng), `manim` (installed into `/opt/hermes/.venv`)
 - An ACR task `purge-old-images` runs to clean up old tags.
 
 To check the current image in use:
@@ -267,7 +268,7 @@ Do not store the raw key in `auth.json` or the ConfigMap. The raw value belongs 
 | Deployment stuck / failed | Firestore `accounts/{userId}/deployments/{id}` — `errorMessage` field |
 | Pod not starting | `kubectl get pods -n abra` / `kubectl describe pod <name> -n abra` |
 | Init container failing | `kubectl logs <pod> -n abra -c init-hydration` |
-| Agent has no Abra skills / wrong persona | Check `kubectl logs <pod> -n abra -c init-hydration` for "Abra SOUL.md hydrated" and "Abra skills hydrated"; if missing, image predates the `/opt/abra` bake-in — rebuild from `Dockerfile.hermes`. Profile lives at `/opt/data/profiles/abra/` on the PVC |
+| Agent has no Abra skills / wrong persona | Check `kubectl logs <pod> -n abra -c init-hydration` for "Abra SOUL.md hydrated" and "Abra skills hydrated"; if missing, image predates the `/opt/abra` bake-in — rebuild from `Dockerfile.hermes`. Profile lives at `/openclaw-home/.hermes/profiles/abra/` |
 | Bot says user is not authorized | Check `TELEGRAM_ALLOWED_USERS` is set in the pod env/Secret, then redeploy or update the StatefulSet |
 | Bot not responding | Check `TELEGRAM_BOT_TOKEN` and `TELEGRAM_HOME_CHANNEL` are set in Settings, then redeploy |
 | Provider authentication failed | Most likely cause: `AZURE_FOUNDRY_API_KEY` missing from Vercel → manifest generator emits empty credential pool → init container overwrites the profile's `auth.json` with an empty one on every pod start. Verify with `vercel env ls production \| grep AZURE_FOUNDRY`, then check `kubectl get secret … -o jsonpath='{.data.AZURE_FOUNDRY_API_KEY}' \| base64 -d \| sha256sum` matches `db1ad608e95d1843`. To recover the raw key: `az cognitiveservices account keys list --name azure-openai-746596 --resource-group SonaAndAtla --query key1 -o tsv` |
