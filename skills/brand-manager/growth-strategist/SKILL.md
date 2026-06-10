@@ -40,13 +40,13 @@ uv sync                              # install dependencies (first time only)
 ### Run Marketing Ideas Task
 
 ```bash
-uv run python scripts/strategy.py ideas --goal brand_awareness --audience small_business --tone professional
+uv run python scripts/strategy.py ideas --marketing-goal brand_awareness --target-audience small_business --tone professional
 ```
 
 ### Run Free Tools Task
 
 ```bash
-uv run python scripts/strategy.py freetools --categories social_media,analytics,design
+uv run python scripts/strategy.py freetools --tools-categories social_media analytics design
 ```
 
 ## Task Descriptions
@@ -56,8 +56,8 @@ uv run python scripts/strategy.py freetools --categories social_media,analytics,
 Generates creative marketing campaign ideas tailored to your specific needs.
 
 **Parameters:**
-- `--goal` - Marketing objective (`brand_awareness`, `lead_generation`, `customer_engagement`, `product_launch`)
-- `--audience` - Target audience (`small_business`, `enterprise`, `consumers`, `developers`)
+- `--marketing-goal` - Marketing objective (`brand_awareness`, `lead_generation`, `customer_engagement`, `product_launch`)
+- `--target-audience` - Target audience (`small_business`, `enterprise`, `consumers`, `developers`)
 - `--tone` - Communication style (`professional`, `casual`, `humorous`, `inspirational`)
 - `--max-ideas` - Number of ideas to generate (default: 10)
 - `--include-examples` - Include case study examples (default: true)
@@ -75,7 +75,7 @@ Generates creative marketing campaign ideas tailored to your specific needs.
 Discovers and recommends free marketing tools to enhance your strategies.
 
 **Parameters:**
-- `--categories` - Tool categories (comma-separated): `social_media`, `analytics`, `design`, `automation`, `content`, `email`
+- `--tools-categories` - Tool categories (space-separated): `social_media`, `analytics`, `design`, `automation`, `content`, `email`
 - `--output-format` - Output format (default: `markdown`)
 
 **Output:** Markdown-formatted tool recommendations including:
@@ -121,7 +121,7 @@ uv run python scripts/strategy.py ideas --goal product_launch --audience consume
 Looking to build a marketing toolkit without costs? Run:
 
 ```bash
-uv run python scripts/strategy.py freetools --categories social_media,analytics,design,content,email
+uv run python scripts/strategy.py freetools --tools-categories social_media analytics design,content,email
 ```
 
 ### Combine Tasks for Strategy Planning

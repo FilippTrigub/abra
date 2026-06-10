@@ -325,7 +325,7 @@ Other skills can access brand assets by reading the manifest:
 import json
 import os
 
-MANIFEST_PATH = os.path.expanduser("~/.openclaw/skills/brand-awareness/brand-assets/asset-manifest.json")
+MANIFEST_PATH = os.environ.get("CLAW_BRAND_ASSETS_DIR", str(Path(__file__).parent / "brand-manager" / "brand-assets")) + "/asset-manifest.json"
 
 def get_brand_image_by_tag(tag):
     with open(MANIFEST_PATH) as f:
@@ -346,7 +346,7 @@ def get_brand_font_by_tag(tag):
 
 ### Required Dependencies
 - BRAND.md file in project root (created by `read-about-me` tool)
-- Brand assets directory at `~/.openclaw/skills/brand-awareness/brand-assets/`
+- Brand assets directory at `$SKILL_DIR/brand-assets/` (override via `CLAW_BRAND_ASSETS_DIR`)
 
 ---
 

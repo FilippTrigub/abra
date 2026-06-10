@@ -29,7 +29,7 @@ uv sync  # Install dependencies from pyproject.toml
 ### Run All Tasks
 
 ```bash
-uv run node run.mjs --task <task-name> [options]
+node run.mjs --task <task-name> [options]
 ```
 
 ### Task: ads-plan
@@ -38,10 +38,10 @@ Create and manage advertising campaigns with automated budget allocation and aud
 
 ```bash
 # Generate ads plan for Google Ads
-uv run node run.mjs --task ads-plan --platform google-ads --budget 5000 --duration 30
+node run.mjs --task ads-plan --platform google-ads --budget 5000 --duration 30
 
 # Google Ads campaign plan
-uv run node run.mjs --task ads-plan --platform google-ads --budget 10000 --duration 45
+node run.mjs --task ads-plan --platform google-ads --budget 10000 --duration 45
 ```
 
 **Options:**
@@ -59,13 +59,13 @@ Generate ad creative assets in multiple formats with optional AI enhancement.
 
 ```bash
 # Generate square creatives
-uv run node run.mjs --task creative --format square --input ./input/images/
+node run.mjs --task creative --format square --input ./input/images/
 
 # Generate all formats with AI enhancement
-uv run node run.mjs --task creative --format square,portrait,landscape --ai-enhance
+node run.mjs --task creative --format square,portrait,landscape --ai-enhance
 
 # Use custom brand guidelines
-uv run node run.mjs --task creative --brand-guidelines ./input/brand.json --templates product,testimonial
+node run.mjs --task creative --brand-guidelines ./input/brand.json --templates product,testimonial
 ```
 
 **Options:**
@@ -84,16 +84,16 @@ Set up analytics and conversion tracking across platforms.
 
 ```bash
 # Configure GA4 tracking
-uv run node run.mjs --task tracking --ga4-measurement-id G-XXXXXXXXXX
+node run.mjs --task tracking --ga4-measurement-id G-XXXXXXXXXX
 
 # Full tracking setup
-uv run node run.mjs --task tracking \
+node run.mjs --task tracking \
   --ga4-measurement-id G-XXXXXXXXXX \
   --google-ads-conversion-id 123456789 \
   --google-ads-conversion-label ABC123defgh
 
 # Generate tracking code snippets
-uv run node run.mjs --task tracking --output-snippets --output-dir ./output/tracking-code
+node run.mjs --task tracking --output-snippets --output-dir ./output/tracking-code
 ```
 
 **Options:**
@@ -148,9 +148,9 @@ This bundle can be integrated into larger marketing automation workflows:
 
 ```bash
 # Sequential execution
-uv run node run.mjs --task ads-plan --platform google-ads
-uv run node run.mjs --task creative --input ./output/ads-plan/ --format square
-uv run node run.mjs --task tracking --ga4-measurement-id G-XXXXXX
+node run.mjs --task ads-plan --platform google-ads
+node run.mjs --task creative --input ./output/ads-plan/ --format square
+node run.mjs --task tracking --ga4-measurement-id G-XXXXXX
 ```
 
 ## Troubleshooting

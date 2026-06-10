@@ -1,10 +1,6 @@
 ---
 name: video-generator
-description: >-
-Generate videos from text or images using Higgsfield's multi-model cloud
-platform. Supports Kling 3.0, Sora 2, Veo 3.1, Wan 2.5, Seedance 2.0, and
-MiniMax Hailuo. Uses a small preset layer for common creative styles.
-Auto-detects text-to-video or image-to-video based on input. No GPU required.
+description: Generate videos from text or images using Higgsfield's multi-model cloud platform. Supports kling, seedance, dop, and dop-preview models. Uses a small preset layer for common creative styles. Auto-detects text-to-video or image-to-video based on input. No GPU required.
 metadata:
   {
     "openclaw":

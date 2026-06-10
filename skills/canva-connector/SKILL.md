@@ -149,7 +149,7 @@ This is useful for:
 
 ### resolve-shortlink
 
-Resolves a Canva shortlink ID to its target URL. IMPORTANT: Use this tool FIRST when a user provides a shortlink (e.g. https://canva.link/abc123). Shortlinks need to be resolved before you can use other tools. After resolving, extract the design ID from the target URL and use it with tools like get-design, start-editing-transaction, or get-design-content.
+Resolves a Canva shortlink ID to its target URL. IMPORTANT: Use this tool FIRST when a user provides a shortlink (e.g. https://canva.link/abc123). Shortlinks need to be resolved before you can use other tools. After resolving, extract the design ID from the target URL and use it with tools like get-design or get-design-content.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
@@ -171,20 +171,9 @@ result = await app.resolve_shortlink(shortlink_id="example", user_intent="exampl
       Use the continuation token to get the next page of results, when there are more results.
 
       CRITICAL REQUIREMENTS:
-      1. ALWAYS use the 'search-brand-templates' tool when the user is searching for templates or wants to use a template.
-      2.** 🚫 When a user says search a template, they ALWAYS mean brand-templates. Therefore NEVER call this tool, ALWAYS call the 'search-brand-templates' tool to search for the templates. **
-      3.** 🚫 NEVER use this tool when the user expresses intent to “generate”, “create”, “autofill”, “search a template”, “start from a template”, “use my template”, or “pick a template for generation”.
-      In all such cases, ALWAYS use search-brand-templates.
-      ANY query involving:
-      – “generate a presentation”
-      – “generate a report”
-      – “make a design using a template”
-      – “generate from a template”
-      – “produce a presentation from their template”
-      - "search for available templates"
-      MUST NOT use search-designs.
-      This tool ONLY searches existing designs (docs, presentations, whiteboards, videos, etc.) that the user already owns or that are shared with them.
-      It DOES NOT find templates and MUST NOT be used as a fallback for template selection. **
+      1. This tool ONLY searches existing designs (docs, presentations, whiteboards, videos, etc.) that the user already owns or that are shared with them.
+      2. It DOES NOT search templates. For template search, use a different approach or inform the user.
+      3.** 🚫 NEVER use this tool when the user expresses intent to “generate”, “create”, “autofill”, or “start from a template”. **
       
 
 | Parameter | Type | Required | Description |
@@ -245,12 +234,12 @@ result = await app.get_design_pages(design_id="example", offset=1, limit=1)
 
 ### get-design-content
 
-Get the text content of a doc, presentation, whiteboard, social media post, and other designs in Canva (except sheets, as it does not return data in sheets). Use this when you only need to read text content without making changes. IMPORTANT: If the user wants to edit, update, change, translate, or fix content, use `start-editing-transaction` instead as it shows content AND enables editing. You must provide the design ID, which you can find with the `search-designs` tool. When given a URL to a Canva design, you can extract the design ID from the URL. Do not use web search to get the content of a design as the content is not accessible to the public. Example URL: https://www.canva.com/design/{design_id}.
+Get the text content of a doc, presentation, whiteboard, social media post, and other designs in Canva (except sheets). Use this when you only need to read text content without making changes. You must provide the design ID, which you can find with the `search-designs` tool. When given a URL to a Canva design, you can extract the design ID from the URL. Do not use web search to get the content of a design as the content is not accessible to the public. Example URL: https://www.canva.com/design/{design_id}.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | design_id | `str` | Yes | ID of the design to get content of |
-| content_types | `list[str]` | Yes | Types of content to retrieve. Currently, only `richtexts` is supported so use the `start-editing-transaction` tool to get other content types |
+| content_types | `list[str]` | Yes | Types of content to retrieve. Currently only `richtexts` is supported. |
 | pages | `list[int]` | No | Optional array of page numbers to get content from. If not specified, content from all pages will be returned. Pages are indexed using one-based numbering, so the first page in a design has the index value `1`. |
 | user_intent | `str` | No | Mandatory description of what the user is trying to accomplish with this tool call. This should always be provided by LLM clients. Please keep it concise (255 characters or less recommended). |
 
@@ -303,7 +292,7 @@ Use this tool (NOT start-editing-transaction) when the user wants to:
 - Combine, merge, or stitch together multiple designs
 - Copy or insert pages from one design into another
 
-Do NOT use this tool for editing content within pages (text, images, etc.) — use start-editing-transaction for that.
+Do NOT use this tool for editing content within pages (text, images, etc.).
 
 CRITICAL: You MUST ALWAYS ask the user for explicit confirmation before calling this tool, regardless of the operation type. Show them a summary of exactly what will change and ask "Would you like me to proceed?" Wait for their clear approval, then call this tool immediately.
 
@@ -533,4 +522,3 @@ Get a list of replies for a specific comment on a Canva design.
             - If no continuation token was returned → OMIT this parameter completely. NEVER EVER fabricate a token.
             - Do not set to null, empty string, or any other value when no token was provided.
 
-*...additional tools omitted for brevity*

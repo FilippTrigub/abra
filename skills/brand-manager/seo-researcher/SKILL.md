@@ -7,13 +7,6 @@ description: Research SEO opportunities through audits, keyword discovery, traff
 
 SEO research and analysis bundle that performs audits, keyword discovery, programmatic SEO exploration, and site architecture analysis.
 
-## Installation
-
-```bash
-cd skills/brand-manager/seo-researcher
-uv sync
-```
-
 ## Usage
 
 All tasks share a common pattern. Run with:
