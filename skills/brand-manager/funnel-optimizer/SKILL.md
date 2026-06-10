@@ -20,8 +20,8 @@ A comprehensive suite of conversion optimization tools covering every stage of t
 
 ```bash
 cd skills/brand-manager/funnel-optimizer
-uv sync                              # install deps (first time only)
-uv run python scripts/run.mjs <task> # run a specific task
+uv sync                                    # install deps (first time only)
+uv run python scripts/funnel.py <task>     # run a specific task
 ```
 
 ## Tasks
@@ -42,7 +42,7 @@ uv run python scripts/run.mjs <task> # run a specific task
 
 **Example:**
 ```bash
-uv run python scripts/run.mjs cro --page https://example.com/pricing
+uv run python scripts/funnel.py cro --page https://example.com/pricing
 ```
 
 ### signup
@@ -60,7 +60,7 @@ uv run python scripts/run.mjs cro --page https://example.com/pricing
 
 **Example:**
 ```bash
-uv run python scripts/run.mjs signup --flow signup-flow-v2
+uv run python scripts/funnel.py signup --flow signup-flow-v2
 ```
 
 ### onboarding
@@ -79,7 +79,7 @@ uv run python scripts/run.mjs signup --flow signup-flow-v2
 
 **Example:**
 ```bash
-uv run python scripts/run.mjs onboarding --activation "first_project_created"
+uv run python scripts/funnel.py onboarding --activation "first_project_created"
 ```
 
 ### form
@@ -99,7 +99,7 @@ uv run python scripts/run.mjs onboarding --activation "first_project_created"
 
 **Example:**
 ```bash
-uv run python scripts/run.mjs form --type demo_request --form demo-request-v3
+uv run python scripts/funnel.py form --type demo_request --form demo-request-v3
 ```
 
 ### experiment
@@ -119,7 +119,7 @@ uv run python scripts/run.mjs form --type demo_request --form demo-request-v3
 
 **Example:**
 ```bash
-uv run python scripts/run.mjs experiment --hypothesis "New CTA increases signups by 15%" --baseline-conversion 0.03
+uv run python scripts/funnel.py experiment --hypothesis "New CTA increases signups by 15%" --baseline-conversion 0.03
 ```
 
 ### retention
@@ -138,7 +138,7 @@ uv run python scripts/run.mjs experiment --hypothesis "New CTA increases signups
 
 **Example:**
 ```bash
-uv run python scripts/run.mjs retention --churn-rate 0.05 --billing-provider stripe
+uv run python scripts/funnel.py retention --churn-rate 0.05 --billing-provider stripe
 ```
 
 ## Input / Output Convention
@@ -185,16 +185,16 @@ Use this bundle when you want to:
 
 ```bash
 # 1. Analyze landing page CRO
-uv run python scripts/run.mjs cro --page https://example.com/pricing
+uv run python scripts/funnel.py cro --page https://example.com/pricing
 
 # 2. Optimize the signup flow
-uv run python scripts/run.mjs signup --flow signup-flow
+uv run python scripts/funnel.py signup --flow signup-flow
 
 # 3. Design A/B tests for key changes
-uv run python scripts/run.mjs experiment --hypothesis "Remove phone field increases signups"
+uv run python scripts/funnel.py experiment --hypothesis "Remove phone field increases signups"
 
 # 4. Set up retention for at-risk users
-uv run python scripts/run.mjs retention --churn-rate 0.04 --billing stripe
+uv run python scripts/funnel.py retention --churn-rate 0.04 --billing stripe
 ```
 
 ## Task-Specific Questions

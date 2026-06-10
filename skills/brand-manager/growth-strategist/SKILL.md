@@ -21,10 +21,10 @@ skills/brand-manager/growth-strategist/
 ├── input/          ← (optional) Place source files here before running
 ├── output/         ← Processed results appear here after running
 ├── scripts/
+│   ├── strategy.py ← Entry point
 │   └── tasks/      ← Task implementations
-│       ├── index.mjs       ← Task executor and registry
-│       ├── ideas.mjs       ← Marketing ideas generator
-│       └── freetools.mjs   ← Free tools discovery
+│       ├── ideas.py       ← Marketing ideas generator
+│       └── freetools.py   ← Free tools discovery
 ├── config.json     ← Default parameters (overridable via CLI)
 ├── SKILL.md        ← This documentation
 └── pyproject.toml  ← Python dependencies (managed by uv)
@@ -40,13 +40,13 @@ uv sync                              # install dependencies (first time only)
 ### Run Marketing Ideas Task
 
 ```bash
-uv run node run.mjs ideas --goal brand_awareness --audience small_business --tone professional
+uv run python scripts/strategy.py ideas --goal brand_awareness --audience small_business --tone professional
 ```
 
 ### Run Free Tools Task
 
 ```bash
-uv run node run.mjs freetools --categories social_media,analytics,design
+uv run python scripts/strategy.py freetools --categories social_media,analytics,design
 ```
 
 ## Task Descriptions
@@ -113,7 +113,7 @@ Discovers and recommends free marketing tools to enhance your strategies.
 Need marketing ideas for a new product launch? Run:
 
 ```bash
-uv run node run.mjs ideas --goal product_launch --audience consumers --max-ideas 15
+uv run python scripts/strategy.py ideas --goal product_launch --audience consumers --max-ideas 15
 ```
 
 ### Free Tool Stack Builder
@@ -121,17 +121,17 @@ uv run node run.mjs ideas --goal product_launch --audience consumers --max-ideas
 Looking to build a marketing toolkit without costs? Run:
 
 ```bash
-uv run node run.mjs freetools --categories social_media,analytics,design,content,email
+uv run python scripts/strategy.py freetools --categories social_media,analytics,design,content,email
 ```
 
 ### Combine Tasks for Strategy Planning
 
 ```bash
 # Generate ideas
-uv run node run.mjs ideas --goal lead_generation --audience enterprise > output/ideas.md
+uv run python scripts/strategy.py ideas --goal lead_generation --audience enterprise > output/ideas.md
 
 # Discover tools
-uv run node run.mjs freetools --categories automation,email > output/tools.md
+uv run python scripts/strategy.py freetools --categories automation,email > output/tools.md
 ```
 
 ## Ideas Categories

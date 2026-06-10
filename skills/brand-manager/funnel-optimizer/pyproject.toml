@@ -1,0 +1,9 @@
+[project]
+name = "funnel-optimizer"
+version = "1.0.0"
+description = "Conversion funnel optimization: CRO, signup, onboarding, forms, experiments, and retention"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+dev-dependencies = []

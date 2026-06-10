@@ -1,0 +1,9 @@
+[project]
+name = "revenue-manager"
+version = "1.0.0"
+description = "Revenue operations and CRM: lead lifecycle, scoring, routing, pipeline, and community-led revenue"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.uv]
+dev-dependencies = []

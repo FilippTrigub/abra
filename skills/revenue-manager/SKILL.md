@@ -24,7 +24,7 @@ uv sync                              # install dependencies (first time only)
 
 ```bash
 cd skills/revenue-manager
-uv run run.mjs <command> [options]
+uv run python scripts/revenue.py <command> [options]
 ```
 
 ### Commands
@@ -46,13 +46,13 @@ uv run run.mjs <command> [options]
 
 ```bash
 # Run RevOps task with defaults
-uv run run.mjs revops
+uv run python scripts/revenue.py revops
 
 # Run with custom input/output
-uv run run.mjs revops --input ./data --output ./results
+uv run python scripts/revenue.py revops --input ./data --output ./results
 
 # Run CRM (Community Marketing) task
-uv run run.mjs crm --input ./input --output ./output
+uv run python scripts/revenue.py crm --input ./input --output ./output
 ```
 
 ---
@@ -63,7 +63,7 @@ Revenue operations task for lead lifecycle management, scoring, routing, and pip
 
 ### What It Generates
 
-When you run `uv run run.mjs revops`, it creates these deliverables in the output directory:
+When you run `uv run python scripts/revenue.py revops`, it creates these deliverables in the output directory:
 
 1. **lifecycle-stage-definitions.md** - Stage definitions with entry/exit criteria, owners, and SLAs
 2. **scoring-specification.md** - Fit and engagement attributes with point values and MQL threshold
@@ -115,7 +115,7 @@ Community marketing task for strategy, ambassador programs, and community-led gr
 
 ### What It Generates
 
-When you run `uv run run.mjs crm`, it creates these deliverables in the output directory:
+When you run `uv run python scripts/revenue.py crm`, it creates these deliverables in the output directory:
 
 1. **community-strategy.md** - Platform choice, identity definition, core loop, 90-day launch plan
 2. **channel-architecture.md** - Recommended channels/categories with purpose and posting guidelines

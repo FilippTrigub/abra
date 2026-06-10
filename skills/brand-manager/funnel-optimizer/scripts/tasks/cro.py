@@ -1,16 +1,23 @@
-import { existsSync, mkdirSync, writeFileSync, readdirSync } from 'fs';
-import { join } from 'path';
+from __future__ import annotations
 
-export async function run({ inputDir, outputDir, outputFormat }) {
-  const inputFiles = existsSync(inputDir) 
-    ? readdirSync(inputDir).filter(f => f.endsWith('.md') || f.endsWith('.txt')) 
-    : [];
+from pathlib import Path
 
-  const brandContext = inputFiles.length > 0 
-    ? `\nBased on input files: ${inputFiles.join(', ')}\n`
-    : '';
 
-  const output = `# Page Conversion Rate Optimization (CRO)${brandContext}
+def run(input_dir: str, output_dir: str) -> None:
+    input_path = Path(input_dir)
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    input_files = (
+        [f.name for f in sorted(input_path.iterdir()) if f.suffix in (".md", ".txt")]
+        if input_path.exists()
+        else []
+    )
+    brand_context = f"\nBased on input files: {', '.join(input_files)}\n" if input_files else ""
+
+    print("Analyzing page for conversion opportunities...")
+
+    content = f"""# Page Conversion Rate Optimization (CRO){brand_context}
 
 Generated using funnel-optimizer
 
@@ -67,7 +74,7 @@ Patterns to test:
 
 ### Headlines
 | Variant | Example | Rationale |
-|---------|---------|------------|
+|---------|---------|-----------|
 | Outcome + Social Proof | "Save 10+ Hours/Week — Join 5,000+ Teams" | Specific outcome + validation |
 | Pain Point + Solution | "Stop Wasting Time on Manual Reports" | Addresses frustration directly |
 | Time-Bound | "Cut Your Reporting Time in Half" | Time specificity increases credibility |
@@ -84,7 +91,8 @@ Patterns to test:
 2. Prioritize recommendations by impact/effort
 3. Create A/B test variants
 4. Implement quick wins first
-`;
+"""
 
-  return { output };
-}
+    output_file = output_path / "cro_analysis.md"
+    output_file.write_text(content)
+    print(f"\nAnalysis saved to: {output_file}")
