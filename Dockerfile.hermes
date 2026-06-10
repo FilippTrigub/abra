@@ -8,4 +8,12 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends curl jq && \
     rm -rf /var/lib/apt/lists/*
 
+# Bake Abra profile data into the image so the AKS init container can hydrate
+# the Hermes profile at pod startup without any network calls.
+# The init container (same image, command-overridden) copies these to the PVC.
+COPY SOUL.md      /opt/abra/SOUL.md
+COPY WORKFLOW.md  /opt/abra/WORKFLOW.md
+COPY AGENTS.md    /opt/abra/AGENTS.md
+COPY skills/      /opt/abra/skills/
+
 USER hermes
