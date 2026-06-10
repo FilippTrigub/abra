@@ -78,6 +78,7 @@ describe("AksOrchestrationAdapter create flow", () => {
   beforeEach(() => {
     store = new InMemoryOperationStore();
     nowIndex = 0;
+    delete process.env.AZURE_FOUNDRY_API_KEY;
   });
 
   function nextTimestamp() {
@@ -539,6 +540,7 @@ describe("AksOrchestrationAdapter create flow", () => {
   });
 
   it("increments config revision and patches the StatefulSet during update", async () => {
+    process.env.AZURE_FOUNDRY_API_KEY = "test-azure-key";
     const resourceClient = createResourceClient({
       ensurePersistentVolumeClaim: vi.fn(async () => "existing" as const),
       ensureService: vi.fn(async () => "existing" as const),
@@ -583,6 +585,7 @@ describe("AksOrchestrationAdapter create flow", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           "openclaw.json": expect.any(String),
+          "config.yaml": expect.stringContaining("provider: azure-foundry"),
         }),
       })
     );
@@ -591,7 +594,8 @@ describe("AksOrchestrationAdapter create flow", () => {
       "abra-account-1-deployment-1-secrets",
       expect.objectContaining({
         stringData: expect.objectContaining({
-          env: expect.any(String),
+          env: expect.stringContaining("AZURE_FOUNDRY_API_KEY=test-azure-key"),
+          AZURE_FOUNDRY_API_KEY: "test-azure-key",
         }),
       })
     );
@@ -614,6 +618,17 @@ describe("AksOrchestrationAdapter create flow", () => {
                   image: "ghcr.io/abra/runtime:latest",
                   command: undefined,
                   args: ["gateway", "run"],
+                  env: expect.arrayContaining([
+                    expect.objectContaining({
+                      name: "AZURE_FOUNDRY_API_KEY",
+                      valueFrom: {
+                        secretKeyRef: {
+                          name: "abra-account-1-deployment-1-secrets",
+                          key: "AZURE_FOUNDRY_API_KEY",
+                        },
+                      },
+                    }),
+                  ]),
                 }),
               ],
             },

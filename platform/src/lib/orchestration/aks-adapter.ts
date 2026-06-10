@@ -134,6 +134,7 @@ function buildManifestInput(input: {
   const serviceAccountName = readOptionalString(input.payload.serviceAccountName) ?? undefined;
   const useServiceAccount = readOptionalBoolean(input.payload.useServiceAccount);
   const agentConfig = input.agentConfig ?? readAgentConfig(input.payload);
+  const azureFoundryApiKey = readOptionalString(process.env.AZURE_FOUNDRY_API_KEY);
 
   return {
     accountId: input.accountId,
@@ -144,6 +145,7 @@ function buildManifestInput(input: {
     ...(serviceAccountName ? { serviceAccountName } : {}),
     ...(useServiceAccount !== undefined ? { useServiceAccount } : {}),
     ...(agentConfig ? { agentConfig } : {}),
+    ...(azureFoundryApiKey ? { runtimeEnv: { azureFoundryApiKey } } : {}),
   };
 }
 
