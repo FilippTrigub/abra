@@ -346,7 +346,8 @@ function buildHydrationInitScript(): string {
     "set -eu",
     "echo 'Starting Hermes Abra hydration...'",
     "mkdir -p /openclaw-home/.openclaw",
-    `mkdir -p ${HERMES_PROFILE_DIR}`,
+    `mkdir -p ${HERMES_PROFILE_DIR}/workspace`,
+    `mkdir -p ${HERMES_PROFILE_DIR}/skills/abra`,
     "if [ -f /config/openclaw.json ]; then",
     "  cp /config/openclaw.json /openclaw-home/.openclaw/",
     "  echo 'Legacy OpenClaw config loaded from /config/openclaw.json'",
@@ -370,6 +371,25 @@ function buildHydrationInitScript(): string {
     "  cp /secrets/env /openclaw-home/.openclaw/.env",
     `  cp /secrets/env ${HERMES_PROFILE_DIR}/.env`,
     "  echo 'Environment loaded from /secrets/env'",
+    "fi",
+    // Abra persona and skills — baked into the image at /opt/abra/
+    "if [ -f /opt/abra/SOUL.md ]; then",
+    `  cp /opt/abra/SOUL.md ${HERMES_PROFILE_DIR}/SOUL.md`,
+    "  echo 'Abra SOUL.md hydrated'",
+    "else",
+    "  echo 'Warning: /opt/abra/SOUL.md not found; agent will use default Hermes persona'",
+    "fi",
+    "if [ -f /opt/abra/WORKFLOW.md ]; then",
+    `  cp /opt/abra/WORKFLOW.md ${HERMES_PROFILE_DIR}/workspace/WORKFLOW.md`,
+    "  echo 'Abra WORKFLOW.md hydrated'",
+    "fi",
+    "if [ -f /opt/abra/AGENTS.md ]; then",
+    `  cp /opt/abra/AGENTS.md ${HERMES_PROFILE_DIR}/workspace/AGENTS.md`,
+    "  echo 'Abra AGENTS.md hydrated'",
+    "fi",
+    "if [ -d /opt/abra/skills ]; then",
+    `  cp -r /opt/abra/skills/. ${HERMES_PROFILE_DIR}/skills/abra/`,
+    "  echo 'Abra skills hydrated'",
     "fi",
     "chown -R 10000:10000 /openclaw-home/.openclaw",
     "chown -R 10000:10000 /openclaw-home/.hermes",
@@ -429,8 +449,10 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
     }
   }
 
-  // Build hydration init container command
-  // This assumes the init container has access to configuration via ConfigMap/Secret
+  // Build hydration init container command.
+  // Uses the same Abra image so /opt/abra/ (SOUL.md, skills, workspace docs) is
+  // available for hydration. The `command` field overrides s6-overlay ENTRYPOINT,
+  // so only the shell script runs — the Hermes daemon does not start.
   const hydrationInitContainerCommand = ["/bin/sh", "-c", buildHydrationInitScript()];
 
   const manifest = {
@@ -458,8 +480,8 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
           initContainers: [
             {
               name: "init-hydration",
-              image: "busybox:latest",
-              imagePullPolicy: "IfNotPresent",
+              image: image,
+              imagePullPolicy: imagePullPolicy,
               command: hydrationInitContainerCommand,
               securityContext: {
                 runAsUser: 0,
@@ -643,6 +665,47 @@ function buildHermesProfileConfig(): string {
     "    - TELEGRAM_ALLOWED_USERS",
     "    - TELEGRAM_HOME_CHANNEL",
     "    - AZURE_FOUNDRY_API_KEY",
+    "skills:",
+    "  disabled:",
+    "    - github-pr-workflow",
+    "    - github-code-review",
+    "    - github-issues",
+    "    - github-repo-management",
+    "    - codebase-inspection",
+    "    - test-driven-development",
+    "    - systematic-debugging",
+    "    - requesting-code-review",
+    "    - simplify-code",
+    "    - spike",
+    "    - hermes-agent",
+    "    - claude-code",
+    "    - codex",
+    "    - opencode",
+    "    - hermes-agent-skill-authoring",
+    "    - google-workspace",
+    "    - notion",
+    "    - airtable",
+    "    - powerpoint",
+    "    - ocr-and-documents",
+    "    - nano-pdf",
+    "    - maps",
+    "    - teams-meeting-pipeline",
+    "    - arxiv",
+    "    - blogwatcher",
+    "    - polymarket",
+    "    - llm-wiki",
+    "    - research-paper-writing",
+    "    - huggingface-hub",
+    "    - llama-cpp",
+    "    - vllm",
+    "    - weights-and-biases",
+    "    - jupyter-live-kernel",
+    "    - obsidian",
+    "    - himalaya",
+    "    - openhue",
+    "    - yuanbao",
+    "    - dogfood",
+    "    - godmode",
   ].join("\n");
 }
 

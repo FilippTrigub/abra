@@ -237,7 +237,7 @@ describe("StatefulSet manifest", () => {
       (c) => c.name === "init-hydration"
     );
     expectDefined(initContainer, "init hydration container should exist");
-    expect(initContainer.image).toBe("busybox:latest");
+    expect(initContainer.image).toBe(TEST_IMAGE);
   });
 
   test("runs init-hydration as root so it can hand off runtime ownership", () => {
@@ -680,6 +680,47 @@ describe("Runtime prerequisite manifests", () => {
         "    - TELEGRAM_ALLOWED_USERS",
         "    - TELEGRAM_HOME_CHANNEL",
         "    - AZURE_FOUNDRY_API_KEY",
+        "skills:",
+        "  disabled:",
+        "    - github-pr-workflow",
+        "    - github-code-review",
+        "    - github-issues",
+        "    - github-repo-management",
+        "    - codebase-inspection",
+        "    - test-driven-development",
+        "    - systematic-debugging",
+        "    - requesting-code-review",
+        "    - simplify-code",
+        "    - spike",
+        "    - hermes-agent",
+        "    - claude-code",
+        "    - codex",
+        "    - opencode",
+        "    - hermes-agent-skill-authoring",
+        "    - google-workspace",
+        "    - notion",
+        "    - airtable",
+        "    - powerpoint",
+        "    - ocr-and-documents",
+        "    - nano-pdf",
+        "    - maps",
+        "    - teams-meeting-pipeline",
+        "    - arxiv",
+        "    - blogwatcher",
+        "    - polymarket",
+        "    - llm-wiki",
+        "    - research-paper-writing",
+        "    - huggingface-hub",
+        "    - llama-cpp",
+        "    - vllm",
+        "    - weights-and-biases",
+        "    - jupyter-live-kernel",
+        "    - obsidian",
+        "    - himalaya",
+        "    - openhue",
+        "    - yuanbao",
+        "    - dogfood",
+        "    - godmode",
         "",
       ].join("\n")
     );

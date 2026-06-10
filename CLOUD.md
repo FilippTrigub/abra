@@ -33,6 +33,7 @@ Three planes:
 | `AZURE_TENANT_ID` | Azure AD tenant for workload identity auth |
 | `AZURE_CLIENT_ID` | Managed identity client ID for AKS access |
 | `AZURE_FEDERATED_TOKEN_FILE` | Path to federated token file (workload identity) |
+| `AZURE_FOUNDRY_API_KEY` | Azure Foundry/OpenAI API key injected into the Abra runtime Secret for `provider: azure-foundry` |
 | `ORCHESTRATION_BACKEND` | Set to `aks` in production; `mock` for local dev |
 | `FIREBASE_PROJECT_ID` | Firebase project ID |
 | `FIREBASE_CLIENT_EMAIL` | Firebase Admin SDK service account email |
@@ -89,20 +90,32 @@ Agent config is required before any deployment is allowed. The platform reads it
 Each user deployment creates a set of K8s resources in that namespace:
 
 - **Namespace** — `abra`
-- **ConfigMap** — `abra-{accountId}-{deploymentId}-config` — contains the legacy `openclaw.json` compatibility config
-- **Secret** — `abra-{accountId}-{deploymentId}-secrets` — contains `.env` plus direct Secret keys for `TELEGRAM_BOT_TOKEN`, `TELEGRAM_HOME_CHANNEL`, and `TELEGRAM_ALLOWED_USERS`
+- **ConfigMap** — `abra-{accountId}-{deploymentId}-config` — contains the legacy `openclaw.json` compatibility config, Hermes `config.yaml`, and Hermes `auth.json`
+- **Secret** — `abra-{accountId}-{deploymentId}-secrets` — contains `.env` plus direct Secret keys for `TELEGRAM_BOT_TOKEN`, `TELEGRAM_HOME_CHANNEL`, `TELEGRAM_ALLOWED_USERS`, and `AZURE_FOUNDRY_API_KEY`
 - **StatefulSet** — `abra-{accountId}-{deploymentId}` — runs the Hermes Abra image; init container hydrates the Hermes profile and legacy `~/.openclaw` compatibility files before main container starts
 - **Service** — ClusterIP on port 18789
 - **PVC** — 1 GiB for `~/.openclaw` persistence
 
-The init container (`busybox:latest`) writes a minimal Hermes profile under the PVC-backed runtime home, copies `.env` into both Hermes and legacy OpenClaw-compatible locations, then the main container starts with `gateway run`.
+The init container (same Abra image, s6-overlay ENTRYPOINT overridden by `command`) hydrates the PVC-backed runtime home before the main container starts with `gateway run`:
+
+- copies `openclaw.json` to `/openclaw-home/.openclaw/openclaw.json`
+- copies Hermes `config.yaml` to `/openclaw-home/.hermes/profiles/abra/config.yaml`
+- copies Hermes `auth.json` to `/openclaw-home/.hermes/profiles/abra/auth.json` and sets `0600` permissions
+- copies Secret-backed `.env` to both `/openclaw-home/.hermes/profiles/abra/.env` and `/openclaw-home/.openclaw/.env`
+- copies `/opt/abra/SOUL.md` to `/openclaw-home/.hermes/profiles/abra/SOUL.md` (Abra persona)
+- copies `/opt/abra/WORKFLOW.md` and `/opt/abra/AGENTS.md` to `…/profiles/abra/workspace/`
+- copies `/opt/abra/skills/` to `…/profiles/abra/skills/abra/` (all 33 Abra skills)
+
+`/opt/abra/` is baked into the image at build time via `Dockerfile.hermes` (`COPY SOUL.md`, `COPY skills/`, etc.). No network access is required at pod start.
+
+The StatefulSet also exposes selected Secret keys directly as process env vars for the main container.
 
 ### Container Registry — `abraacr914f`
 
 - **Login server**: `abraacr914f.azurecr.io`
 - **SKU**: Standard
 - **Repository**: `abra` (single repo)
-- **Current deployed tag**: `hermes-202606092229-3277038` (set via `AKS_RUNTIME_IMAGE` in Vercel / the StatefulSet image in AKS)
+- **Current deployed tag**: `hermes-202606101148-ed0ea3d` (set via `AKS_RUNTIME_IMAGE` in Vercel / the StatefulSet image in AKS)
 - An ACR task `purge-old-images` runs to clean up old tags.
 
 To check the current image in use:
@@ -113,8 +126,12 @@ vercel env ls  # look for AKS_RUNTIME_IMAGE
 To push a new image:
 ```bash
 az acr build -r abraacr914f -t abra:<tag> -f Dockerfile.hermes .
-# Then update AKS_RUNTIME_IMAGE in Vercel and redeploy
+# Then update AKS_RUNTIME_IMAGE in Vercel and patch the StatefulSet:
+vercel env rm AKS_RUNTIME_IMAGE production --yes && vercel env add AKS_RUNTIME_IMAGE production <<< "abraacr914f.azurecr.io/abra:<tag>"
+kubectl set image statefulset/<sts-name> openclaw=abraacr914f.azurecr.io/abra:<tag> init-hydration=abraacr914f.azurecr.io/abra:<tag> -n abra
 ```
+
+Note: `platform/node_modules`, `platform/.next`, `skills/**/output`, and `skills/**/node_modules` are excluded from the build context via `.dockerignore`.
 
 ### PostgreSQL — `abra-psql`
 
@@ -159,6 +176,84 @@ These are set in the platform Settings → Telegram setup card and injected into
 
 ---
 
+## Hermes skill management
+
+The generated `config.yaml` disables all default Hermes built-in skills so only Abra's own skills (hydrated into `…/skills/abra/` by the init container) are available to the agent.
+
+Default skills live in `/opt/hermes/skills/` inside the base image. Hermes reads `skills.disabled` from the active profile's `config.yaml` and suppresses those entries at load time (`hermes_cli/skills_config.py`).
+
+The disabled list is maintained in `buildHermesProfileConfig()` in `platform/src/lib/orchestration/manifest-generator.ts` and is emitted into the ConfigMap on every deployment. To re-enable a skill, remove it from that list and redeploy.
+
+Disabled skills (38 total):
+
+| Category | Skills |
+|----------|--------|
+| GitHub / software dev | `github-pr-workflow`, `github-code-review`, `github-issues`, `github-repo-management`, `codebase-inspection`, `test-driven-development`, `systematic-debugging`, `requesting-code-review`, `simplify-code`, `spike` |
+| AI agent / Hermes | `hermes-agent`, `claude-code`, `codex`, `opencode`, `hermes-agent-skill-authoring` |
+| Productivity | `google-workspace`, `notion`, `airtable`, `powerpoint`, `ocr-and-documents`, `nano-pdf`, `maps`, `teams-meeting-pipeline` |
+| Research / ML | `arxiv`, `blogwatcher`, `polymarket`, `llm-wiki`, `research-paper-writing`, `huggingface-hub`, `llama-cpp`, `vllm`, `weights-and-biases`, `jupyter-live-kernel` |
+| Other | `obsidian`, `himalaya`, `openhue`, `yuanbao`, `dogfood`, `godmode` |
+
+---
+
+## Azure Foundry provider contract
+
+Abra's deployed Hermes runtime uses Azure Foundry as the default model provider:
+
+```yaml
+model:
+  default: gpt-5.5
+  provider: azure-foundry
+  base_url: https://azure-openai-746596.openai.azure.com/openai/v1
+  api_mode: chat_completions
+```
+
+That model config alone is not enough. Hermes also needs a credential-pool entry in the hydrated profile auth file and the actual key in the runtime environment.
+
+### Required live state
+
+| Location | Required value |
+|----------|----------------|
+| Vercel env | `AZURE_FOUNDRY_API_KEY` must be set on the platform process that generates AKS manifests |
+| K8s Secret | `AZURE_FOUNDRY_API_KEY` direct key plus an `AZURE_FOUNDRY_API_KEY=...` line in Secret-backed `env` |
+| StatefulSet container env | `AZURE_FOUNDRY_API_KEY` must be present via `secretKeyRef` |
+| Hermes profile `.env` | `/openclaw-home/.hermes/profiles/abra/.env` must contain `AZURE_FOUNDRY_API_KEY=...` |
+| Hermes profile `auth.json` | `/openclaw-home/.hermes/profiles/abra/auth.json` must include `credential_pool.azure-foundry` with `source: env:AZURE_FOUNDRY_API_KEY` |
+
+Expected `auth.json` shape:
+
+```json
+{
+  "version": 1,
+  "providers": {},
+  "active_provider": null,
+  "credential_pool": {
+    "azure-foundry": [
+      {
+        "id": "19b47d",
+        "label": "AZURE_FOUNDRY_API_KEY",
+        "auth_type": "api_key",
+        "priority": 0,
+        "source": "env:AZURE_FOUNDRY_API_KEY",
+        "base_url": "",
+        "secret_fingerprint": "sha256:<first-16-hex-of-key-sha256>"
+      }
+    ],
+    "custom:azure": []
+  }
+}
+```
+
+For the current production key, the expected redacted fingerprint is:
+
+```text
+sha256:db1ad608e95d1843
+```
+
+Do not store the raw key in `auth.json` or the ConfigMap. The raw value belongs only in Vercel env, the Kubernetes Secret, and Secret-hydrated `.env` / process env.
+
+---
+
 ## Debugging quick-reference
 
 | Problem | Where to look |
@@ -166,8 +261,20 @@ These are set in the platform Settings → Telegram setup card and injected into
 | Deployment stuck / failed | Firestore `accounts/{userId}/deployments/{id}` — `errorMessage` field |
 | Pod not starting | `kubectl get pods -n abra` / `kubectl describe pod <name> -n abra` |
 | Init container failing | `kubectl logs <pod> -n abra -c init-hydration` |
+| Agent has no Abra skills / wrong persona | Check `kubectl logs <pod> -n abra -c init-hydration` for "Abra SOUL.md hydrated" and "Abra skills hydrated"; if missing, image predates the `/opt/abra` bake-in — rebuild from `Dockerfile.hermes` |
 | Bot says user is not authorized | Check `TELEGRAM_ALLOWED_USERS` is set in the pod env/Secret, then redeploy or update the StatefulSet |
 | Bot not responding | Check `TELEGRAM_BOT_TOKEN` and `TELEGRAM_HOME_CHANNEL` are set in Settings, then redeploy |
+| Provider authentication failed | Check `config.yaml` provider settings, Hermes `auth.json`, Hermes `.env`, pod process env, and K8s Secret all include the Azure Foundry credential path |
 | Image error | Verify `AKS_RUNTIME_IMAGE` in Vercel dashboard → Settings → Env Vars |
 | K8s auth failing | Check `KUBECONFIG_B64` is current in Vercel; re-export from AKS if expired |
-| New image to deploy | Build via `az acr build -f Dockerfile.hermes`, update `AKS_RUNTIME_IMAGE` in Vercel, then run update/redeploy or patch the StatefulSet image |
+| New image to deploy | Build via `az acr build -f Dockerfile.hermes`, update `AKS_RUNTIME_IMAGE` in Vercel, then `kubectl set image` both `openclaw` and `init-hydration` containers on the StatefulSet |
+
+Useful safe checks, with secret values redacted manually before sharing output:
+
+```bash
+kubectl get pods -n abra -l app=abra -o wide
+kubectl get configmap -n abra <configmap-name> -o jsonpath='{.data.config\.yaml}{"\n---AUTH---\n"}{.data.auth\.json}{"\n"}'
+kubectl get secret -n abra <secret-name> -o jsonpath='{.data.AZURE_FOUNDRY_API_KEY}' | base64 -d | sha256sum
+kubectl exec -n abra <pod-name> -- sh -lc 'test -n "$AZURE_FOUNDRY_API_KEY" && printf %s "$AZURE_FOUNDRY_API_KEY" | sha256sum'
+kubectl exec -n abra <pod-name> -- sh -lc 'ls -l /openclaw-home/.hermes/profiles/abra/auth.json /openclaw-home/.hermes/profiles/abra/.env'
+```
