@@ -359,6 +359,13 @@ function buildHydrationInitScript(): string {
     "else",
     "  echo 'Warning: No /config/config.yaml found, using existing profile config if present'",
     "fi",
+    "if [ -f /config/auth.json ]; then",
+    `  cp /config/auth.json ${HERMES_PROFILE_DIR}/auth.json`,
+    `  chmod 600 ${HERMES_PROFILE_DIR}/auth.json`,
+    "  echo 'Hermes auth config loaded from /config/auth.json'",
+    "else",
+    "  echo 'Warning: No /config/auth.json found, using existing auth config if present'",
+    "fi",
     "if [ -f /secrets/env ]; then",
     "  cp /secrets/env /openclaw-home/.openclaw/.env",
     `  cp /secrets/env ${HERMES_PROFILE_DIR}/.env`,
@@ -639,6 +646,48 @@ function buildHermesProfileConfig(): string {
   ].join("\n");
 }
 
+function buildHermesAuthConfig(input: ManifestInput): string {
+  const azureFoundryApiKey = getAzureFoundryApiKey(input);
+  const azureFoundryCredentials = azureFoundryApiKey
+    ? [
+        {
+          id: "19b47d",
+          label: "AZURE_FOUNDRY_API_KEY",
+          auth_type: "api_key",
+          priority: 0,
+          source: "env:AZURE_FOUNDRY_API_KEY",
+          last_status: null,
+          last_status_at: null,
+          last_error_code: null,
+          last_error_reason: null,
+          last_error_message: null,
+          last_error_reset_at: null,
+          base_url: "",
+          request_count: 0,
+          secret_fingerprint: `sha256:${createHash("sha256")
+            .update(azureFoundryApiKey)
+            .digest("hex")
+            .slice(0, 16)}`,
+        },
+      ]
+    : [];
+
+  return JSON.stringify(
+    {
+      version: 1,
+      providers: {},
+      active_provider: null,
+      updated_at: "2026-06-10T00:05:30.258363+00:00",
+      credential_pool: {
+        "azure-foundry": azureFoundryCredentials,
+        "custom:azure": [],
+      },
+    },
+    null,
+    2,
+  );
+}
+
 function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Record<string, string> } {
   const { accountId, deploymentId } = input;
   const namespace = input.nameOverrides?.namespace ?? getRuntimeNamespace();
@@ -655,6 +704,7 @@ function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Rec
     data: {
       "openclaw.json": buildOpenClawConfig(input) + "\n",
       "config.yaml": buildHermesProfileConfig() + "\n",
+      "auth.json": buildHermesAuthConfig(input) + "\n",
     },
   };
 }
@@ -958,6 +1008,9 @@ export function validateGeneratedManifests(manifests: KubernetesManifests): void
   }
   if (!configMap.data || typeof configMap.data["config.yaml"] !== "string") {
     throw new Error("ConfigMap missing data.config.yaml");
+  }
+  if (!configMap.data || typeof configMap.data["auth.json"] !== "string") {
+    throw new Error("ConfigMap missing data.auth.json");
   }
 
   if (secret.apiVersion !== "v1") {

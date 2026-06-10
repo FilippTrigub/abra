@@ -586,6 +586,7 @@ describe("AksOrchestrationAdapter create flow", () => {
         data: expect.objectContaining({
           "openclaw.json": expect.any(String),
           "config.yaml": expect.stringContaining("provider: azure-foundry"),
+          "auth.json": expect.stringContaining("sha256:dfa9e6a1592ad440"),
         }),
       })
     );

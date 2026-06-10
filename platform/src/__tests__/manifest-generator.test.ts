@@ -45,6 +45,7 @@ function rewriteHydrationScriptForTest(script: string) {
 
   writeFileSync(join(configDir, "openclaw.json"), "{}\n");
   writeFileSync(join(configDir, "config.yaml"), "model:\n  default: gpt-5.5\n");
+  writeFileSync(join(configDir, "auth.json"), '{"version":1}\n');
   writeFileSync(join(secretsDir, "env"), "OPENCLAW_HOME=/openclaw-home\n");
 
   return {
@@ -62,6 +63,7 @@ function rewriteHydrationScriptForTest(script: string) {
       ),
     hydratedConfigPath: join(openclawHome, ".openclaw", "openclaw.json"),
     hydratedHermesConfigPath: join(openclawHome, ".hermes", "profiles", "abra", "config.yaml"),
+    hydratedHermesAuthPath: join(openclawHome, ".hermes", "profiles", "abra", "auth.json"),
     hydratedEnvPath: join(openclawHome, ".openclaw", ".env"),
   };
 }
@@ -405,6 +407,7 @@ describe("StatefulSet manifest", () => {
     expect(command[2]).toContain("mkdir -p /openclaw-home/.hermes/profiles/abra");
     expect(command[2]).toContain("cp /config/openclaw.json /openclaw-home/.openclaw/");
     expect(command[2]).toContain("cp /config/config.yaml /openclaw-home/.hermes/profiles/abra/config.yaml");
+    expect(command[2]).toContain("cp /config/auth.json /openclaw-home/.hermes/profiles/abra/auth.json");
     expect(command[2]).toContain("cp /secrets/env /openclaw-home/.hermes/profiles/abra/.env");
   });
 
@@ -425,6 +428,7 @@ describe("StatefulSet manifest", () => {
       executableScript,
       hydratedConfigPath,
       hydratedHermesConfigPath,
+      hydratedHermesAuthPath,
       hydratedEnvPath,
     } = rewriteHydrationScriptForTest(command[2]);
 
@@ -435,9 +439,11 @@ describe("StatefulSet manifest", () => {
 
     expect(existsSync(hydratedConfigPath)).toBe(true);
     expect(existsSync(hydratedHermesConfigPath)).toBe(true);
+    expect(existsSync(hydratedHermesAuthPath)).toBe(true);
     expect(existsSync(hydratedEnvPath)).toBe(true);
     expect(readFileSync(hydratedConfigPath, "utf8")).toBe("{}\n");
     expect(readFileSync(hydratedHermesConfigPath, "utf8")).toBe("model:\n  default: gpt-5.5\n");
+    expect(readFileSync(hydratedHermesAuthPath, "utf8")).toBe('{"version":1}\n');
     expect(readFileSync(hydratedEnvPath, "utf8")).toBe("OPENCLAW_HOME=/openclaw-home\n");
   });
 
@@ -648,6 +654,7 @@ describe("Runtime prerequisite manifests", () => {
         data: expect.objectContaining({
           "openclaw.json": expect.any(String),
           "config.yaml": expect.any(String),
+          "auth.json": expect.any(String),
         }),
       })
     );
@@ -773,6 +780,35 @@ describe("Runtime prerequisite manifests", () => {
 
     expect(manifests.secret.stringData.env).toBe("AZURE_FOUNDRY_API_KEY=test-azure-key");
     expect(manifests.secret.stringData.AZURE_FOUNDRY_API_KEY).toBe("test-azure-key");
+
+    const authConfig = JSON.parse(manifests.configMap.data["auth.json"]);
+    expect(authConfig).toEqual({
+      version: 1,
+      providers: {},
+      active_provider: null,
+      updated_at: "2026-06-10T00:05:30.258363+00:00",
+      credential_pool: {
+        "azure-foundry": [
+          {
+            id: "19b47d",
+            label: "AZURE_FOUNDRY_API_KEY",
+            auth_type: "api_key",
+            priority: 0,
+            source: "env:AZURE_FOUNDRY_API_KEY",
+            last_status: null,
+            last_status_at: null,
+            last_error_code: null,
+            last_error_reason: null,
+            last_error_message: null,
+            last_error_reset_at: null,
+            base_url: "",
+            request_count: 0,
+            secret_fingerprint: "sha256:dfa9e6a1592ad440",
+          },
+        ],
+        "custom:azure": [],
+      },
+    });
 
     const openclawContainer = manifests.statefulset.spec.template.spec.containers.find(
       (c) => c.name === "openclaw"
@@ -958,6 +994,15 @@ describe("Manifest validation", () => {
 
     expect(() => validateGeneratedManifests(manifests)).toThrow(
       "ConfigMap missing data.config.yaml"
+    );
+  });
+
+  test("throws error when generated config map loses auth.json", () => {
+    const manifests = generateKubernetesManifests(BASE_INPUT);
+    delete manifests.configMap.data["auth.json"];
+
+    expect(() => validateGeneratedManifests(manifests)).toThrow(
+      "ConfigMap missing data.auth.json"
     );
   });
 });
