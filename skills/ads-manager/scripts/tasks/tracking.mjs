@@ -432,5 +432,3 @@ async function loadConfig() {
   }
 }
 
-// Export for module usage
-export { main };

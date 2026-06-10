@@ -8,10 +8,10 @@ from typing import Any
 
 from .config import RemoteProviderConfig, require_provider_api_key
 
-# Ensure repo root is on sys.path so lib.runpod is importable
-_REPO_ROOT = Path(__file__).resolve().parents[2]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
+# Ensure the skill collection dir is on sys.path
+_PROVIDERS_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROVIDERS_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROVIDERS_ROOT))
 
 _PROVIDER_CONFIG_KEYS = frozenset({
     "provider",

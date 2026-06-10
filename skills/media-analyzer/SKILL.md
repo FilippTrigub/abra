@@ -46,7 +46,7 @@ Use this skill when you need to:
 ## Setup (First Run Only)
 
 ```bash
-cd skills/media-analyzer && uv sync
+cd "$SKILL_DIR" && uv sync
 ```
 
 Model weights are downloaded on first use:
@@ -96,7 +96,7 @@ Edit `config.json` before running:
 ### Basic: Analyze images in directory
 
 ```bash
-cd skills/media-analyzer
+cd "$SKILL_DIR"
 uv run python scripts/analyze.py --config config.json
 ```
 
@@ -216,7 +216,7 @@ Ask the user:
 After user confirms, run:
 
 ```bash
-cd skills/media-analyzer
+cd "$SKILL_DIR"
 uv run python scripts/analyze.py --config config.json
 ```
 

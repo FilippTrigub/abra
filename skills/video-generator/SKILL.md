@@ -117,8 +117,8 @@ Before I generate the video, I need to know:
    - if omitted, keep the default preset and record that choice
 
 🤖 Model  (default: kling)
-   kling · wan · seedance · minimax · sora · veo
-   Recommendation: kling for speed/cost, sora/veo for premium quality
+   kling · seedance · dop · dop-preview
+   Recommendation: kling for speed/cost, seedance for quality
 
 💬 Prompt  (required)
    Describe the motion or scene, e.g.:
@@ -183,9 +183,9 @@ cd "$SKILL_DIR" && uv run python scripts/generate.py \
 cd "$SKILL_DIR" && uv run python scripts/generate.py \
   --prompt "slow cinematic push-in, golden hour light" --model kling
 
-# Premium quality: Sora 2
+# Higher quality: Seedance
 cd "$SKILL_DIR" && uv run python scripts/generate.py \
-  --prompt "aerial pull-back over a foggy city at dawn" --model sora
+  --prompt "aerial pull-back over a foggy city at dawn" --model seedance
 
 # Vertical video for Reels/TikTok
 cd "$SKILL_DIR" && uv run python scripts/generate.py \
@@ -195,7 +195,7 @@ cd "$SKILL_DIR" && uv run python scripts/generate.py \
 # Fast draft: lower resolution, shorter clip
 cd "$SKILL_DIR" && uv run python scripts/generate.py \
   --prompt "product reveal on dark background" \
-  --resolution 720p --duration 4 --model wan
+  --resolution 720p --duration 4 --model dop-preview
 ```
 
 ---

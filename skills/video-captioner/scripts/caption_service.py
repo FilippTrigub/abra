@@ -24,21 +24,22 @@ import tempfile
 import time
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
+_SKILL_DIR = Path(__file__).resolve().parent.parent
+_PROVIDERS_ROOT = _SKILL_DIR.parent
+if str(_PROVIDERS_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROVIDERS_ROOT))
 
-_providers_module = importlib.import_module("skills._providers")
+_providers_module = importlib.import_module("_providers")
 DEFAULT_HF_TOKEN_ENV = _providers_module.DEFAULT_HF_TOKEN_ENV
 DEFAULT_REMOTE_TIMEOUT_SECONDS = _providers_module.DEFAULT_REMOTE_TIMEOUT_SECONDS
 DEFAULT_REPLICATE_API_KEY_ENV = _providers_module.DEFAULT_REPLICATE_API_KEY_ENV
 merge_remote_provider_overrides = _providers_module.merge_remote_provider_overrides
 remote_provider_from_config = _providers_module.remote_provider_from_config
 
-_hf_provider_module = importlib.import_module("skills._providers.huggingface")
+_hf_provider_module = importlib.import_module("_providers.huggingface")
 HuggingFaceProvider = _hf_provider_module.HuggingFaceProvider
 
-_replicate_provider_module = importlib.import_module("skills._providers.replicate")
+_replicate_provider_module = importlib.import_module("_providers.replicate")
 ReplicateProvider = _replicate_provider_module.ReplicateProvider
 
 logging.basicConfig(
@@ -51,8 +52,7 @@ log = logging.getLogger(__name__)
 VIDEO_EXTENSIONS = {".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v"}
 DEFAULT_REMOTE_HF_MODEL = "openai/whisper-large-v3"
 SKILL_DIR = Path(__file__).parent.parent
-REPO_ROOT = SKILL_DIR.parent.parent
-DEFAULT_BRAND_ASSETS_DIR = REPO_ROOT / "skills" / "brand-manager" / "brand-assets"
+DEFAULT_BRAND_ASSETS_DIR = SKILL_DIR.parent / "brand-manager" / "brand-assets"
 BRAND_FONT_TAG_PREFERENCES = ["caption", "body", "heading", "bold"]
 
 

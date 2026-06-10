@@ -343,5 +343,3 @@ function getMimeType(filePath) {
   return mimeTypes[ext] || 'application/octet-stream';
 }
 
-// Export for module usage
-export { main };

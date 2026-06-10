@@ -23,9 +23,10 @@ import json
 import sys
 from pathlib import Path
 
-_REPO_ROOT = Path(__file__).resolve().parents[3]
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
+_SKILL_DIR = Path(__file__).resolve().parent.parent
+_PROVIDERS_ROOT = _SKILL_DIR.parent
+if str(_PROVIDERS_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROVIDERS_ROOT))
 
 from PIL import Image
 
@@ -228,11 +229,11 @@ def main() -> None:
     _provider_name = cfg.get("provider")
     if _provider_name == "runpod":
         import importlib
-        _cfg_mod = importlib.import_module("skills._providers.config")
+        _cfg_mod = importlib.import_module("_providers.config")
         remote = _cfg_mod.remote_provider_from_config(cfg, supported_providers={"runpod"})
         input_dir = Path(cfg.get("input_dir", "./input"))
         output_dir = Path(cfg.get("output_dir", "./output"))
-        _rp = importlib.import_module("skills._providers.runpod")
+        _rp = importlib.import_module("_providers.runpod")
         _rp.RunpodProvider(remote).run_skill(input_dir, output_dir, cfg)
         return
 

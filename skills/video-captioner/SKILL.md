@@ -151,7 +151,7 @@ When `caption_font` is `auto`, the skill reads the brand manifest (or `CLAW_BRAN
 Install dependencies (first run only):
 
 ```bash
-cd skills/video-captioner && uv sync
+cd "$SKILL_DIR" && uv sync
 ```
 
 **Note:** the very first run will be slow (potentially several minutes) because pycaps downloads the Whisper speech recognition model. Warn the user about this before starting.
@@ -159,7 +159,7 @@ cd skills/video-captioner && uv sync
 Then process videos:
 
 ```bash
-cd skills/video-captioner && uv run python scripts/caption_service.py \
+cd "$SKILL_DIR" && uv run python scripts/caption_service.py \
   --input <path/to/input> \
   --output <path/to/output> \
   [--css scripts/futuristic.css]

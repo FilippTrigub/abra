@@ -55,7 +55,7 @@ def run_transcription(
 ) -> list[dict] | None:
     """Run audio transcription skill to get timestamped segments."""
     # Find the audio-transcription skill directory
-    skill_dir = Path(__file__).parent.parent.parent / "audio-transcription"
+    skill_dir = Path(__file__).parent.parent.parent / "audio-transcriber"
     transcriber_script = skill_dir / "scripts" / "transcriber.py"
 
     if not transcriber_script.exists():

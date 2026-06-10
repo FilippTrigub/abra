@@ -19,7 +19,7 @@ uv sync
 All tasks share a common pattern. Run with:
 
 ```bash
-uv run python scripts/run.mjs --task <task-name> [options]
+node scripts/run.mjs --task <task-name> [options]
 ```
 
 ### Available Tasks
@@ -37,7 +37,7 @@ uv run python scripts/run.mjs --task <task-name> [options]
 #### SEO Audit (`audit`)
 
 ```bash
-uv run python scripts/run.mjs --task audit --domain example.com
+node scripts/run.mjs --task audit --domain example.com
 ```
 
 Options:
@@ -49,7 +49,7 @@ Options:
 #### AI SEO (`aiseo`)
 
 ```bash
-uv run python scripts/run.mjs --task aiseo --domain example.com --keywords "seo tools, marketing automation"
+node scripts/run.mjs --task aiseo --domain example.com --keywords "seo tools, marketing automation"
 ```
 
 Options:
@@ -61,7 +61,7 @@ Options:
 #### Programmatic SEO (`pseo`)
 
 ```bash
-uv run python scripts/run.mjs --task pseo --domain example.com --base-topic "seo audit"
+node scripts/run.mjs --task pseo --domain example.com --base-topic "seo audit"
 ```
 
 Options:
@@ -73,7 +73,7 @@ Options:
 #### Site Architecture (`clusters`)
 
 ```bash
-uv run python scripts/run.mjs --task clusters --domain example.com
+node scripts/run.mjs --task clusters --domain example.com
 ```
 
 Options:
@@ -85,7 +85,7 @@ Options:
 #### Competitor Analysis (`competitors`)
 
 ```bash
-uv run python scripts/run.mjs --task competitors --domain example.com --competitors competitor1.com,competitor2.com
+node scripts/run.mjs --task competitors --domain example.com --competitors competitor1.com,competitor2.com
 ```
 
 Options:

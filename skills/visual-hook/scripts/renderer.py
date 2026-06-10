@@ -16,8 +16,7 @@ VALID_FORMATS = {"auto", "reels", "feed-portrait", "feed-square"}
 VALID_POSITIONS = set(POSITION_TO_KEY)
 
 SKILL_DIR = Path(__file__).parent.parent
-REPO_ROOT = SKILL_DIR.parent.parent
-DEFAULT_BRAND_ASSETS_DIR = REPO_ROOT / "skills" / "brand-manager" / "brand-assets"
+DEFAULT_BRAND_ASSETS_DIR = SKILL_DIR.parent / "brand-manager" / "brand-assets"
 
 SYSTEM_FONT_CANDIDATES = [
     Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),

@@ -39,13 +39,13 @@ If the user has not specified a preset, ask them which look they want before run
 Install dependencies (first run only):
 
 ```bash
-cd skills/video-enhancer && uv sync
+cd "$SKILL_DIR" && uv sync
 ```
 
 Then process videos:
 
 ```bash
-cd skills/video-enhancer && uv run python scripts/enhance.py \
+cd "$SKILL_DIR" && uv run python scripts/enhance.py \
   --input <path/to/input> \
   --output <path/to/output> \
   --preset natural|cinematic|vivid

@@ -131,7 +131,7 @@ Manifest example:
 Validate a checked-in fixture without rendering:
 
 ```bash
-cd skills/remotion-video
+cd "$SKILL_DIR"
 uv run python scripts/validate_contracts.py \
   --schema ./schemas/render-spec.v1.schema.json \
   --instance ./fixtures/render-spec.valid.json
@@ -140,7 +140,7 @@ uv run python scripts/validate_contracts.py \
 Expected invalid-contract check:
 
 ```bash
-cd skills/remotion-video
+cd "$SKILL_DIR"
 uv run python scripts/validate_contracts.py \
   --schema ./schemas/render-spec.v1.schema.json \
   --instance ./fixtures/render-spec.invalid.missing-composition.json
@@ -151,7 +151,7 @@ uv run python scripts/validate_contracts.py \
 Install the isolated Python and Node runtimes from inside this skill directory:
 
 ```bash
-cd skills/remotion-video
+cd "$SKILL_DIR"
 uv sync
 npm ci
 ```
@@ -159,28 +159,28 @@ npm ci
 Ensure the browser runtime is present before rendering:
 
 ```bash
-cd skills/remotion-video
+cd "$SKILL_DIR"
 npm run browser:ensure
 ```
 
 Run the full end to end render from the checked in fixture spec:
 
 ```bash
-cd skills/remotion-video
+cd "$SKILL_DIR"
 uv run python scripts/render.py --config config.json --render-spec fixtures/render-spec.valid.json
 ```
 
 The same wrapper can render a real input spec with the default config:
 
 ```bash
-cd skills/remotion-video
+cd "$SKILL_DIR"
 uv run python scripts/render.py --config config.json
 ```
 
 Helpful checks:
 
 ```bash
-cd skills/remotion-video
+cd "$SKILL_DIR"
 npm run typecheck
 uv run python scripts/validate_contracts.py \
   --schema ./schemas/render-spec.v1.schema.json \
