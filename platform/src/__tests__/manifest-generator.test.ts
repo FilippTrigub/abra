@@ -35,36 +35,30 @@ function expectDefined<T>(value: T | null | undefined, message: string): asserts
 
 function rewriteHydrationScriptForTest(script: string) {
   const sandboxRoot = mkdtempSync(join(tmpdir(), "abra-hydration-"));
-  const openclawHome = join(sandboxRoot, "openclaw-home");
+  const hermesData = join(sandboxRoot, "opt-data");
   const configDir = join(sandboxRoot, "config");
   const secretsDir = join(sandboxRoot, "secrets");
 
-  mkdirSync(openclawHome, { recursive: true });
+  mkdirSync(hermesData, { recursive: true });
   mkdirSync(configDir, { recursive: true });
   mkdirSync(secretsDir, { recursive: true });
 
-  writeFileSync(join(configDir, "openclaw.json"), "{}\n");
   writeFileSync(join(configDir, "config.yaml"), "model:\n  default: gpt-5.5\n");
   writeFileSync(join(configDir, "auth.json"), '{"version":1}\n');
-  writeFileSync(join(secretsDir, "env"), "OPENCLAW_HOME=/openclaw-home\n");
+  writeFileSync(join(secretsDir, "env"), "AZURE_FOUNDRY_API_KEY=test-key\n");
 
   return {
     executableScript: script
-      .replaceAll("/openclaw-home", openclawHome)
+      .replaceAll("/opt/data", hermesData)
       .replaceAll("/config/", `${configDir}/`)
       .replaceAll("/secrets/", `${secretsDir}/`)
       .replace(
-        `chown -R 10000:10000 ${openclawHome}/.openclaw`,
-        "true # chown skipped in test"
-      )
-      .replace(
-        `chown -R 10000:10000 ${openclawHome}/.hermes`,
+        `chown -R 10000:10000 ${hermesData}`,
         "true # chown skipped in test"
       ),
-    hydratedConfigPath: join(openclawHome, ".openclaw", "openclaw.json"),
-    hydratedHermesConfigPath: join(openclawHome, ".hermes", "profiles", "abra", "config.yaml"),
-    hydratedHermesAuthPath: join(openclawHome, ".hermes", "profiles", "abra", "auth.json"),
-    hydratedEnvPath: join(openclawHome, ".openclaw", ".env"),
+    hydratedHermesConfigPath: join(hermesData, "profiles", "abra", "config.yaml"),
+    hydratedHermesAuthPath: join(hermesData, "profiles", "abra", "auth.json"),
+    hydratedEnvPath: join(hermesData, "profiles", "abra", ".env"),
   };
 }
 
@@ -213,17 +207,17 @@ describe("StatefulSet manifest", () => {
     expect(selector.matchLabels).toEqual(statefulset.spec.template.metadata.labels);
   });
 
-  test("has main openclaw container with correct image", () => {
+  test("has main hermes container with correct image", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
     const spec = statefulset.spec;
     const containers = spec.template.spec.containers;
 
-    const openclawContainer = containers.find(
-      (c) => c.name === "openclaw"
+    const hermesContainer = containers.find(
+      (c) => c.name === "hermes"
     );
-    expectDefined(openclawContainer, "openclaw container should exist");
-    expect(openclawContainer.image).toBe(TEST_IMAGE);
+    expectDefined(hermesContainer, "hermes container should exist");
+    expect(hermesContainer.image).toBe(TEST_IMAGE);
   });
 
   test("has init-hydration container", () => {
@@ -300,7 +294,7 @@ describe("StatefulSet manifest", () => {
     expect(secretsMount.readOnly).toBe(true);
   });
 
-  test("init-hydration container mounts openclaw-home volume", () => {
+  test("init-hydration container mounts hermes-data volume", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
     const spec = statefulset.spec;
@@ -315,30 +309,30 @@ describe("StatefulSet manifest", () => {
     expectDefined(volumeMounts, "init hydration volume mounts should exist");
 
     const homeMount = volumeMounts.find(
-      (m) => m.name === "openclaw-home"
+      (m) => m.name === "hermes-data"
     );
-    expectDefined(homeMount, "openclaw-home mount should exist");
-    expect(homeMount.mountPath).toBe("/openclaw-home");
+    expectDefined(homeMount, "hermes-data mount should exist");
+    expect(homeMount.mountPath).toBe("/opt/data");
   });
 
-  test("main openclaw container mounts openclaw-home", () => {
+  test("main hermes container mounts hermes-data", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
     const spec = statefulset.spec;
     const containers = spec.template.spec.containers;
 
-    const openclawContainer = containers.find(
-      (c) => c.name === "openclaw"
+    const hermesContainer = containers.find(
+      (c) => c.name === "hermes"
     );
-    expectDefined(openclawContainer, "openclaw container should exist");
-    const volumeMounts = openclawContainer.volumeMounts;
-    expectDefined(volumeMounts, "openclaw volume mounts should exist");
+    expectDefined(hermesContainer, "hermes container should exist");
+    const volumeMounts = hermesContainer.volumeMounts;
+    expectDefined(volumeMounts, "hermes volume mounts should exist");
 
     const homeMount = volumeMounts.find(
-      (m) => m.name === "openclaw-home"
+      (m) => m.name === "hermes-data"
     );
-    expectDefined(homeMount, "openclaw-home mount should exist");
-    expect(homeMount.mountPath).toBe("/openclaw-home");
+    expectDefined(homeMount, "hermes-data mount should exist");
+    expect(homeMount.mountPath).toBe("/opt/data");
   });
 
   test("mounts the adapter-managed PVC for persistent storage", () => {
@@ -347,44 +341,44 @@ describe("StatefulSet manifest", () => {
     const spec = statefulset.spec;
     const volumes = spec.template.spec.volumes;
     expectDefined(volumes, "volumes should exist");
-    const openclawHomeVolume = volumes.find(
-      (volume) => volume.name === "openclaw-home"
+    const hermesDataVolume = volumes.find(
+      (volume) => volume.name === "hermes-data"
     );
 
-    expectDefined(openclawHomeVolume, "openclaw home volume should exist");
+    expectDefined(hermesDataVolume, "hermes-data volume should exist");
     expectDefined(
-      openclawHomeVolume.persistentVolumeClaim,
-      "openclaw home volume should use a PVC"
+      hermesDataVolume.persistentVolumeClaim,
+      "hermes-data volume should use a PVC"
     );
-    expect(openclawHomeVolume.persistentVolumeClaim.claimName).toBe(
+    expect(hermesDataVolume.persistentVolumeClaim.claimName).toBe(
       getPvcName(TEST_ACCOUNT_ID, TEST_DEPLOYMENT_ID)
     );
   });
 
-  test("does not configure OpenClaw HTTP readiness probes for Hermes", () => {
+  test("does not configure HTTP readiness probes", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
     const spec = statefulset.spec;
     const containers = spec.template.spec.containers;
 
-    const openclawContainer = containers.find(
-      (c) => c.name === "openclaw"
+    const hermesContainer = containers.find(
+      (c) => c.name === "hermes"
     );
-    expectDefined(openclawContainer, "openclaw container should exist");
-    expect(openclawContainer.readinessProbe).toBeUndefined();
+    expectDefined(hermesContainer, "hermes container should exist");
+    expect(hermesContainer.readinessProbe).toBeUndefined();
   });
 
-  test("does not configure OpenClaw HTTP liveness probes for Hermes", () => {
+  test("does not configure HTTP liveness probes", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const statefulset = manifests.statefulset;
     const spec = statefulset.spec;
     const containers = spec.template.spec.containers;
 
-    const openclawContainer = containers.find(
-      (c) => c.name === "openclaw"
+    const hermesContainer = containers.find(
+      (c) => c.name === "hermes"
     );
-    expectDefined(openclawContainer, "openclaw container should exist");
-    expect(openclawContainer.livenessProbe).toBeUndefined();
+    expectDefined(hermesContainer, "hermes container should exist");
+    expect(hermesContainer.livenessProbe).toBeUndefined();
   });
 
   test("has init-hydration command with hydration logic", () => {
@@ -403,12 +397,11 @@ describe("StatefulSet manifest", () => {
     expect(command).toBeDefined();
     // Command is ['/bin/sh', '-c', 'script'] so check the script portion
     expect(command.length).toBe(3);
-    expect(command[2]).toContain("mkdir -p /openclaw-home/.openclaw");
-    expect(command[2]).toContain("mkdir -p /openclaw-home/.hermes/profiles/abra");
-    expect(command[2]).toContain("cp /config/openclaw.json /openclaw-home/.openclaw/");
-    expect(command[2]).toContain("cp /config/config.yaml /openclaw-home/.hermes/profiles/abra/config.yaml");
-    expect(command[2]).toContain("cp /config/auth.json /openclaw-home/.hermes/profiles/abra/auth.json");
-    expect(command[2]).toContain("cp /secrets/env /openclaw-home/.hermes/profiles/abra/.env");
+    expect(command[2]).toContain("mkdir -p /opt/data/profiles/abra");
+    expect(command[2]).not.toContain(".openclaw");
+    expect(command[2]).toContain("cp /config/config.yaml /opt/data/profiles/abra/config.yaml");
+    expect(command[2]).toContain("cp /config/auth.json /opt/data/profiles/abra/auth.json");
+    expect(command[2]).toContain("cp /secrets/env /opt/data/profiles/abra/.env");
   });
 
   test("generates an init-hydration script that executes successfully", () => {
@@ -426,7 +419,6 @@ describe("StatefulSet manifest", () => {
 
     const {
       executableScript,
-      hydratedConfigPath,
       hydratedHermesConfigPath,
       hydratedHermesAuthPath,
       hydratedEnvPath,
@@ -437,14 +429,12 @@ describe("StatefulSet manifest", () => {
       stdio: "pipe",
     });
 
-    expect(existsSync(hydratedConfigPath)).toBe(true);
     expect(existsSync(hydratedHermesConfigPath)).toBe(true);
     expect(existsSync(hydratedHermesAuthPath)).toBe(true);
     expect(existsSync(hydratedEnvPath)).toBe(true);
-    expect(readFileSync(hydratedConfigPath, "utf8")).toBe("{}\n");
     expect(readFileSync(hydratedHermesConfigPath, "utf8")).toBe("model:\n  default: gpt-5.5\n");
     expect(readFileSync(hydratedHermesAuthPath, "utf8")).toBe('{"version":1}\n');
-    expect(readFileSync(hydratedEnvPath, "utf8")).toBe("OPENCLAW_HOME=/openclaw-home\n");
+    expect(readFileSync(hydratedEnvPath, "utf8")).toBe("AZURE_FOUNDRY_API_KEY=test-key\n");
   });
 
   test("applies custom image pull policy", () => {
@@ -454,11 +444,11 @@ describe("StatefulSet manifest", () => {
     const spec = statefulset.spec;
     const containers = spec.template.spec.containers;
 
-    const openclawContainer = containers.find(
-      (c) => c.name === "openclaw"
+    const hermesContainer = containers.find(
+      (c) => c.name === "hermes"
     );
-    expectDefined(openclawContainer, "openclaw container should exist");
-    expect(openclawContainer.imagePullPolicy).toBe("Always");
+    expectDefined(hermesContainer, "hermes container should exist");
+    expect(hermesContainer.imagePullPolicy).toBe("Always");
   });
 
   test("applies custom resources when provided", () => {
@@ -474,13 +464,13 @@ describe("StatefulSet manifest", () => {
     const spec = statefulset.spec;
     const containers = spec.template.spec.containers;
 
-    const openclawContainer = containers.find(
-      (c) => c.name === "openclaw"
+    const hermesContainer = containers.find(
+      (c) => c.name === "hermes"
     );
-    expectDefined(openclawContainer, "openclaw container should exist");
-    expectDefined(openclawContainer.resources, "resources should exist");
-    expect(openclawContainer.resources.limits.cpu).toBe("500m");
-    expect(openclawContainer.resources.limits.memory).toBe("512Mi");
+    expectDefined(hermesContainer, "hermes container should exist");
+    expectDefined(hermesContainer.resources, "resources should exist");
+    expect(hermesContainer.resources.limits.cpu).toBe("500m");
+    expect(hermesContainer.resources.limits.memory).toBe("512Mi");
   });
 
   test("binds the configured service account when requested", () => {
@@ -641,7 +631,7 @@ describe("Runtime prerequisite manifests", () => {
     );
   });
 
-  test("generates a config map with OpenClaw and Hermes profile config for hydration", () => {
+  test("generates a config map with Hermes profile config for hydration", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
 
     expect(manifests.configMap).toEqual(
@@ -652,12 +642,12 @@ describe("Runtime prerequisite manifests", () => {
           name: "abra-user123-abra-main-config",
         }),
         data: expect.objectContaining({
-          "openclaw.json": expect.any(String),
           "config.yaml": expect.any(String),
           "auth.json": expect.any(String),
         }),
       })
     );
+    expect(manifests.configMap.data["openclaw.json"]).toBeUndefined();
   });
 
   test("generates Hermes config.yaml with Azure Foundry model defaults", () => {
@@ -673,7 +663,7 @@ describe("Runtime prerequisite manifests", () => {
         "  api_mode: chat_completions",
         "gateway:",
         "  media_delivery_allow_dirs:",
-        "    - /openclaw-home/media",
+        "    - /opt/data/media",
         "terminal:",
         "  docker_forward_env:",
         "    - TELEGRAM_BOT_TOKEN",
@@ -749,21 +739,21 @@ describe("Runtime prerequisite manifests", () => {
     );
   });
 
-  test("init script copies secrets file to .env (with dot prefix)", () => {
+  test("init script copies secrets file to profile .env", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const initContainers = manifests.statefulset.spec.template.spec.initContainers;
     const initContainer = initContainers?.find((c) => c.name === "init-hydration");
-    expect(initContainer?.command?.[2]).toContain("cp /secrets/env /openclaw-home/.openclaw/.env");
+    expect(initContainer?.command?.[2]).toContain("cp /secrets/env /opt/data/profiles/abra/.env");
+    expect(initContainer?.command?.[2]).not.toContain(".openclaw");
   });
 
-  test("without agentConfig: configMap has minimal gateway config, secret env is empty", () => {
+  test("without agentConfig: secret env is empty", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
-    const config = JSON.parse(manifests.configMap.data["openclaw.json"]);
-    expect(config).toEqual({ gateway: { mode: "local" } });
+    expect(manifests.configMap.data["openclaw.json"]).toBeUndefined();
     expect(manifests.secret.stringData.env).toBe("");
   });
 
-  test("with complete Telegram agentConfig: configMap references env var, secret env has Telegram values", () => {
+  test("with complete Telegram agentConfig: secret env has Telegram values", () => {
     const manifests = generateKubernetesManifests({
       ...BASE_INPUT,
       agentConfig: {
@@ -771,8 +761,6 @@ describe("Runtime prerequisite manifests", () => {
         telegramHomeChannel: "123456789",
       },
     });
-    const config = JSON.parse(manifests.configMap.data["openclaw.json"]);
-    expect(config.channels.telegram.accounts.default.botToken).toBe("${TELEGRAM_BOT_TOKEN}");
     expect(manifests.secret.stringData.env).toBe(
       "TELEGRAM_BOT_TOKEN=123456:ABC-DEF\nTELEGRAM_HOME_CHANNEL=123456789\nTELEGRAM_ALLOWED_USERS=123456789"
     );
@@ -780,15 +768,15 @@ describe("Runtime prerequisite manifests", () => {
     expect(manifests.secret.stringData.TELEGRAM_HOME_CHANNEL).toBe("123456789");
     expect(manifests.secret.stringData.TELEGRAM_ALLOWED_USERS).toBe("123456789");
 
-    const openclawContainer = manifests.statefulset.spec.template.spec.containers.find(
-      (c) => c.name === "openclaw"
+    const hermesContainer = manifests.statefulset.spec.template.spec.containers.find(
+      (c) => c.name === "hermes"
     );
-    expectDefined(openclawContainer, "openclaw container should exist");
-    expect(openclawContainer.command).toBeUndefined();
-    expect(openclawContainer.args).toEqual(["gateway", "run"]);
-    expect(openclawContainer.env).toEqual(
+    expectDefined(hermesContainer, "hermes container should exist");
+    expect(hermesContainer.command).toBeUndefined();
+    expect(hermesContainer.args).toEqual(["gateway", "run"]);
+    expect(hermesContainer.env).toEqual(
       expect.arrayContaining([
-        { name: "HERMES_HOME", value: "/openclaw-home/.hermes/profiles/abra" },
+        { name: "HERMES_HOME", value: "/opt/data/profiles/abra" },
         expect.objectContaining({
           name: "TELEGRAM_ALLOWED_USERS",
           valueFrom: {
@@ -857,11 +845,11 @@ describe("Runtime prerequisite manifests", () => {
       },
     });
 
-    const openclawContainer = manifests.statefulset.spec.template.spec.containers.find(
-      (c) => c.name === "openclaw"
+    const hermesContainer = manifests.statefulset.spec.template.spec.containers.find(
+      (c) => c.name === "hermes"
     );
-    expectDefined(openclawContainer, "openclaw container should exist");
-    expect(openclawContainer.env).toEqual(
+    expectDefined(hermesContainer, "hermes container should exist");
+    expect(hermesContainer.env).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           name: "AZURE_FOUNDRY_API_KEY",
@@ -881,8 +869,7 @@ describe("Runtime prerequisite manifests", () => {
       ...BASE_INPUT,
       agentConfig: { telegramBotToken: "  ", telegramHomeChannel: "123456789" },
     });
-    const config = JSON.parse(manifests.configMap.data["openclaw.json"]);
-    expect(config).toEqual({ gateway: { mode: "local" } });
+    expect(manifests.configMap.data["openclaw.json"]).toBeUndefined();
     expect(manifests.secret.stringData.env).toBe("");
   });
 });
@@ -1026,13 +1013,9 @@ describe("Manifest validation", () => {
     );
   });
 
-  test("throws error when generated config map loses openclaw.json", () => {
+  test("configMap does not contain openclaw.json", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
-    delete manifests.configMap.data["openclaw.json"];
-
-    expect(() => validateGeneratedManifests(manifests)).toThrow(
-      "ConfigMap missing data.openclaw.json"
-    );
+    expect(manifests.configMap.data["openclaw.json"]).toBeUndefined();
   });
 
   test("throws error when generated config map loses config.yaml", () => {

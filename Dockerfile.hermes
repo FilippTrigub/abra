@@ -2,11 +2,21 @@ FROM nousresearch/hermes-agent:latest
 
 USER root
 
-# jq is needed by several Abra skills for JSON processing.
-# curl is used by the AKS readiness/liveness probes.
+# jq: JSON processing in Abra skills
+# curl: AKS readiness/liveness probes
+# golang-go: Go runtime (needed to build/run Go-based tools such as songsee)
+# manim system deps: cairo, pango, ffmpeg for animation rendering
+# LaTeX: pdflatex + recommended fonts/packages for Manim LaTeX scenes
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl jq && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y --no-install-recommends \
+        curl jq \
+        golang-go \
+        libcairo2-dev libpango1.0-dev ffmpeg \
+        texlive-latex-base texlive-fonts-recommended texlive-latex-extra \
+        texlive-science dvisvgm dvipng \
+    && rm -rf /var/lib/apt/lists/* \
+    && /opt/hermes/.venv/bin/python3 -m ensurepip --upgrade \
+    && /opt/hermes/.venv/bin/python3 -m pip install --no-cache-dir manim
 
 # Bake Abra profile data into the image so the AKS init container can hydrate
 # the Hermes profile at pod startup without any network calls.

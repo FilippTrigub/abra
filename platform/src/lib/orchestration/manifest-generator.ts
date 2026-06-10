@@ -7,8 +7,8 @@
  * - PersistentVolumeClaim (runtime profile persistence)
  *
  * The generator encodes the pre-start hydration assumption:
- * An init container hydrates Hermes profile state and the legacy ~/.openclaw
- * compatibility directory before the main Hermes container starts.
+ * An init container hydrates the Hermes profile at /opt/data/profiles/abra
+ * from ConfigMap, Secret, and baked-in /opt/abra/ image data before the main container starts.
  *
  * Uses naming helpers from naming-helpers.ts to ensure consistent resource naming.
  */
@@ -77,7 +77,8 @@ export interface ManifestNameOverrides {
 }
 
 const DEFAULT_SERVICE_ACCOUNT_NAME = "abra-hermes-sa";
-const HERMES_PROFILE_DIR = "/openclaw-home/.hermes/profiles/abra";
+const HERMES_DATA_DIR = "/opt/data";
+const HERMES_PROFILE_DIR = `${HERMES_DATA_DIR}/profiles/abra`;
 const LABEL_HASH_LENGTH = 8;
 
 function trimLabelEdge(value: string): string {
@@ -345,15 +346,8 @@ function buildHydrationInitScript(): string {
   return [
     "set -eu",
     "echo 'Starting Hermes Abra hydration...'",
-    "mkdir -p /openclaw-home/.openclaw",
     `mkdir -p ${HERMES_PROFILE_DIR}/workspace`,
     `mkdir -p ${HERMES_PROFILE_DIR}/skills/abra`,
-    "if [ -f /config/openclaw.json ]; then",
-    "  cp /config/openclaw.json /openclaw-home/.openclaw/",
-    "  echo 'Legacy OpenClaw config loaded from /config/openclaw.json'",
-    "else",
-    "  echo 'Warning: No /config/openclaw.json found, using defaults'",
-    "fi",
     "if [ -f /config/config.yaml ]; then",
     `  cp /config/config.yaml ${HERMES_PROFILE_DIR}/config.yaml`,
     "  echo 'Hermes profile config loaded from /config/config.yaml'",
@@ -368,7 +362,6 @@ function buildHydrationInitScript(): string {
     "  echo 'Warning: No /config/auth.json found, using existing auth config if present'",
     "fi",
     "if [ -f /secrets/env ]; then",
-    "  cp /secrets/env /openclaw-home/.openclaw/.env",
     `  cp /secrets/env ${HERMES_PROFILE_DIR}/.env`,
     "  echo 'Environment loaded from /secrets/env'",
     "fi",
@@ -391,9 +384,7 @@ function buildHydrationInitScript(): string {
     `  cp -r /opt/abra/skills/. ${HERMES_PROFILE_DIR}/skills/abra/`,
     "  echo 'Abra skills hydrated'",
     "fi",
-    "chown -R 10000:10000 /openclaw-home/.openclaw",
-    "chown -R 10000:10000 /openclaw-home/.hermes",
-    "chmod 700 /openclaw-home/.openclaw",
+    `chown -R 10000:10000 ${HERMES_DATA_DIR}`,
     `chmod 700 ${HERMES_PROFILE_DIR}`,
     "echo 'Hydration complete.'",
   ].join("\n");
@@ -499,30 +490,26 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
                   readOnly: true,
                 },
                 {
-                  name: "openclaw-home",
-                  mountPath: "/openclaw-home",
+                  name: "hermes-data",
+                  mountPath: HERMES_DATA_DIR,
                 },
               ],
             },
           ],
           containers: [
             {
-              name: "openclaw",
+              name: "hermes",
               image: image,
               imagePullPolicy: imagePullPolicy,
               args: ["gateway", "run"],
               volumeMounts: [
                 {
-                  name: "openclaw-home",
-                  mountPath: "/openclaw-home",
+                  name: "hermes-data",
+                  mountPath: HERMES_DATA_DIR,
                 },
               ],
               resources: containerResources,
               env: [
-                {
-                  name: "OPENCLAW_HOME",
-                  value: "/openclaw-home",
-                },
                 {
                   name: "HERMES_HOME",
                   value: HERMES_PROFILE_DIR,
@@ -542,7 +529,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
           ],
           volumes: [
             {
-              name: "openclaw-home",
+              name: "hermes-data",
               persistentVolumeClaim: {
                 claimName: pvcName,
               },
@@ -630,23 +617,6 @@ function buildSecretEnvVar(name: string, secretName: string) {
   };
 }
 
-function buildOpenClawConfig(input: ManifestInput): string {
-  const config: Record<string, unknown> = { gateway: { mode: "local" } };
-
-  if (hasCompleteTelegramConfig(input)) {
-    config.channels = {
-      telegram: {
-        accounts: {
-          default: {
-            botToken: "${TELEGRAM_BOT_TOKEN}",
-          },
-        },
-      },
-    };
-  }
-
-  return JSON.stringify(config, null, 2);
-}
 
 function buildHermesProfileConfig(): string {
   return [
@@ -658,7 +628,7 @@ function buildHermesProfileConfig(): string {
     "  api_mode: chat_completions",
     "gateway:",
     "  media_delivery_allow_dirs:",
-    "    - /openclaw-home/media",
+    `    - ${HERMES_DATA_DIR}/media`,
     "terminal:",
     "  docker_forward_env:",
     "    - TELEGRAM_BOT_TOKEN",
@@ -771,7 +741,6 @@ function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Rec
       labels: runtimeLabels,
     },
     data: {
-      "openclaw.json": buildOpenClawConfig(input) + "\n",
       "config.yaml": buildHermesProfileConfig() + "\n",
       "auth.json": buildHermesAuthConfig(input) + "\n",
     },
@@ -888,7 +857,7 @@ function generateService(input: ManifestInput): KubernetesObject & {
 // ---------------------------------------------------------------------------
 
 /**
- * Generates a PersistentVolumeClaim manifest for ~/.openclaw.
+ * Generates a PersistentVolumeClaim manifest for the Hermes profile data directory.
  *
  * The PVC is bound to a StorageClass (determined by AKS defaults).
  * Size: 1Gi (configurable via input if needed).
@@ -1071,9 +1040,6 @@ export function validateGeneratedManifests(manifests: KubernetesManifests): void
   }
   if (!configMap.metadata?.name) {
     throw new Error("ConfigMap missing metadata.name");
-  }
-  if (!configMap.data || typeof configMap.data["openclaw.json"] !== "string") {
-    throw new Error("ConfigMap missing data.openclaw.json");
   }
   if (!configMap.data || typeof configMap.data["config.yaml"] !== "string") {
     throw new Error("ConfigMap missing data.config.yaml");

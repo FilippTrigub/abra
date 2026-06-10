@@ -90,23 +90,24 @@ Agent config is required before any deployment is allowed. The platform reads it
 Each user deployment creates a set of K8s resources in that namespace:
 
 - **Namespace** — `abra`
-- **ConfigMap** — `abra-{accountId}-{deploymentId}-config` — contains the legacy `openclaw.json` compatibility config, Hermes `config.yaml`, and Hermes `auth.json`
+- **ConfigMap** — `abra-{accountId}-{deploymentId}-config` — contains Hermes `config.yaml` and `auth.json`
 - **Secret** — `abra-{accountId}-{deploymentId}-secrets` — contains `.env` plus direct Secret keys for `TELEGRAM_BOT_TOKEN`, `TELEGRAM_HOME_CHANNEL`, `TELEGRAM_ALLOWED_USERS`, and `AZURE_FOUNDRY_API_KEY`
-- **StatefulSet** — `abra-{accountId}-{deploymentId}` — runs the Hermes Abra image; init container hydrates the Hermes profile and legacy `~/.openclaw` compatibility files before main container starts
+- **StatefulSet** — `abra-{accountId}-{deploymentId}` — runs the Hermes Abra image; init container hydrates the Hermes profile before main container starts
 - **Service** — ClusterIP on port 18789
-- **PVC** — 1 GiB for `~/.openclaw` persistence
+- **PVC** — 1 GiB for Hermes profile data persistence (mounted at `/opt/data`)
 
-The init container (same Abra image, s6-overlay ENTRYPOINT overridden by `command`) hydrates the PVC-backed runtime home before the main container starts with `gateway run`:
+The init container (same Abra image, s6-overlay ENTRYPOINT overridden by `command`) hydrates the PVC-backed `/opt/data/profiles/abra/` before the main container starts with `gateway run`:
 
-- copies `openclaw.json` to `/openclaw-home/.openclaw/openclaw.json`
-- copies Hermes `config.yaml` to `/openclaw-home/.hermes/profiles/abra/config.yaml`
-- copies Hermes `auth.json` to `/openclaw-home/.hermes/profiles/abra/auth.json` and sets `0600` permissions
-- copies Secret-backed `.env` to both `/openclaw-home/.hermes/profiles/abra/.env` and `/openclaw-home/.openclaw/.env`
-- copies `/opt/abra/SOUL.md` to `/openclaw-home/.hermes/profiles/abra/SOUL.md` (Abra persona)
+- copies Hermes `config.yaml` to `/opt/data/profiles/abra/config.yaml`
+- copies Hermes `auth.json` to `/opt/data/profiles/abra/auth.json` and sets `0600` permissions
+- copies Secret-backed `.env` to `/opt/data/profiles/abra/.env`
+- copies `/opt/abra/SOUL.md` to `/opt/data/profiles/abra/SOUL.md` (Abra persona)
 - copies `/opt/abra/WORKFLOW.md` and `/opt/abra/AGENTS.md` to `…/profiles/abra/workspace/`
 - copies `/opt/abra/skills/` to `…/profiles/abra/skills/abra/` (all 33 Abra skills)
 
 `/opt/abra/` is baked into the image at build time via `Dockerfile.hermes` (`COPY SOUL.md`, `COPY skills/`, etc.). No network access is required at pod start.
+
+`HERMES_HOME` is set to `/opt/data/profiles/abra` (profile-mode) so Hermes treats the abra profile as its working home. The main container name is `hermes`; the volume name is `hermes-data`.
 
 The StatefulSet also exposes selected Secret keys directly as process env vars for the main container.
 
@@ -266,7 +267,7 @@ Do not store the raw key in `auth.json` or the ConfigMap. The raw value belongs 
 | Deployment stuck / failed | Firestore `accounts/{userId}/deployments/{id}` — `errorMessage` field |
 | Pod not starting | `kubectl get pods -n abra` / `kubectl describe pod <name> -n abra` |
 | Init container failing | `kubectl logs <pod> -n abra -c init-hydration` |
-| Agent has no Abra skills / wrong persona | Check `kubectl logs <pod> -n abra -c init-hydration` for "Abra SOUL.md hydrated" and "Abra skills hydrated"; if missing, image predates the `/opt/abra` bake-in — rebuild from `Dockerfile.hermes` |
+| Agent has no Abra skills / wrong persona | Check `kubectl logs <pod> -n abra -c init-hydration` for "Abra SOUL.md hydrated" and "Abra skills hydrated"; if missing, image predates the `/opt/abra` bake-in — rebuild from `Dockerfile.hermes`. Profile lives at `/opt/data/profiles/abra/` on the PVC |
 | Bot says user is not authorized | Check `TELEGRAM_ALLOWED_USERS` is set in the pod env/Secret, then redeploy or update the StatefulSet |
 | Bot not responding | Check `TELEGRAM_BOT_TOKEN` and `TELEGRAM_HOME_CHANNEL` are set in Settings, then redeploy |
 | Provider authentication failed | Most likely cause: `AZURE_FOUNDRY_API_KEY` missing from Vercel → manifest generator emits empty credential pool → init container overwrites the profile's `auth.json` with an empty one on every pod start. Verify with `vercel env ls production \| grep AZURE_FOUNDRY`, then check `kubectl get secret … -o jsonpath='{.data.AZURE_FOUNDRY_API_KEY}' \| base64 -d \| sha256sum` matches `db1ad608e95d1843`. To recover the raw key: `az cognitiveservices account keys list --name azure-openai-746596 --resource-group SonaAndAtla --query key1 -o tsv` |
@@ -281,5 +282,5 @@ kubectl get pods -n abra -l app=abra -o wide
 kubectl get configmap -n abra <configmap-name> -o jsonpath='{.data.config\.yaml}{"\n---AUTH---\n"}{.data.auth\.json}{"\n"}'
 kubectl get secret -n abra <secret-name> -o jsonpath='{.data.AZURE_FOUNDRY_API_KEY}' | base64 -d | sha256sum
 kubectl exec -n abra <pod-name> -- sh -lc 'test -n "$AZURE_FOUNDRY_API_KEY" && printf %s "$AZURE_FOUNDRY_API_KEY" | sha256sum'
-kubectl exec -n abra <pod-name> -- sh -lc 'ls -l /openclaw-home/.hermes/profiles/abra/auth.json /openclaw-home/.hermes/profiles/abra/.env'
+kubectl exec -n abra <pod-name> -- sh -lc 'ls -l /opt/data/profiles/abra/auth.json /opt/data/profiles/abra/.env'
 ```
