@@ -697,7 +697,7 @@ function buildHermesProfileConfig(): string {
     "    - research-paper-writing",
     "    - huggingface-hub",
     "    - llama-cpp",
-    "    - vllm",
+    "    - serving-llms-vllm",
     "    - weights-and-biases",
     "    - jupyter-live-kernel",
     "    - obsidian",
@@ -706,6 +706,12 @@ function buildHermesProfileConfig(): string {
     "    - yuanbao",
     "    - dogfood",
     "    - godmode",
+    "    - github-auth",
+    "    - plan",
+    "    - node-inspect-debugger",
+    "    - python-debugpy",
+    "    - evaluating-llms-harness",
+    "    - obliteratus",
   ].join("\n");
 }
 

@@ -712,7 +712,7 @@ describe("Runtime prerequisite manifests", () => {
         "    - research-paper-writing",
         "    - huggingface-hub",
         "    - llama-cpp",
-        "    - vllm",
+        "    - serving-llms-vllm",
         "    - weights-and-biases",
         "    - jupyter-live-kernel",
         "    - obsidian",
@@ -721,6 +721,12 @@ describe("Runtime prerequisite manifests", () => {
         "    - yuanbao",
         "    - dogfood",
         "    - godmode",
+        "    - github-auth",
+        "    - plan",
+        "    - node-inspect-debugger",
+        "    - python-debugpy",
+        "    - evaluating-llms-harness",
+        "    - obliteratus",
         "",
       ].join("\n")
     );
