@@ -5,6 +5,7 @@ import {
   updateCurrentDeploymentRuntimeEnvForUser,
   type RuntimeEnvDeploymentUpdateResult,
 } from "@/lib/deployments";
+import { MAX_RUNTIME_ENV_DOTENV_IMPORT_BYTES } from "./constants";
 import { parseRuntimeEnvDotenv, type RuntimeEnvDotenvIssue } from "./dotenv";
 import {
   deleteRuntimeEnvKey,
@@ -39,8 +40,6 @@ type RuntimeEnvActionResult = RuntimeEnvMutationResult & {
   error: RuntimeEnvActionError | null;
   deploymentUpdate: RuntimeEnvDeploymentActionStatus | null;
 };
-
-export const MAX_RUNTIME_ENV_DOTENV_IMPORT_BYTES = 64 * 1024;
 
 export type RuntimeEnvDotenvAcceptedPreview = {
   key: RuntimeEnvKey;

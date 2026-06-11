@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { MAX_RUNTIME_ENV_DOTENV_IMPORT_BYTES } from "@/lib/runtime-env/constants";
+
 const requireApiAuthMock = vi.fn();
 const saveRuntimeEnvFieldsMock = vi.fn();
 const saveRuntimeEnvImportMock = vi.fn();
@@ -93,11 +95,7 @@ FAL_API_KEY=fal_supported
   });
 
   test("rejects oversized preview and import content before persistence", async () => {
-    const {
-      MAX_RUNTIME_ENV_DOTENV_IMPORT_BYTES,
-      previewRuntimeEnvDotenvImport,
-      saveRuntimeEnvImportAction,
-    } = await import("@/lib/runtime-env/actions");
+    const { previewRuntimeEnvDotenvImport, saveRuntimeEnvImportAction } = await import("@/lib/runtime-env/actions");
     const oversizedContent = `BUFFER_API_KEY=${"x".repeat(MAX_RUNTIME_ENV_DOTENV_IMPORT_BYTES)}`;
 
     const preview = await previewRuntimeEnvDotenvImport(oversizedContent);
