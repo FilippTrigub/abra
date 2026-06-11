@@ -21,6 +21,7 @@ import {
   validateGeneratedManifests,
   type ManifestInput,
 } from "@/lib/orchestration/manifest-generator";
+import { parseRuntimeEnvDotenv } from "@/lib/runtime-env/dotenv";
 import {
   getStatefulSetName,
   getServiceName,
@@ -709,11 +710,7 @@ describe("Runtime prerequisite manifests", () => {
         "  media_delivery_allow_dirs:",
         "    - /opt/data/media",
         "terminal:",
-        "  docker_forward_env:",
-        "    - TELEGRAM_BOT_TOKEN",
-        "    - TELEGRAM_ALLOWED_USERS",
-        "    - TELEGRAM_HOME_CHANNEL",
-        "    - AZURE_FOUNDRY_API_KEY",
+        "  docker_forward_env: []",
         "skills:",
         "  disabled:",
         "    - github-pr-workflow",
@@ -832,6 +829,103 @@ describe("Runtime prerequisite manifests", () => {
         }),
       ])
     );
+    expect(manifests.configMap.data["config.yaml"]).toContain(
+      [
+        "  docker_forward_env:",
+        "    - TELEGRAM_BOT_TOKEN",
+        "    - TELEGRAM_HOME_CHANNEL",
+        "    - TELEGRAM_ALLOWED_USERS",
+      ].join("\n")
+    );
+  });
+
+  test("runtimeEnv overrides Telegram agentConfig compatibility values", () => {
+    const manifests = generateKubernetesManifests({
+      ...BASE_INPUT,
+      agentConfig: {
+        telegramBotToken: "agent-token",
+        telegramHomeChannel: "agent-home",
+        telegramAllowedUsers: "agent-user",
+      },
+      runtimeEnv: {
+        TELEGRAM_BOT_TOKEN: "runtime-token",
+        TELEGRAM_HOME_CHANNEL: "runtime-home",
+      },
+    });
+
+    expect(manifests.secret.stringData.env).toContain("TELEGRAM_BOT_TOKEN=runtime-token");
+    expect(manifests.secret.stringData.env).toContain("TELEGRAM_HOME_CHANNEL=runtime-home");
+    expect(manifests.secret.stringData.env).toContain("TELEGRAM_ALLOWED_USERS=agent-user");
+    expect(manifests.secret.stringData.TELEGRAM_BOT_TOKEN).toBe("runtime-token");
+    expect(manifests.secret.stringData.TELEGRAM_HOME_CHANNEL).toBe("runtime-home");
+    expect(manifests.secret.stringData.TELEGRAM_ALLOWED_USERS).toBe("agent-user");
+  });
+
+  test("generic runtimeEnv uses registry metadata for dotenv, direct secret keys, container env, and Hermes forwarding", () => {
+    const escapedValue = "token with spaces # quotes \" and newline\nnext";
+    const manifests = generateKubernetesManifests({
+      ...BASE_INPUT,
+      runtimeEnv: {
+        AZURE_FOUNDRY_API_KEY: "generic-azure-key",
+        BUFFER_API_KEY: escapedValue,
+        HERMES_HOME: "/should/not/be/user-managed",
+      },
+    });
+
+    expect(manifests.secret.stringData.env).toBe(
+      [
+        "AZURE_FOUNDRY_API_KEY=generic-azure-key",
+        `BUFFER_API_KEY=${JSON.stringify(escapedValue)}`,
+      ].join("\n")
+    );
+    expect(parseRuntimeEnvDotenv(manifests.secret.stringData.env).persistableValues).toEqual(
+      expect.objectContaining({
+        AZURE_FOUNDRY_API_KEY: "generic-azure-key",
+        BUFFER_API_KEY: escapedValue,
+      })
+    );
+    expect(manifests.secret.stringData.AZURE_FOUNDRY_API_KEY).toBe("generic-azure-key");
+    expect(manifests.secret.stringData.BUFFER_API_KEY).toBe(escapedValue);
+    expect(manifests.secret.stringData.HERMES_HOME).toBeUndefined();
+    expect(manifests.secret.stringData.env).not.toContain("HERMES_HOME");
+
+    const hermesContainer = manifests.statefulset.spec.template.spec.containers.find(
+      (c) => c.name === "hermes"
+    );
+    expectDefined(hermesContainer, "hermes container should exist");
+    expect(hermesContainer.env).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: "AZURE_FOUNDRY_API_KEY",
+          valueFrom: {
+            secretKeyRef: {
+              name: "abra-user123-abra-main-secrets",
+              key: "AZURE_FOUNDRY_API_KEY",
+            },
+          },
+        }),
+        expect.objectContaining({
+          name: "BUFFER_API_KEY",
+          valueFrom: {
+            secretKeyRef: {
+              name: "abra-user123-abra-main-secrets",
+              key: "BUFFER_API_KEY",
+            },
+          },
+        }),
+      ])
+    );
+    expect(hermesContainer.env).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "HERMES_HOME", valueFrom: expect.anything() })])
+    );
+    expect(manifests.configMap.data["config.yaml"]).toContain(
+      [
+        "  docker_forward_env:",
+        "    - AZURE_FOUNDRY_API_KEY",
+        "    - BUFFER_API_KEY",
+      ].join("\n")
+    );
+    expect(manifests.configMap.data["config.yaml"]).not.toContain("    - HERMES_HOME");
   });
 
   test("with explicit Telegram allowed users: secret env uses the allowlist separately from the home channel", () => {
@@ -849,7 +943,7 @@ describe("Runtime prerequisite manifests", () => {
     expect(manifests.secret.stringData.TELEGRAM_ALLOWED_USERS).toBe("388259993,123456789");
   });
 
-  test("with Azure Foundry key: secret env and container env expose the key from Secret", () => {
+  test("with Azure Foundry compatibility key: secret env and container env expose the key from Secret", () => {
     const manifests = generateKubernetesManifests({
       ...BASE_INPUT,
       runtimeEnv: {
@@ -860,6 +954,7 @@ describe("Runtime prerequisite manifests", () => {
     expect(manifests.secret.stringData.env).toBe("AZURE_FOUNDRY_API_KEY=test-azure-key");
     expect(manifests.secret.stringData.AZURE_FOUNDRY_API_KEY).toBe("test-azure-key");
 
+    expect(manifests.configMap.data["auth.json"]).not.toContain("test-azure-key");
     const authConfig = JSON.parse(manifests.configMap.data["auth.json"]);
     expect(authConfig).toEqual({
       version: 1,

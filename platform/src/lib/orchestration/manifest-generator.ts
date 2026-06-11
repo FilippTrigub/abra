@@ -19,6 +19,10 @@ import {
   getPvcName,
   getRuntimeNamespace,
 } from "./naming-helpers";
+import {
+  SUPPORTED_RUNTIME_ENV_DEFINITIONS,
+  type RuntimeEnvDefinition,
+} from "../runtime-env/definitions";
 
 import { createHash } from "node:crypto";
 
@@ -59,10 +63,11 @@ export interface ManifestInput {
     telegramHomeChannel?: string;
     telegramAllowedUsers?: string;
   };
-  /** Server-provided runtime environment injected into Secret-backed .env */
-  runtimeEnv?: {
+  /** Server-provided runtime environment injected according to registry metadata */
+  runtimeEnv?: (Record<string, string | undefined> & {
+    /** Compatibility alias for older AKS adapter callers. Prefer AZURE_FOUNDRY_API_KEY. */
     azureFoundryApiKey?: string;
-  };
+  });
 }
 
 export interface ManifestNameOverrides {
@@ -80,6 +85,7 @@ const DEFAULT_SERVICE_ACCOUNT_NAME = "abra-hermes-sa";
 const HERMES_DATA_DIR = "/opt/data";
 const HERMES_PROFILE_DIR = `${HERMES_DATA_DIR}/profiles/abra`;
 const LABEL_HASH_LENGTH = 8;
+const AZURE_FOUNDRY_ENV_KEY = "AZURE_FOUNDRY_API_KEY";
 
 function trimLabelEdge(value: string): string {
   return value.replace(/^[^A-Za-z0-9]+/, "").replace(/[^A-Za-z0-9]+$/, "");
@@ -453,8 +459,10 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
   const secretName = input.nameOverrides?.secretName ?? getSecretName(accountId, deploymentId);
   const serviceAccountName = input.nameOverrides?.serviceAccountName ?? resolveServiceAccountName(input);
   const serviceName = input.nameOverrides?.serviceName ?? getServiceName(accountId, deploymentId);
-  const hasTelegramConfig = hasCompleteTelegramConfig(input);
-  const hasAzureFoundryApiKey = getAzureFoundryApiKey(input) !== null;
+  const runtimeEnvValues = buildResolvedRuntimeEnvValues(input);
+  const processEnvSecretRefs = getRuntimeEnvProcessSecretKeys(runtimeEnvValues).map((key) =>
+    buildSecretEnvVar(key, secretName),
+  );
   const runtimeLabels = buildRuntimeLabels(accountId, deploymentId);
 
   // Build container resources if provided
@@ -579,16 +587,7 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
                   name: "HERMES_HOME",
                   value: HERMES_PROFILE_DIR,
                 },
-                ...(hasTelegramConfig
-                  ? [
-                      buildSecretEnvVar("TELEGRAM_BOT_TOKEN", secretName),
-                      buildSecretEnvVar("TELEGRAM_HOME_CHANNEL", secretName),
-                      buildSecretEnvVar("TELEGRAM_ALLOWED_USERS", secretName),
-                    ]
-                  : []),
-                ...(hasAzureFoundryApiKey
-                  ? [buildSecretEnvVar("AZURE_FOUNDRY_API_KEY", secretName)]
-                  : []),
+                ...processEnvSecretRefs,
               ],
             },
           ],
@@ -674,10 +673,6 @@ function getTelegramValues(input: ManifestInput): {
   return { token, homeChannel, allowedUsers };
 }
 
-function hasCompleteTelegramConfig(input: ManifestInput): boolean {
-  return getTelegramValues(input) !== null;
-}
-
 function buildSecretEnvVar(name: string, secretName: string) {
   return {
     name,
@@ -690,8 +685,73 @@ function buildSecretEnvVar(name: string, secretName: string) {
   };
 }
 
+function isRuntimeEnvValuePresent(value: string | undefined): value is string {
+  return value !== undefined && value.length > 0;
+}
 
-function buildHermesProfileConfig(): string {
+function setRuntimeEnvValue(values: Map<string, string>, key: string, value: string | undefined): void {
+  if (isRuntimeEnvValuePresent(value)) {
+    values.set(key, value);
+  }
+}
+
+function getLegacyAzureFoundryApiKey(input: ManifestInput): string | null {
+  const value = input.runtimeEnv?.azureFoundryApiKey?.trim();
+  return value ? value : null;
+}
+
+function buildResolvedRuntimeEnvValues(input: ManifestInput): Map<string, string> {
+  const values = new Map<string, string>();
+  const telegram = getTelegramValues(input);
+  if (telegram) {
+    values.set("TELEGRAM_BOT_TOKEN", telegram.token);
+    values.set("TELEGRAM_HOME_CHANNEL", telegram.homeChannel);
+    values.set("TELEGRAM_ALLOWED_USERS", telegram.allowedUsers);
+  }
+
+  const legacyAzureFoundryApiKey = getLegacyAzureFoundryApiKey(input);
+  if (legacyAzureFoundryApiKey) {
+    values.set(AZURE_FOUNDRY_ENV_KEY, legacyAzureFoundryApiKey);
+  }
+
+  for (const definition of SUPPORTED_RUNTIME_ENV_DEFINITIONS) {
+    setRuntimeEnvValue(values, definition.key, input.runtimeEnv?.[definition.key]);
+  }
+
+  return values;
+}
+
+function getRuntimeEnvDefinitionsForValues(
+  runtimeEnvValues: Map<string, string>,
+  predicate: (definition: RuntimeEnvDefinition) => boolean,
+): RuntimeEnvDefinition[] {
+  return Array.from(runtimeEnvValues.keys()).flatMap((key) => {
+    const definition = SUPPORTED_RUNTIME_ENV_DEFINITIONS.find((candidate) => candidate.key === key);
+    return definition && predicate(definition) ? [definition] : [];
+  });
+}
+
+function getRuntimeEnvProcessSecretKeys(runtimeEnvValues: Map<string, string>): string[] {
+  return getRuntimeEnvDefinitionsForValues(
+    runtimeEnvValues,
+    (definition) => definition.injectAsProcessEnv,
+  ).map((definition) => definition.key);
+}
+
+function buildHermesDockerForwardEnvLines(input: ManifestInput): string[] {
+  const runtimeEnvValues = buildResolvedRuntimeEnvValues(input);
+  const forwardedKeys = getRuntimeEnvProcessSecretKeys(runtimeEnvValues);
+  if (forwardedKeys.length === 0) {
+    return ["  docker_forward_env: []"];
+  }
+
+  return [
+    "  docker_forward_env:",
+    ...forwardedKeys.map((key) => `    - ${key}`),
+  ];
+}
+
+function buildHermesProfileConfig(input: ManifestInput): string {
   return [
     "# Generated by Abra platform AKS hydration.",
     "model:",
@@ -709,11 +769,7 @@ function buildHermesProfileConfig(): string {
     "  media_delivery_allow_dirs:",
     `    - ${HERMES_DATA_DIR}/media`,
     "terminal:",
-    "  docker_forward_env:",
-    "    - TELEGRAM_BOT_TOKEN",
-    "    - TELEGRAM_ALLOWED_USERS",
-    "    - TELEGRAM_HOME_CHANNEL",
-    "    - AZURE_FOUNDRY_API_KEY",
+    ...buildHermesDockerForwardEnvLines(input),
     "skills:",
     "  disabled:",
     "    - github-pr-workflow",
@@ -820,48 +876,52 @@ function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Rec
       labels: runtimeLabels,
     },
     data: {
-      "config.yaml": buildHermesProfileConfig() + "\n",
+      "config.yaml": buildHermesProfileConfig(input) + "\n",
       "auth.json": buildHermesAuthConfig(input) + "\n",
     },
   };
 }
 
 function getAzureFoundryApiKey(input: ManifestInput): string | null {
-  const value = input.runtimeEnv?.azureFoundryApiKey?.trim();
+  const value = buildResolvedRuntimeEnvValues(input).get(AZURE_FOUNDRY_ENV_KEY)?.trim();
   return value ? value : null;
 }
 
+function escapeDotenvValue(value: string): string {
+  if (/^[A-Za-z0-9_./:@,+-]*$/.test(value)) {
+    return value;
+  }
+
+  return JSON.stringify(value);
+}
+
 function buildEnvFileContent(input: ManifestInput): string {
-  const lines: string[] = [];
-  const telegram = getTelegramValues(input);
-  if (telegram) {
-    lines.push(`TELEGRAM_BOT_TOKEN=${telegram.token}`);
-    lines.push(`TELEGRAM_HOME_CHANNEL=${telegram.homeChannel}`);
-    lines.push(`TELEGRAM_ALLOWED_USERS=${telegram.allowedUsers}`);
-  }
-  const azureFoundryApiKey = getAzureFoundryApiKey(input);
-  if (azureFoundryApiKey) {
-    lines.push(`AZURE_FOUNDRY_API_KEY=${azureFoundryApiKey}`);
-  }
-  return lines.join("\n");
+  const runtimeEnvValues = buildResolvedRuntimeEnvValues(input);
+  return getRuntimeEnvDefinitionsForValues(
+    runtimeEnvValues,
+    (definition) => definition.injectIntoDotenv,
+  )
+    .map((definition) => `${definition.key}=${escapeDotenvValue(runtimeEnvValues.get(definition.key) ?? "")}`)
+    .join("\n");
 }
 
 function buildSecretData(input: ManifestInput): Record<string, string> {
   const env = buildEnvFileContent(input);
-  const telegram = getTelegramValues(input);
-  const azureFoundryApiKey = getAzureFoundryApiKey(input);
-  if (!telegram && !azureFoundryApiKey) return { env };
+  const runtimeEnvValues = buildResolvedRuntimeEnvValues(input);
+  const processEnvData = getRuntimeEnvProcessSecretKeys(runtimeEnvValues).reduce<Record<string, string>>(
+    (data, key) => {
+      const value = runtimeEnvValues.get(key);
+      if (value !== undefined) {
+        data[key] = value;
+      }
+      return data;
+    },
+    {},
+  );
 
   return {
     env,
-    ...(telegram
-      ? {
-          TELEGRAM_BOT_TOKEN: telegram.token,
-          TELEGRAM_HOME_CHANNEL: telegram.homeChannel,
-          TELEGRAM_ALLOWED_USERS: telegram.allowedUsers,
-        }
-      : {}),
-    ...(azureFoundryApiKey ? { AZURE_FOUNDRY_API_KEY: azureFoundryApiKey } : {}),
+    ...processEnvData,
   };
 }
 
