@@ -116,7 +116,7 @@ The StatefulSet also exposes selected Secret keys directly as process env vars f
 - **Login server**: `abraacr914f.azurecr.io`
 - **SKU**: Standard
 - **Repository**: `abra` (single repo)
-- **Current deployed tag**: `hermes-202606110807-ba7befd` (set via `AKS_RUNTIME_IMAGE` in Vercel / the StatefulSet image in AKS)
+- **Current deployed tag**: `hermes-202606111059-2f3520d` (set via `AKS_RUNTIME_IMAGE` in Vercel / the StatefulSet image in AKS)
 - **Image contents** (on top of `nousresearch/hermes-agent:latest`): `curl`, `jq`, `golang-go`, `libcairo2-dev`, `libpango1.0-dev`, `ffmpeg`, TeX Live (latex-base, fonts-recommended, latex-extra, science, dvisvgm, dvipng), `manim` (installed into `/opt/hermes/.venv`)
 - An ACR task `purge-old-images` runs to clean up old tags.
 
@@ -135,7 +135,7 @@ To push a new image:
 az acr build -r abraacr914f -t abra:<tag> -f Dockerfile.hermes .
 # Then update AKS_RUNTIME_IMAGE in Vercel and patch the StatefulSet:
 vercel env rm AKS_RUNTIME_IMAGE production --yes && vercel env add AKS_RUNTIME_IMAGE production <<< "abraacr914f.azurecr.io/abra:<tag>"
-kubectl set image statefulset/<sts-name> openclaw=abraacr914f.azurecr.io/abra:<tag> init-hydration=abraacr914f.azurecr.io/abra:<tag> -n abra
+kubectl set image statefulset/<sts-name> hermes=abraacr914f.azurecr.io/abra:<tag> init-hydration=abraacr914f.azurecr.io/abra:<tag> -n abra
 ```
 
 Note: `platform/node_modules`, `platform/.next`, `skills/**/output`, and `skills/**/node_modules` are excluded from the build context via `.dockerignore`.
@@ -274,7 +274,7 @@ Do not store the raw key in `auth.json` or the ConfigMap. The raw value belongs 
 | Provider authentication failed | Most likely cause: `AZURE_FOUNDRY_API_KEY` missing from Vercel → manifest generator emits empty credential pool → init container overwrites the profile's `auth.json` with an empty one on every pod start. Verify with `vercel env ls production \| grep AZURE_FOUNDRY`, then check `kubectl get secret … -o jsonpath='{.data.AZURE_FOUNDRY_API_KEY}' \| base64 -d \| sha256sum` matches `db1ad608e95d1843`. To recover the raw key: `az cognitiveservices account keys list --name azure-openai-746596 --resource-group SonaAndAtla --query key1 -o tsv` |
 | Image error | Verify `AKS_RUNTIME_IMAGE` in Vercel dashboard → Settings → Env Vars |
 | K8s auth failing | Check `KUBECONFIG_B64` is current in Vercel; re-export from AKS if expired |
-| New image to deploy | Build via `az acr build -f Dockerfile.hermes`, update `AKS_RUNTIME_IMAGE` in Vercel, then `kubectl set image` both `openclaw` and `init-hydration` containers on the StatefulSet |
+| New image to deploy | Build via `az acr build -f Dockerfile.hermes`, update `AKS_RUNTIME_IMAGE` in Vercel, then `kubectl set image` both `hermes` and `init-hydration` containers on the StatefulSet |
 
 Useful safe checks, with secret values redacted manually before sharing output:
 
