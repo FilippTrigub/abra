@@ -2,6 +2,8 @@ import { getAdminFirestore } from "@/lib/firebase/admin";
 import { getPlatformAccount } from "@/lib/platform-account";
 import { loadAgentConfig } from "@/lib/agent-config/service";
 import type { AgentConfig } from "@/lib/agent-config/types";
+import { loadRuntimeEnvForOrchestrationWithTelegramCompat } from "@/lib/runtime-env/telegram-compat";
+import type { RuntimeEnvDecryptedMap } from "@/lib/runtime-env/types";
 import {
   dispatchOrchestrationAction,
   getOrchestrationAdapter,
@@ -39,6 +41,8 @@ interface DeploymentPayloadEnvelope {
     lastKnownStatus?: DeploymentStatus;
     lastSyncedAt?: string;
     aksNames?: AkRuntimeMetadata;
+    desiredRuntimeEnvVersionId?: string;
+    appliedRuntimeEnvVersionId?: string;
   };
 }
 
@@ -61,6 +65,8 @@ export interface DashboardDeployment {
     lastKnownStatus: DeploymentStatus;
     lastSyncedAt: string | null;
     aksNames?: AkRuntimeMetadata;
+    desiredRuntimeEnvVersionId?: string;
+    appliedRuntimeEnvVersionId?: string;
   } | null;
 }
 
@@ -91,6 +97,14 @@ interface CreateDeploymentInput {
   authUserId: string;
   request: DashboardDeploymentRequest;
 }
+
+export type RuntimeEnvDeploymentUpdateResult = {
+  applied: boolean;
+  status: "saved" | "applying" | "live";
+  reason: string | null;
+  deployment: DashboardDeployment | null;
+  warning: string | null;
+};
 
 const MEMORY_SCOPE_PREFIX = "memory:";
 const deploymentMemoryStore = new Map<string, MemoryDeploymentRecord>();
@@ -257,6 +271,14 @@ function normalizePayload(value: unknown): DeploymentPayloadEnvelope | null {
                     : undefined,
               }
             : undefined,
+          desiredRuntimeEnvVersionId:
+            typeof orchestration.desiredRuntimeEnvVersionId === "string"
+              ? orchestration.desiredRuntimeEnvVersionId
+              : undefined,
+          appliedRuntimeEnvVersionId:
+            typeof orchestration.appliedRuntimeEnvVersionId === "string"
+              ? orchestration.appliedRuntimeEnvVersionId
+              : undefined,
         }
       : undefined,
   };
@@ -325,6 +347,8 @@ function toDashboardDeployment(
           lastKnownStatus: orchestration.lastKnownStatus ?? status,
           lastSyncedAt: orchestration.lastSyncedAt ?? null,
           aksNames: orchestration.aksNames,
+          desiredRuntimeEnvVersionId: orchestration.desiredRuntimeEnvVersionId,
+          appliedRuntimeEnvVersionId: orchestration.appliedRuntimeEnvVersionId,
         }
       : null,
   };
@@ -495,6 +519,10 @@ async function getCurrentDeploymentRecord(accountScope: string) {
 function buildDeploymentOperationInput(
   deployment: DashboardDeployment,
   agentConfig: AgentConfig | null,
+  overrides: {
+    runtimeEnv?: RuntimeEnvDecryptedMap;
+    configRevision?: number;
+  } = {},
 ) {
   return {
     requestId: deployment.orchestration?.requestId ?? crypto.randomUUID(),
@@ -509,6 +537,8 @@ function buildDeploymentOperationInput(
       sourceRef: deployment.request.sourceRef,
       notes: deployment.request.notes,
       ...(deployment.orchestration?.aksNames ? { aksNames: deployment.orchestration.aksNames } : {}),
+      ...(overrides.configRevision ? { configRevision: overrides.configRevision } : {}),
+      ...(overrides.runtimeEnv ? { runtimeEnv: overrides.runtimeEnv } : {}),
       ...(agentConfig ? { agentConfig } : {}),
     },
   };
@@ -530,6 +560,8 @@ async function persistDeployment(
           lastKnownStatus: deployment.orchestration.lastKnownStatus,
           lastSyncedAt: deployment.orchestration.lastSyncedAt ?? undefined,
           aksNames: deployment.orchestration.aksNames,
+          desiredRuntimeEnvVersionId: deployment.orchestration.desiredRuntimeEnvVersionId,
+          appliedRuntimeEnvVersionId: deployment.orchestration.appliedRuntimeEnvVersionId,
         }
       : undefined,
   };
@@ -769,6 +801,12 @@ function mergeOperationIntoDeployment(
   operation: OrchestrationOperation,
 ): DashboardDeployment {
   const action = operation.action;
+  const desiredRuntimeEnvVersionId = getDesiredRuntimeEnvVersionId(deployment, operation);
+  const appliedRuntimeEnvVersionId = getAppliedRuntimeEnvVersionId(
+    deployment,
+    operation,
+    desiredRuntimeEnvVersionId,
+  );
 
   return {
     ...deployment,
@@ -785,8 +823,66 @@ function mergeOperationIntoDeployment(
         lastKnownStatus: toDeploymentStatus(operation.status, action),
         lastSyncedAt: operation.updatedAt,
         aksNames: operation.result?.metadata?.aks ?? deployment.orchestration?.aksNames,
+        desiredRuntimeEnvVersionId,
+        appliedRuntimeEnvVersionId,
       },
   };
+}
+
+function getOperationRuntimeEnvVersionId(operation: OrchestrationOperation) {
+  if (!isRecord(operation.payload)) {
+    return undefined;
+  }
+
+  return typeof operation.payload.runtimeEnvVersionId === "string"
+    ? operation.payload.runtimeEnvVersionId
+    : undefined;
+}
+
+function getDesiredRuntimeEnvVersionId(
+  deployment: DashboardDeployment,
+  operation: OrchestrationOperation,
+) {
+  if (operation.action !== "update") {
+    return deployment.orchestration?.desiredRuntimeEnvVersionId;
+  }
+
+  return getOperationRuntimeEnvVersionId(operation)
+    ?? deployment.orchestration?.desiredRuntimeEnvVersionId;
+}
+
+function getAppliedRuntimeEnvVersionId(
+  deployment: DashboardDeployment,
+  operation: OrchestrationOperation,
+  desiredRuntimeEnvVersionId: string | undefined,
+) {
+  if (
+    operation.action === "update" &&
+    operation.status === "succeeded" &&
+    desiredRuntimeEnvVersionId
+  ) {
+    return desiredRuntimeEnvVersionId;
+  }
+
+  return deployment.orchestration?.appliedRuntimeEnvVersionId;
+}
+
+function toRuntimeEnvDeploymentStatus(deployment: DashboardDeployment | null) {
+  if (!deployment?.orchestration?.desiredRuntimeEnvVersionId) {
+    return "saved" as const;
+  }
+
+  if (
+    deployment.orchestration.appliedRuntimeEnvVersionId ===
+    deployment.orchestration.desiredRuntimeEnvVersionId
+  ) {
+    return "live" as const;
+  }
+
+  return deployment.orchestration.lastKnownStatus === "queued" ||
+    deployment.orchestration.lastKnownStatus === "running"
+    ? "applying" as const
+    : "saved" as const;
 }
 
 export async function dispatchDeploymentRequest(deploymentId: string, authUserId: string) {
@@ -883,6 +979,98 @@ export async function destroyCurrentDeploymentForUser(authUserId: string) {
       ),
       warning: account.warning,
       destroyed: false,
+    };
+  }
+}
+
+export async function updateCurrentDeploymentRuntimeEnvForUser(
+  authUserId: string,
+  versionId?: string,
+): Promise<RuntimeEnvDeploymentUpdateResult> {
+  const account = await resolveAccountScope(authUserId);
+  const deployment = await getCurrentDeploymentRecord(account.accountScope);
+
+  if (!deployment || deployment.status === "deleted") {
+    return {
+      applied: false,
+      status: "saved",
+      reason: "No runtime deployed",
+      deployment: null,
+      warning: account.warning,
+    };
+  }
+
+  const aksNames = deployment.orchestration?.aksNames;
+  if (!aksNames) {
+    return {
+      applied: false,
+      status: "saved",
+      reason: "Runtime deployment metadata is missing",
+      deployment,
+      warning: account.warning,
+    };
+  }
+
+  try {
+    const [runtimeEnv, agentConfig] = await Promise.all([
+      loadRuntimeEnvForOrchestrationWithTelegramCompat(authUserId),
+      loadAgentConfig(authUserId),
+    ]);
+    const operation = await dispatchOrchestrationAction(
+      "update",
+      buildDeploymentOperationInput(deployment, agentConfig, {
+        runtimeEnv,
+        configRevision: aksNames.configRevision ?? 1,
+      }),
+    );
+
+    const updatedDeployment = await persistDeployment(
+      mergeOperationIntoDeployment(deployment, {
+        ...operation,
+        payload: versionId
+          ? { ...operation.payload, runtimeEnvVersionId: versionId }
+          : operation.payload,
+      }),
+      deployment.accountScope,
+    );
+    const status = toRuntimeEnvDeploymentStatus(updatedDeployment);
+
+    return {
+      applied: status === "live",
+      status,
+      reason: null,
+      deployment: updatedDeployment,
+      warning: account.warning,
+    };
+  } catch (error) {
+    const now = new Date().toISOString();
+    const message = error instanceof Error ? error.message : "Runtime update failed.";
+    const failedDeployment = await persistDeployment(
+      {
+        ...deployment,
+        status: "failed",
+        updatedAt: now,
+        errorMessage: message,
+        orchestration: deployment.orchestration
+          ? {
+              ...deployment.orchestration,
+              action: "update",
+              lastKnownStatus: "failed",
+              lastSyncedAt: now,
+              desiredRuntimeEnvVersionId:
+                versionId ?? deployment.orchestration.desiredRuntimeEnvVersionId,
+            }
+          : null,
+      },
+      deployment.accountScope,
+    );
+
+    return {
+      applied: false,
+      status: toRuntimeEnvDeploymentStatus(failedDeployment),
+      reason: "Runtime update failed",
+      deployment: failedDeployment,
+      warning: account.warning,
     };
   }
 }
