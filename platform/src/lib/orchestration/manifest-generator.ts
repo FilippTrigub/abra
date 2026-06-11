@@ -396,12 +396,9 @@ function buildHydrationInitScript(): string {
     "open(p, 'w').write(text)",
     "print('Patched: ' + p)",
     "PYEOF",
-    "LOCALE_FILE=$(find /opt -name 'en.yaml' -path '*/locales/en.yaml' 2>/dev/null | head -1)",
-    "if [ -n \"$LOCALE_FILE\" ]; then",
-    "  python3 /tmp/_abra_locale_patch.py \"$LOCALE_FILE\" && echo 'Abra gateway welcome message patched'",
-    "else",
-    "  echo 'Warning: Hermes en.yaml locale not found; gateway welcome message unchanged'",
-    "fi",
+    // Patch every en.yaml under /opt — Hermes may keep locales at both /opt/hermes/locales/
+    // and /opt/hermes/hermes-agent/locales/ depending on install layout. Patch all matches.
+    "find /opt -name 'en.yaml' -path '*/locales/en.yaml' -exec python3 /tmp/_abra_locale_patch.py {} \\; 2>/dev/null || true",
     "rm -f /tmp/_abra_locale_patch.py",
     `chown -R 10000:10000 ${HERMES_DATA_DIR}`,
     `chmod 700 ${HERMES_PROFILE_DIR}`,
