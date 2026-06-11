@@ -15,6 +15,10 @@ describe("runtime env registry", () => {
     expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("BUFFER_API_KEY");
     expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("FAL_API_KEY");
     expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("AZURE_FOUNDRY_API_KEY");
+    expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("OBSIDIAN_VAULT_PATH");
+    expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("BROWSERBASE_PROXIES");
+    expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("LINKUP_API_KEY");
+    expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("TELEGRAM_HOME_CHANNEL_THREAD_ID");
     expect(SUPPORTED_RUNTIME_ENV_KEYS).not.toContain("KUBECONFIG_B64");
   });
 
@@ -42,6 +46,23 @@ describe("runtime env registry", () => {
     expect(isSupportedRuntimeEnvKey("RANDOM_SECRET")).toBe(false);
     expect(isReservedRuntimeEnvKey("KUBECONFIG_B64")).toBe(true);
     expect(getRuntimeEnvDefinitionsByGroup("contentMedia").map((definition) => definition.key)).toContain("FAL_API_KEY");
+    expect(getRuntimeEnvDefinitionsByGroup("utilities").map((definition) => definition.key)).toEqual(
+      expect.arrayContaining([
+        "OBSIDIAN_VAULT_PATH",
+        "BROWSERBASE_PROXIES",
+        "BROWSERBASE_ADVANCED_STEALTH",
+        "BROWSER_SESSION_TIMEOUT",
+        "BROWSER_INACTIVITY_TIMEOUT",
+        "LINKUP_API_KEY",
+        "TODOIST_API_KEY",
+        "CLOUDFLARE_API_TOKEN",
+        "CLOUDFLARE_ACCOUNT_ID",
+      ])
+    );
+    expect(getRuntimeEnvDefinition("OBSIDIAN_VAULT_PATH")).toEqual(expect.objectContaining({ secret: false }));
+    expect(getRuntimeEnvDefinition("BROWSERBASE_PROXIES")).toEqual(expect.objectContaining({ secret: true }));
+    expect(getRuntimeEnvDefinition("CLOUDFLARE_ACCOUNT_ID")).toEqual(expect.objectContaining({ secret: false }));
+    expect(getRuntimeEnvDefinition("TELEGRAM_HOME_CHANNEL_THREAD_ID")).toEqual(expect.objectContaining({ group: "telegram", secret: false }));
     expect(getRuntimeEnvGroupLabel("contentMedia")).toBe("Content and media skills");
   });
 });
@@ -55,6 +76,16 @@ FAL_API_KEY="fal_456"
 TELEGRAM_ALLOWED_USERS='123,456'
 POSTHOG_HOST=https://app.posthog.com # local comment
 BRAVE_API_KEY=
+OBSIDIAN_VAULT_PATH=/vaults/abra
+BROWSERBASE_PROXIES=http://user:pass@example.com:8080
+BROWSERBASE_ADVANCED_STEALTH=true
+BROWSER_SESSION_TIMEOUT=600000
+BROWSER_INACTIVITY_TIMEOUT=120000
+LINKUP_API_KEY=linkup_123
+TODOIST_API_KEY=todoist_123
+CLOUDFLARE_API_TOKEN=cf_token
+CLOUDFLARE_ACCOUNT_ID=cf_account
+TELEGRAM_HOME_CHANNEL_THREAD_ID=42
 `);
 
     expect(result.errors).toEqual([]);
@@ -64,12 +95,32 @@ BRAVE_API_KEY=
     expect(result.persistableValues.TELEGRAM_ALLOWED_USERS).toBe("123,456");
     expect(result.persistableValues.POSTHOG_HOST).toBe("https://app.posthog.com");
     expect(result.persistableValues.BRAVE_API_KEY).toBe("");
+    expect(result.persistableValues.OBSIDIAN_VAULT_PATH).toBe("/vaults/abra");
+    expect(result.persistableValues.BROWSERBASE_PROXIES).toBe("http://user:pass@example.com:8080");
+    expect(result.persistableValues.BROWSERBASE_ADVANCED_STEALTH).toBe("true");
+    expect(result.persistableValues.BROWSER_SESSION_TIMEOUT).toBe("600000");
+    expect(result.persistableValues.BROWSER_INACTIVITY_TIMEOUT).toBe("120000");
+    expect(result.persistableValues.LINKUP_API_KEY).toBe("linkup_123");
+    expect(result.persistableValues.TODOIST_API_KEY).toBe("todoist_123");
+    expect(result.persistableValues.CLOUDFLARE_API_TOKEN).toBe("cf_token");
+    expect(result.persistableValues.CLOUDFLARE_ACCOUNT_ID).toBe("cf_account");
+    expect(result.persistableValues.TELEGRAM_HOME_CHANNEL_THREAD_ID).toBe("42");
     expect(result.accepted.map((entry) => entry.key)).toEqual([
       "BUFFER_API_KEY",
       "FAL_API_KEY",
       "TELEGRAM_ALLOWED_USERS",
       "POSTHOG_HOST",
       "BRAVE_API_KEY",
+      "OBSIDIAN_VAULT_PATH",
+      "BROWSERBASE_PROXIES",
+      "BROWSERBASE_ADVANCED_STEALTH",
+      "BROWSER_SESSION_TIMEOUT",
+      "BROWSER_INACTIVITY_TIMEOUT",
+      "LINKUP_API_KEY",
+      "TODOIST_API_KEY",
+      "CLOUDFLARE_API_TOKEN",
+      "CLOUDFLARE_ACCOUNT_ID",
+      "TELEGRAM_HOME_CHANNEL_THREAD_ID",
     ]);
   });
 
