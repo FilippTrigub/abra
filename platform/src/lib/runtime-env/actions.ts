@@ -147,10 +147,20 @@ function findEmptyRuntimeEnvValueKeys(values: RuntimeEnvSaveInput["values"]): st
     .sort((left, right) => left.localeCompare(right));
 }
 
+function filterNonEmptyRuntimeEnvValues(values: RuntimeEnvSaveInput["values"]): RuntimeEnvSaveInput["values"] {
+  return Object.fromEntries(
+    Object.entries(values).filter(([, value]) => typeof value === "string" && value.trim().length > 0),
+  );
+}
+
 function emptyValuesMessage(keys: string[]) {
   return keys.length === 1
     ? `Runtime environment value for ${keys[0]} cannot be empty. Use delete to remove a saved value.`
     : `Runtime environment values cannot be empty. Use delete to remove saved values. Empty keys: ${keys.join(", ")}.`;
+}
+
+function noNonEmptyImportValuesMessage() {
+  return "No non-empty supported runtime environment values were found to import. Leave template entries blank or use delete to remove saved values.";
 }
 
 function toDeploymentActionStatus(
@@ -337,10 +347,10 @@ export async function saveRuntimeEnvImportAction(content: string): Promise<Runti
     };
   }
 
-  const emptyKeys = findEmptyRuntimeEnvValueKeys(parsed.persistableValues);
-  if (emptyKeys.length > 0) {
+  const persistableValues = filterNonEmptyRuntimeEnvValues(parsed.persistableValues);
+  if (Object.keys(persistableValues).length === 0) {
     return {
-      ...validationMutationResult(emptyValuesMessage(emptyKeys)),
+      ...validationMutationResult(noNonEmptyImportValuesMessage()),
       accepted,
       rejected: parsed.errors,
       warnings: parsed.warnings,
@@ -348,7 +358,7 @@ export async function saveRuntimeEnvImportAction(content: string): Promise<Runti
   }
 
   try {
-    const result = toActionResult(await saveRuntimeEnvImport(authResult.user.id, { values: parsed.persistableValues }));
+    const result = toActionResult(await saveRuntimeEnvImport(authResult.user.id, { values: persistableValues }));
     const deploymentUpdate = await queueRuntimeEnvDeploymentUpdate(authResult.user.id, result);
 
     return {

@@ -77,21 +77,39 @@ describe("runtime env edge-case hardening", () => {
     expect(JSON.stringify(result)).not.toContain("buf_");
   });
 
-  test("rejects empty dotenv import values before service persistence", async () => {
+  test("skips empty dotenv import values and persists non-empty accepted values", async () => {
     const { saveRuntimeEnvImportAction } = await import("@/lib/runtime-env/actions");
 
     const result = await saveRuntimeEnvImportAction(`
 BUFFER_API_KEY=
 FAL_API_KEY=fal_supported
+BRAVE_API_KEY=   
+`);
+
+    expect(result.success).toBe(true);
+    expect(result.error).toBeNull();
+    expect(result.accepted.map((entry) => entry.key)).toEqual(["BUFFER_API_KEY", "FAL_API_KEY", "BRAVE_API_KEY"]);
+    expect(saveRuntimeEnvImportMock).toHaveBeenCalledWith("user-1", {
+      values: { FAL_API_KEY: "fal_supported" },
+    });
+    expect(JSON.stringify(result)).not.toContain("fal_supported");
+  });
+
+  test("rejects dotenv imports with only empty accepted values before persistence", async () => {
+    const { saveRuntimeEnvImportAction } = await import("@/lib/runtime-env/actions");
+
+    const result = await saveRuntimeEnvImportAction(`
+BUFFER_API_KEY=
+FAL_API_KEY=   
 `);
 
     expect(result.success).toBe(false);
-    expect(result.error?.code).toBe("INVALID_INPUT");
-    expect(result.error?.message).toContain("BUFFER_API_KEY");
-    expect(result.error?.message).toContain("Use delete");
+    expect(result.error).toEqual({
+      code: "INVALID_INPUT",
+      message: "No non-empty supported runtime environment values were found to import. Leave template entries blank or use delete to remove saved values.",
+    });
     expect(result.accepted.map((entry) => entry.key)).toEqual(["BUFFER_API_KEY", "FAL_API_KEY"]);
     expect(saveRuntimeEnvImportMock).not.toHaveBeenCalled();
-    expect(JSON.stringify(result)).not.toContain("fal_supported");
   });
 
   test("rejects oversized preview and import content before persistence", async () => {

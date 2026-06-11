@@ -180,6 +180,33 @@ TELEGRAM_HOME_CHANNEL=@abra-home
     expect(JSON.stringify(result)).not.toContain("@abra-home");
   });
 
+  test("imports full dotenv templates by skipping blank accepted values", async () => {
+    const { saveRuntimeEnvImportAction } = await import("@/lib/runtime-env/actions");
+
+    const result = await saveRuntimeEnvImportAction(`
+BUFFER_API_KEY=buf_import_secret
+FAL_API_KEY=
+TELEGRAM_HOME_CHANNEL=   
+POSTHOG_HOST=https://app.posthog.com
+`);
+
+    expect(saveRuntimeEnvImportMock).toHaveBeenCalledWith("user-1", {
+      values: {
+        BUFFER_API_KEY: "buf_import_secret",
+        POSTHOG_HOST: "https://app.posthog.com",
+      },
+    });
+    expect(result.success).toBe(true);
+    expect(result.accepted.map((entry) => entry.key)).toEqual([
+      "BUFFER_API_KEY",
+      "FAL_API_KEY",
+      "TELEGRAM_HOME_CHANNEL",
+      "POSTHOG_HOST",
+    ]);
+    expect(JSON.stringify(result)).not.toContain("buf_import_secret");
+    expect(JSON.stringify(result)).not.toContain("https://app.posthog.com");
+  });
+
   test("delete and rollback delegate to service methods and return redacted summaries", async () => {
     const { deleteRuntimeEnvKeyAction, rollbackRuntimeEnvVersionAction } = await import("@/lib/runtime-env/actions");
 
