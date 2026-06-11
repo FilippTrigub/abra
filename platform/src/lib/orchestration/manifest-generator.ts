@@ -384,28 +384,26 @@ function buildHydrationInitScript(): string {
     `  cp -r /opt/abra/skills/. ${HERMES_PROFILE_DIR}/skills/abra/`,
     "  echo 'Abra skills hydrated'",
     "fi",
-    // Seed gateway_state.json so s6 reconcile-profiles auto-starts the gateway.
-    // Without this file on a fresh PVC, the gateway would not start because the
-    // legacy-migration path is disabled (no "gateway run" in container args).
-    `if [ ! -f ${HERMES_PROFILE_DIR}/gateway_state.json ]; then`,
-    `  echo '{"gateway_state":"running","timestamp":0,"comment":"seeded-by-abra-init"}' > ${HERMES_PROFILE_DIR}/gateway_state.json`,
-    "  echo 'Gateway state seeded'",
-    "fi",
-    // Patch gateway reset/welcome messages to show Abra branding instead of generic Hermes text.
-    // Uses a heredoc so Python code is not shell-escaped. Runs before chown so root can write.
+    // Always force gateway_state to "running" so s6 reconcile-profiles starts the gateway
+    // on every pod start. This handles both fresh PVCs (no file) and existing PVCs where
+    // the previous gateway wrote "draining" before the pod was killed.
+    `echo '{"gateway_state":"running","timestamp":0,"comment":"seeded-by-abra-init"}' > ${HERMES_PROFILE_DIR}/gateway_state.json`,
+    "echo 'Gateway state set to running'",
+    // Copy hermes locale directory to the shared locale-override emptyDir volume, then patch
+    // en.yaml with Abra branding. The main container mounts this volume at /opt/hermes/locales/,
+    // overriding the image-baked locale files so the patch survives across init/main boundary.
+    "cp -r /opt/hermes/locales/. /locale-override/",
     "cat > /tmp/_abra_locale_patch.py << 'PYEOF'",
     "import re, sys",
     "p = sys.argv[1]",
     "text = open(p).read()",
     "msg = \"I'm Abra, your personal branding agent. How can I assist you?\"",
-    "text = re.sub(r'header_new:\\s+.*', 'header_new:            \"' + msg + '\"', text)",
-    "text = re.sub(r'header_default:\\s+.*', 'header_default:        \"' + msg + '\"', text)",
+    "text = re.sub(r'header_new:.*', 'header_new:            \"' + msg + '\"', text)",
+    "text = re.sub(r'header_default:.*', 'header_default:        \"' + msg + '\"', text)",
     "open(p, 'w').write(text)",
-    "print('Patched: ' + p)",
+    "print('Patched locale: ' + p)",
     "PYEOF",
-    // Patch every en.yaml under /opt — Hermes may keep locales at both /opt/hermes/locales/
-    // and /opt/hermes/hermes-agent/locales/ depending on install layout. Patch all matches.
-    "find /opt -name 'en.yaml' -path '*/locales/en.yaml' -exec python3 /tmp/_abra_locale_patch.py {} \\; 2>/dev/null || true",
+    "python3 /tmp/_abra_locale_patch.py /locale-override/en.yaml",
     "rm -f /tmp/_abra_locale_patch.py",
     `chown -R 10000:10000 ${HERMES_DATA_DIR}`,
     `chmod 700 ${HERMES_PROFILE_DIR}`,
@@ -516,6 +514,10 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
                   name: "hermes-data",
                   mountPath: HERMES_DATA_DIR,
                 },
+                {
+                  name: "locale-override",
+                  mountPath: "/locale-override",
+                },
               ],
             },
           ],
@@ -524,13 +526,21 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
               name: "hermes",
               image: image,
               imagePullPolicy: imagePullPolicy,
-              // No args: the s6-overlay reconcile-profiles cont-init starts the gateway
-              // from gateway_state.json. Passing args here would create a legacy-services
-              // second gateway that conflicts with the reconcile-started one.
+              // sleep infinity keeps the legacy-services s6 service alive without starting
+              // a gateway. The actual gateway is started by 02-reconcile-profiles cont-init
+              // from gateway_state.json (seeded by the init container).
+              args: ["sleep", "infinity"],
               volumeMounts: [
                 {
                   name: "hermes-data",
                   mountPath: HERMES_DATA_DIR,
+                },
+                {
+                  // Overrides the image-baked locale directory with the Abra-patched copy
+                  // prepared by the init container. This is the only way to change locale
+                  // strings without rebuilding the Hermes image.
+                  name: "locale-override",
+                  mountPath: "/opt/hermes/locales",
                 },
               ],
               resources: containerResources,
@@ -570,6 +580,10 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
               secret: {
                 secretName: secretName,
               },
+            },
+            {
+              name: "locale-override",
+              emptyDir: {},
             },
           ],
           restartPolicy: "Always",

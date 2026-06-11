@@ -38,14 +38,23 @@ function rewriteHydrationScriptForTest(script: string) {
   const hermesData = join(sandboxRoot, "opt-data");
   const configDir = join(sandboxRoot, "config");
   const secretsDir = join(sandboxRoot, "secrets");
+  const localesDir = join(sandboxRoot, "hermes-locales");
+  const localeOverrideDir = join(sandboxRoot, "locale-override");
 
   mkdirSync(hermesData, { recursive: true });
   mkdirSync(configDir, { recursive: true });
   mkdirSync(secretsDir, { recursive: true });
+  mkdirSync(localesDir, { recursive: true });
+  mkdirSync(localeOverrideDir, { recursive: true });
 
   writeFileSync(join(configDir, "config.yaml"), "model:\n  default: gpt-5.5\n");
   writeFileSync(join(configDir, "auth.json"), '{"version":1}\n');
   writeFileSync(join(secretsDir, "env"), "AZURE_FOUNDRY_API_KEY=test-key\n");
+  // Stub locale file so the init script cp + Python patch can run in the test sandbox
+  writeFileSync(
+    join(localesDir, "en.yaml"),
+    "gateway:\n  reset:\n    header_default: \"✨ Session reset! Starting fresh.\"\n    header_new: \"✨ New session started!\"\n"
+  );
 
   return {
     executableScript: script
@@ -55,10 +64,13 @@ function rewriteHydrationScriptForTest(script: string) {
       .replace(
         `chown -R 10000:10000 ${hermesData}`,
         "true # chown skipped in test"
-      ),
+      )
+      .replace("cp -r /opt/hermes/locales/. /locale-override/", `cp -r ${localesDir}/. ${localeOverrideDir}/`)
+      .replaceAll("/locale-override/en.yaml", `${localeOverrideDir}/en.yaml`),
     hydratedHermesConfigPath: join(hermesData, "profiles", "abra", "config.yaml"),
     hydratedHermesAuthPath: join(hermesData, "profiles", "abra", "auth.json"),
     hydratedEnvPath: join(hermesData, "profiles", "abra", ".env"),
+    localeOverrideDir,
   };
 }
 
@@ -422,6 +434,7 @@ describe("StatefulSet manifest", () => {
       hydratedHermesConfigPath,
       hydratedHermesAuthPath,
       hydratedEnvPath,
+      localeOverrideDir,
     } = rewriteHydrationScriptForTest(command[2]);
 
     execFileSync(command[0], [command[1], executableScript], {
@@ -435,6 +448,12 @@ describe("StatefulSet manifest", () => {
     expect(readFileSync(hydratedHermesConfigPath, "utf8")).toBe("model:\n  default: gpt-5.5\n");
     expect(readFileSync(hydratedHermesAuthPath, "utf8")).toBe('{"version":1}\n');
     expect(readFileSync(hydratedEnvPath, "utf8")).toBe("AZURE_FOUNDRY_API_KEY=test-key\n");
+
+    // Verify locale patch: en.yaml should have Abra welcome message
+    const patchedLocale = readFileSync(join(localeOverrideDir, "en.yaml"), "utf8");
+    expect(patchedLocale).toContain("I'm Abra, your personal branding agent. How can I assist you?");
+    expect(patchedLocale).not.toContain("✨ Session reset! Starting fresh.");
+    expect(patchedLocale).not.toContain("✨ New session started!");
   });
 
   test("applies custom image pull policy", () => {
@@ -779,7 +798,7 @@ describe("Runtime prerequisite manifests", () => {
     );
     expectDefined(hermesContainer, "hermes container should exist");
     expect(hermesContainer.command).toBeUndefined();
-    expect(hermesContainer.args).toBeUndefined();
+    expect(hermesContainer.args).toEqual(["sleep", "infinity"]);
     expect(hermesContainer.env).toEqual(
       expect.arrayContaining([
         { name: "HERMES_HOME", value: "/opt/data/profiles/abra" },
