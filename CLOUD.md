@@ -116,7 +116,7 @@ The StatefulSet also exposes selected Secret keys directly as process env vars f
 - **Login server**: `abraacr914f.azurecr.io`
 - **SKU**: Standard
 - **Repository**: `abra` (single repo)
-- **Current deployed tag**: `hermes-202606102349-a19781e` (set via `AKS_RUNTIME_IMAGE` in Vercel / the StatefulSet image in AKS)
+- **Current deployed tag**: `hermes-202606110807-ba7befd` (set via `AKS_RUNTIME_IMAGE` in Vercel / the StatefulSet image in AKS)
 - **Image contents** (on top of `nousresearch/hermes-agent:latest`): `curl`, `jq`, `golang-go`, `libcairo2-dev`, `libpango1.0-dev`, `ffmpeg`, TeX Live (latex-base, fonts-recommended, latex-extra, science, dvisvgm, dvipng), `manim` (installed into `/opt/hermes/.venv`)
 - An ACR task `purge-old-images` runs to clean up old tags.
 
