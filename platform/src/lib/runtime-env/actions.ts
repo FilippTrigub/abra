@@ -115,15 +115,26 @@ function serviceFailureMutationResult(): RuntimeEnvActionResult {
   };
 }
 
+function safeActionServiceErrorMessage(result: RuntimeEnvMutationResult): string {
+  const message = result.errors[0];
+  if (message?.startsWith("Runtime environment encryption is ")) {
+    return message;
+  }
+
+  return serviceError().message;
+}
+
 function toActionResult(result: RuntimeEnvMutationResult): RuntimeEnvActionResult {
   if (result.success) {
     return { ...result, error: null, deploymentUpdate: null };
   }
 
+  const message = safeActionServiceErrorMessage(result);
+
   return {
     ...result,
-    errors: [serviceError().message],
-    error: serviceError(),
+    errors: [message],
+    error: serviceError(message),
     deploymentUpdate: null,
   };
 }

@@ -85,6 +85,14 @@ function safeServiceErrorMessage(error: unknown, fallback: string): string {
     return fallback;
   }
 
+  if (error.message.startsWith("Missing required runtime env encryption key:")) {
+    return "Runtime environment encryption is not configured. Set RUNTIME_ENV_ENCRYPTION_KEY before saving runtime environment values.";
+  }
+
+  if (error.message.startsWith("Invalid runtime env encryption key")) {
+    return "Runtime environment encryption is misconfigured. Set RUNTIME_ENV_ENCRYPTION_KEY to a valid 32-byte base64 value before saving runtime environment values.";
+  }
+
   const safePrefixes = [
     "Unsupported runtime env key:",
     "Reserved runtime env key cannot be managed:",

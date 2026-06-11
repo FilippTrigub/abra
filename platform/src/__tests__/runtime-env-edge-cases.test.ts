@@ -206,4 +206,30 @@ BUFFER_API_KEY=buf_final
     });
     expect(JSON.stringify(result)).not.toContain(localSecretInput);
   });
+
+  test("exposes safe encryption configuration service errors without plaintext", async () => {
+    const localSecretInput = "buf_missing_key_secret";
+    saveRuntimeEnvFieldsMock.mockResolvedValue({
+      success: false,
+      summary: null,
+      versionId: null,
+      eventId: null,
+      errors: ["Runtime environment encryption is not configured. Set RUNTIME_ENV_ENCRYPTION_KEY before saving runtime environment values."],
+    });
+    const { saveRuntimeEnvFieldsAction } = await import("@/lib/runtime-env/actions");
+
+    const result = await saveRuntimeEnvFieldsAction({
+      values: { BUFFER_API_KEY: localSecretInput },
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toEqual({
+      code: "SERVICE_ERROR",
+      message: "Runtime environment encryption is not configured. Set RUNTIME_ENV_ENCRYPTION_KEY before saving runtime environment values.",
+    });
+    expect(result.errors).toEqual([
+      "Runtime environment encryption is not configured. Set RUNTIME_ENV_ENCRYPTION_KEY before saving runtime environment values.",
+    ]);
+    expect(JSON.stringify(result)).not.toContain(localSecretInput);
+  });
 });

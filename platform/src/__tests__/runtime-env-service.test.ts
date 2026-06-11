@@ -216,6 +216,27 @@ describe("runtime env Firestore service", () => {
     expect(JSON.stringify(firestoreMock.docs.get(currentPath()))).not.toContain("fal_plain_secret");
   });
 
+  test("returns safe encryption configuration errors without persisting plaintext", async () => {
+    const context = createWriteContext();
+    vi.stubEnv("RUNTIME_ENV_ENCRYPTION_KEY", "");
+
+    const result = await saveRuntimeEnvFields(AUTH_USER_ID, {
+      values: {
+        BUFFER_API_KEY: "buf_missing_encryption_secret",
+      },
+    }, context);
+
+    expect(result).toEqual({
+      success: false,
+      summary: null,
+      versionId: null,
+      eventId: null,
+      errors: ["Runtime environment encryption is not configured. Set RUNTIME_ENV_ENCRYPTION_KEY before saving runtime environment values."],
+    });
+    expect(firestoreMock.docs.size).toBe(0);
+    expect(JSON.stringify(result)).not.toContain("buf_missing_encryption_secret");
+  });
+
   test("deletes a key by creating a new active version and audit record", async () => {
     const context = createWriteContext();
     await saveRuntimeEnvFields(AUTH_USER_ID, {
