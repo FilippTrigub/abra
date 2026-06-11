@@ -22,6 +22,7 @@ import {
   type ManifestInput,
 } from "@/lib/orchestration/manifest-generator";
 import { parseRuntimeEnvDotenv } from "@/lib/runtime-env/dotenv";
+import { SUPPORTED_RUNTIME_ENV_DEFINITIONS } from "@/lib/runtime-env/definitions";
 import {
   getStatefulSetName,
   getServiceName,
@@ -100,6 +101,29 @@ const BASE_INPUT: ManifestInput = {
   deploymentId: TEST_DEPLOYMENT_ID,
   image: TEST_IMAGE,
 };
+
+function getExpectedDockerForwardEnvLines(): string[] {
+  return [
+    "  docker_forward_env:",
+    ...SUPPORTED_RUNTIME_ENV_DEFINITIONS
+      .filter((definition) => definition.injectAsProcessEnv)
+      .map((definition) => `    - ${definition.key}`),
+  ];
+}
+
+function getDockerForwardEnvKeys(configYaml: string): string[] {
+  const lines = configYaml.split("\n");
+  const dockerForwardEnvIndex = lines.indexOf("  docker_forward_env:");
+  expect(dockerForwardEnvIndex).toBeGreaterThanOrEqual(0);
+
+  const keys: string[] = [];
+  for (const line of lines.slice(dockerForwardEnvIndex + 1)) {
+    if (!line.startsWith("    - ")) break;
+    keys.push(line.slice("    - ".length));
+  }
+
+  return keys;
+}
 
 // ---------------------------------------------------------------------------
 // Determinism tests
@@ -710,7 +734,7 @@ describe("Runtime prerequisite manifests", () => {
         "  media_delivery_allow_dirs:",
         "    - /opt/data/media",
         "terminal:",
-        "  docker_forward_env: []",
+        ...getExpectedDockerForwardEnvLines(),
         "skills:",
         "  disabled:",
         "    - github-pr-workflow",
@@ -792,6 +816,44 @@ describe("Runtime prerequisite manifests", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     expect(manifests.configMap.data["openclaw.json"]).toBeUndefined();
     expect(manifests.secret.stringData.env).toBe("");
+    expect(manifests.secret.stringData.ANTHROPIC_API_KEY).toBeUndefined();
+    expect(manifests.secret.stringData.OBSIDIAN_VAULT_PATH).toBeUndefined();
+    expect(manifests.secret.stringData.BROWSERBASE_PROXIES).toBeUndefined();
+    expect(manifests.secret.stringData.LINKUP_API_KEY).toBeUndefined();
+    expect(manifests.secret.stringData.TELEGRAM_HOME_CHANNEL_THREAD_ID).toBeUndefined();
+
+    const hermesContainer = manifests.statefulset.spec.template.spec.containers.find(
+      (c) => c.name === "hermes"
+    );
+    expectDefined(hermesContainer, "hermes container should exist");
+    const envNames = hermesContainer.env?.map((entry) => entry.name) ?? [];
+    expect(envNames).not.toContain("ANTHROPIC_API_KEY");
+    expect(envNames).not.toContain("OBSIDIAN_VAULT_PATH");
+    expect(envNames).not.toContain("BROWSERBASE_PROXIES");
+    expect(envNames).not.toContain("LINKUP_API_KEY");
+    expect(envNames).not.toContain("TELEGRAM_HOME_CHANNEL_THREAD_ID");
+  });
+
+  test("Hermes config.yaml forwards every supported process env key even when values are not configured", () => {
+    const manifests = generateKubernetesManifests(BASE_INPUT);
+    const forwardedKeys = getDockerForwardEnvKeys(manifests.configMap.data["config.yaml"]);
+
+    expect(forwardedKeys).toEqual(
+      SUPPORTED_RUNTIME_ENV_DEFINITIONS
+        .filter((definition) => definition.injectAsProcessEnv)
+        .map((definition) => definition.key)
+    );
+    expect(forwardedKeys).toEqual(
+      expect.arrayContaining([
+        "ANTHROPIC_API_KEY",
+        "OBSIDIAN_VAULT_PATH",
+        "BROWSERBASE_PROXIES",
+        "LINKUP_API_KEY",
+        "TELEGRAM_HOME_CHANNEL_THREAD_ID",
+      ])
+    );
+    expect(forwardedKeys).not.toContain("HERMES_HOME");
+    expect(forwardedKeys).not.toContain("KUBECONFIG_B64");
   });
 
   test("with complete Telegram agentConfig: secret env has Telegram values", () => {
@@ -829,13 +891,12 @@ describe("Runtime prerequisite manifests", () => {
         }),
       ])
     );
-    expect(manifests.configMap.data["config.yaml"]).toContain(
-      [
-        "  docker_forward_env:",
-        "    - TELEGRAM_BOT_TOKEN",
-        "    - TELEGRAM_HOME_CHANNEL",
-        "    - TELEGRAM_ALLOWED_USERS",
-      ].join("\n")
+    expect(getDockerForwardEnvKeys(manifests.configMap.data["config.yaml"])).toEqual(
+      expect.arrayContaining([
+        "TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_HOME_CHANNEL",
+        "TELEGRAM_ALLOWED_USERS",
+      ])
     );
   });
 
@@ -918,14 +979,10 @@ describe("Runtime prerequisite manifests", () => {
     expect(hermesContainer.env).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ name: "HERMES_HOME", valueFrom: expect.anything() })])
     );
-    expect(manifests.configMap.data["config.yaml"]).toContain(
-      [
-        "  docker_forward_env:",
-        "    - AZURE_FOUNDRY_API_KEY",
-        "    - BUFFER_API_KEY",
-      ].join("\n")
+    expect(getDockerForwardEnvKeys(manifests.configMap.data["config.yaml"])).toEqual(
+      expect.arrayContaining(["AZURE_FOUNDRY_API_KEY", "BUFFER_API_KEY"])
     );
-    expect(manifests.configMap.data["config.yaml"]).not.toContain("    - HERMES_HOME");
+    expect(getDockerForwardEnvKeys(manifests.configMap.data["config.yaml"])).not.toContain("HERMES_HOME");
   });
 
   test("with explicit Telegram allowed users: secret env uses the allowlist separately from the home channel", () => {
