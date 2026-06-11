@@ -9,6 +9,11 @@ import type {
 const loadUserSettings = vi.fn();
 const updateUserSetting = vi.fn();
 const revertToDefaults = vi.fn();
+const loadRuntimeEnvSummaryAction = vi.fn();
+const previewRuntimeEnvDotenvImport = vi.fn();
+const saveRuntimeEnvFieldsAction = vi.fn();
+const saveRuntimeEnvImportAction = vi.fn();
+const applyRuntimeEnvAction = vi.fn();
 
 vi.mock("@/lib/settings/actions", () => ({
   loadUserSettings,
@@ -23,6 +28,14 @@ vi.mock("@/lib/agent-config/actions", () => ({
     allowedUsers: null,
   }),
   saveUserAgentConfig: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+vi.mock("@/lib/runtime-env/actions", () => ({
+  loadRuntimeEnvSummaryAction,
+  previewRuntimeEnvDotenvImport,
+  saveRuntimeEnvFieldsAction,
+  saveRuntimeEnvImportAction,
+  applyRuntimeEnvAction,
 }));
 
 function buildSnapshot(
@@ -44,6 +57,22 @@ function buildSnapshot(
     updatedAt: "2026-01-01T00:00:00.000Z",
   };
 }
+
+const runtimeSummary = {
+  accountScope: "user-1",
+  versionId: "ver_runtime_ui",
+  createdAt: "2026-06-11T20:00:00.000Z",
+  updatedAt: "2026-06-11T20:00:00.000Z",
+  values: [],
+};
+
+const applyingDeploymentUpdate = {
+  applied: false,
+  status: "applying" as const,
+  message: "Runtime environment values were saved and Abra is updating.",
+  reason: null,
+  warning: null,
+};
 
 describe("SettingsPage", () => {
   beforeEach(() => {
@@ -85,35 +114,93 @@ describe("SettingsPage", () => {
         warning: null,
       };
     });
+
+    loadRuntimeEnvSummaryAction.mockResolvedValue({
+      success: true,
+      summary: null,
+      error: null,
+    });
+    previewRuntimeEnvDotenvImport.mockResolvedValue({
+      success: true,
+      accepted: [],
+      rejected: [],
+      warnings: [],
+      error: null,
+    });
+    saveRuntimeEnvFieldsAction.mockResolvedValue({
+      success: true,
+      summary: runtimeSummary,
+      versionId: "ver_runtime_ui",
+      eventId: "evt_runtime_ui",
+      errors: [],
+      error: null,
+      deploymentUpdate: applyingDeploymentUpdate,
+    });
+    saveRuntimeEnvImportAction.mockResolvedValue({
+      success: true,
+      summary: runtimeSummary,
+      versionId: "ver_runtime_ui",
+      eventId: "evt_runtime_ui",
+      errors: [],
+      accepted: [],
+      rejected: [],
+      warnings: [],
+      error: null,
+      deploymentUpdate: applyingDeploymentUpdate,
+    });
+    applyRuntimeEnvAction.mockResolvedValue({
+      success: true,
+      applied: false,
+      status: "applying",
+      message: "Runtime environment values were saved and Abra is updating.",
+      summary: runtimeSummary,
+      error: null,
+    });
   });
 
   it("keeps failed settings dirty and preserves restartRequired", async () => {
-    const { default: SettingsPage } = await import("@/app/(dashboard)/dashboard/settings/page");
-
-    render(<SettingsPage />);
-
-    await screen.findByLabelText("Default deployment environment");
-
-    fireEvent.change(screen.getByLabelText("Default deployment environment"), {
-      target: { value: "staging" },
-    });
-    fireEvent.change(screen.getByLabelText("Brand accent color"), {
-      target: { value: "violet" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-
-    await waitFor(() => {
-      expect(updateUserSetting).toHaveBeenCalledTimes(2);
-    });
-
-    expect(screen.getByText("Restart required")).toBeTruthy();
-
-    await waitFor(
-      () => {
-        expect((screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement).disabled).toBe(false);
-      },
-      { timeout: 5000 },
+    const realSetTimeout = globalThis.setTimeout;
+    type SetTimeoutHandler = Parameters<typeof setTimeout>[0];
+    type SetTimeoutArgs = Parameters<typeof setTimeout> extends [
+      SetTimeoutHandler,
+      number?,
+      ...infer Rest,
+    ]
+      ? Rest
+      : never;
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout").mockImplementation(
+      (handler: SetTimeoutHandler, _timeout?: number, ...args: SetTimeoutArgs) =>
+        realSetTimeout(handler, 0, ...args),
     );
+    const { default: SettingsPage } = await import("@/app/(dashboard)/dashboard/settings/page");
+    try {
+      render(<SettingsPage />);
+
+      await screen.findByLabelText("Default deployment environment");
+
+      fireEvent.change(screen.getByLabelText("Default deployment environment"), {
+        target: { value: "staging" },
+      });
+      fireEvent.change(screen.getByLabelText("Brand accent color"), {
+        target: { value: "violet" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await waitFor(() => {
+        expect(updateUserSetting).toHaveBeenCalledTimes(2);
+      });
+
+      expect(screen.getByText("Restart required")).toBeTruthy();
+
+      await waitFor(
+        () => {
+          expect((screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement).disabled).toBe(false);
+        },
+        { timeout: 5000 },
+      );
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
   });
 
   it("does not raise restartRequired when saving unrelated dirty settings", async () => {
@@ -382,5 +469,87 @@ describe("SettingsPage", () => {
     } finally {
       setTimeoutSpy.mockRestore();
     }
+  });
+
+  it("uses save action deployment status for field saves without calling explicit apply", async () => {
+    const { default: SettingsPage } = await import("@/app/(dashboard)/dashboard/settings/page");
+
+    render(<SettingsPage />);
+
+    const bufferInput = await screen.findByLabelText("Buffer API key");
+    fireEvent.change(bufferInput, { target: { value: "buf_ui_secret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save runtime values" }));
+
+    await waitFor(() => {
+      expect(saveRuntimeEnvFieldsAction).toHaveBeenCalledTimes(1);
+    });
+
+    expect(saveRuntimeEnvFieldsAction).toHaveBeenCalledWith({
+      values: { BUFFER_API_KEY: "buf_ui_secret" },
+    });
+    expect(applyRuntimeEnvAction).not.toHaveBeenCalled();
+    expect(screen.getAllByText("Applying to Abra")).not.toHaveLength(0);
+    expect(screen.queryByText("buf_ui_secret")).toBeNull();
+  });
+
+  it("uses save action deployment status for dotenv imports without calling explicit apply", async () => {
+    previewRuntimeEnvDotenvImport.mockResolvedValueOnce({
+      success: true,
+      accepted: [
+        {
+          key: "BUFFER_API_KEY",
+          lineNumber: 1,
+          label: "Buffer API key",
+          group: "contentMedia",
+        },
+      ],
+      rejected: [],
+      warnings: [],
+      error: null,
+    });
+    saveRuntimeEnvImportAction.mockResolvedValueOnce({
+      success: true,
+      summary: runtimeSummary,
+      versionId: "ver_runtime_ui",
+      eventId: "evt_runtime_ui",
+      errors: [],
+      accepted: [
+        {
+          key: "BUFFER_API_KEY",
+          lineNumber: 1,
+          label: "Buffer API key",
+          group: "contentMedia",
+        },
+      ],
+      rejected: [],
+      warnings: [],
+      error: null,
+      deploymentUpdate: applyingDeploymentUpdate,
+    });
+    const { default: SettingsPage } = await import("@/app/(dashboard)/dashboard/settings/page");
+
+    render(<SettingsPage />);
+
+    await screen.findByLabelText("Buffer API key");
+    fireEvent.click(screen.getByRole("button", { name: ".env import" }));
+    fireEvent.change(screen.getByLabelText("Paste .env content"), {
+      target: { value: "BUFFER_API_KEY=buf_import_ui_secret" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Preview import" }));
+
+    await waitFor(() => {
+      expect(previewRuntimeEnvDotenvImport).toHaveBeenCalledTimes(1);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm import" }));
+
+    await waitFor(() => {
+      expect(saveRuntimeEnvImportAction).toHaveBeenCalledTimes(1);
+    });
+
+    expect(saveRuntimeEnvImportAction).toHaveBeenCalledWith("BUFFER_API_KEY=buf_import_ui_secret");
+    expect(applyRuntimeEnvAction).not.toHaveBeenCalled();
+    expect(screen.getAllByText("Applying to Abra")).not.toHaveLength(0);
+    expect(screen.queryByText("buf_import_ui_secret")).toBeNull();
   });
 });

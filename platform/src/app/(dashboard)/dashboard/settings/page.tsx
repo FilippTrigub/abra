@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Badge, Button, Card, ErrorState, Input, Label, Panel, Select, ToggleSwitch } from "@/components/ui";
 import { BotSetupCard } from "./bot-setup-card";
+import { RuntimeEnvCard } from "./runtime-env-card";
 import type {
   SettingsResponse,
   ConfigSnapshot,
@@ -504,6 +505,7 @@ export default function SettingsPage() {
       )}
 
       <BotSetupCard />
+      <RuntimeEnvCard />
 
       {/* Settings form */}
       <form onSubmit={handleSave} className="space-y-6">
