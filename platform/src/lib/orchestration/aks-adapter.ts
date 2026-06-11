@@ -114,12 +114,34 @@ function readAgentConfig(payload: Record<string, unknown>): ManifestInput["agent
   return { telegramBotToken, telegramHomeChannel, telegramAllowedUsers };
 }
 
-function sanitizePayloadForPersistence(payload: Record<string, unknown>): Record<string, unknown> {
-  if (!isRecord(payload.agentConfig)) return payload;
+function readRuntimeEnv(payload: Record<string, unknown>): ManifestInput["runtimeEnv"] | undefined {
+  const raw = payload.runtimeEnv;
+  if (!isRecord(raw)) return undefined;
 
-  const { agentConfig: _agentConfig, ...safePayload } = payload;
+  const runtimeEnv = Object.entries(raw).reduce<Record<string, string>>(
+    (values, [key, value]) => {
+      if (typeof value === "string") {
+        values[key] = value;
+      }
+      return values;
+    },
+    {},
+  );
+
+  return Object.keys(runtimeEnv).length > 0 ? runtimeEnv : undefined;
+}
+
+function sanitizePayloadForPersistence(payload: Record<string, unknown>): Record<string, unknown> {
+  if (!isRecord(payload.agentConfig) && !isRecord(payload.runtimeEnv)) return payload;
+
+  const { agentConfig: _agentConfig, runtimeEnv: _runtimeEnv, ...safePayload } = payload;
   void _agentConfig;
-  return { ...safePayload, agentConfigRef: "account-current" };
+  void _runtimeEnv;
+  return {
+    ...safePayload,
+    ...(isRecord(payload.agentConfig) ? { agentConfigRef: "account-current" } : {}),
+    ...(isRecord(payload.runtimeEnv) ? { runtimeEnvRef: "account-current" } : {}),
+  };
 }
 
 function buildManifestInput(input: {
@@ -135,6 +157,11 @@ function buildManifestInput(input: {
   const useServiceAccount = readOptionalBoolean(input.payload.useServiceAccount);
   const agentConfig = input.agentConfig ?? readAgentConfig(input.payload);
   const azureFoundryApiKey = readOptionalString(process.env.AZURE_FOUNDRY_API_KEY);
+  const payloadRuntimeEnv = readRuntimeEnv(input.payload);
+  const runtimeEnv = {
+    ...(azureFoundryApiKey ? { azureFoundryApiKey } : {}),
+    ...(payloadRuntimeEnv ?? {}),
+  };
 
   return {
     accountId: input.accountId,
@@ -145,7 +172,7 @@ function buildManifestInput(input: {
     ...(serviceAccountName ? { serviceAccountName } : {}),
     ...(useServiceAccount !== undefined ? { useServiceAccount } : {}),
     ...(agentConfig ? { agentConfig } : {}),
-    ...(azureFoundryApiKey ? { runtimeEnv: { azureFoundryApiKey } } : {}),
+    ...(Object.keys(runtimeEnv).length > 0 ? { runtimeEnv } : {}),
   };
 }
 

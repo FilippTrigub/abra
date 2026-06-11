@@ -562,6 +562,9 @@ describe("AksOrchestrationAdapter create flow", () => {
           name: "Abra runtime",
           image: "ghcr.io/abra/runtime:latest",
           configRevision: 4,
+          runtimeEnv: {
+            BUFFER_API_KEY: "buf_update_secret",
+          },
         },
       })
     );
@@ -574,6 +577,9 @@ describe("AksOrchestrationAdapter create flow", () => {
         configRevision: 5,
       })
     );
+    expect(operation.payload.runtimeEnv).toBeUndefined();
+    expect(operation.payload.runtimeEnvRef).toBe("account-current");
+    expect(JSON.stringify(operation.payload)).not.toContain("buf_update_secret");
     expect(operation.steps.map((step) => step.summary)).toEqual([
       "AKS update request persisted. Config revision reconciliation will start immediately.",
       "Reconciling StatefulSet for config revision 5.",
@@ -584,7 +590,6 @@ describe("AksOrchestrationAdapter create flow", () => {
       "abra-account-1-deployment-1-config",
       expect.objectContaining({
         data: expect.objectContaining({
-          "openclaw.json": expect.any(String),
           "config.yaml": expect.stringContaining("provider: azure-foundry"),
           "auth.json": expect.stringContaining("sha256:dfa9e6a1592ad440"),
         }),
@@ -596,7 +601,17 @@ describe("AksOrchestrationAdapter create flow", () => {
       expect.objectContaining({
         stringData: expect.objectContaining({
           env: expect.stringContaining("AZURE_FOUNDRY_API_KEY=test-azure-key"),
+          BUFFER_API_KEY: "buf_update_secret",
           AZURE_FOUNDRY_API_KEY: "test-azure-key",
+        }),
+      })
+    );
+    expect(resourceClient.patchSecret).toHaveBeenCalledWith(
+      "abra",
+      "abra-account-1-deployment-1-secrets",
+      expect.objectContaining({
+        stringData: expect.objectContaining({
+          env: expect.stringContaining("BUFFER_API_KEY=buf_update_secret"),
         }),
       })
     );
@@ -615,11 +630,20 @@ describe("AksOrchestrationAdapter create flow", () => {
             spec: {
               containers: [
                 expect.objectContaining({
-                  name: "openclaw",
+                  name: "hermes",
                   image: "ghcr.io/abra/runtime:latest",
                   command: undefined,
-                  args: ["gateway", "run"],
+                  args: ["sleep", "infinity"],
                   env: expect.arrayContaining([
+                    expect.objectContaining({
+                      name: "BUFFER_API_KEY",
+                      valueFrom: {
+                        secretKeyRef: {
+                          name: "abra-account-1-deployment-1-secrets",
+                          key: "BUFFER_API_KEY",
+                        },
+                      },
+                    }),
                     expect.objectContaining({
                       name: "AZURE_FOUNDRY_API_KEY",
                       valueFrom: {
@@ -639,7 +663,7 @@ describe("AksOrchestrationAdapter create flow", () => {
     );
   });
 
-  it("does not persist Telegram bot tokens from agentConfig payloads", async () => {
+  it("does not persist plaintext secrets from agentConfig or runtimeEnv payloads", async () => {
     const adapter = new AksOrchestrationAdapter({
       operationStore: store as never,
       now: nextTimestamp,
@@ -656,6 +680,9 @@ describe("AksOrchestrationAdapter create flow", () => {
             telegramHomeChannel: "388259993",
             telegramAllowedUsers: "388259993",
           },
+          runtimeEnv: {
+            BUFFER_API_KEY: "buf_SECRET",
+          },
         },
       })
     );
@@ -663,10 +690,14 @@ describe("AksOrchestrationAdapter create flow", () => {
 
     expect(operation.payload.agentConfig).toBeUndefined();
     expect(operation.payload.agentConfigRef).toBe("account-current");
+    expect(operation.payload.runtimeEnv).toBeUndefined();
+    expect(operation.payload.runtimeEnvRef).toBe("account-current");
     expect(JSON.stringify(operation.payload)).not.toContain("SECRET");
     expect(JSON.stringify(persisted?.payload)).not.toContain("SECRET");
     expect(persisted?.payload.agentConfig).toBeUndefined();
     expect(persisted?.payload.agentConfigRef).toBe("account-current");
+    expect(persisted?.payload.runtimeEnv).toBeUndefined();
+    expect(persisted?.payload.runtimeEnvRef).toBe("account-current");
   });
 
   it("patches the StatefulSet for restart without deleting the PVC", async () => {
