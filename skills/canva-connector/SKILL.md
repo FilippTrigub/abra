@@ -202,6 +202,40 @@ result = await app.resolve_shortlink(shortlink_id="example", user_intent="exampl
 result = await app.search_designs(query="example", ownership="example", sort_by="example")
 ```
 
+### search-brand-templates
+
+Search brand templates in Canva. Use this tool (instead of `search-designs`) when the user is looking for a template to use as a starting point, wants to generate from a template, or mentions templates in any context. Returns matching brand templates with pagination support.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| query | `str` | No | Search term to filter templates by title or content. |
+| ownership | `str` | No | Filter by ownership: 'any' (default), 'owned', or 'shared'. |
+| sort_by | `str` | No | Sort results: 'relevance' (default when query set), 'modified_descending', 'modified_ascending', 'title_descending', 'title_ascending'. |
+| continuation | `str` | No | Pagination token from a previous response. Omit on first call or new searches. |
+| user_intent | `str` | No | Description of what the user is trying to accomplish (255 chars max). |
+
+**Example:**
+```python
+result = await app.search_brand_templates(query="quarterly report", ownership="any")
+```
+
+### start-editing-transaction
+
+Start an editing transaction on a Canva design. Use this tool when the user wants to edit, update, change, translate, or fix content within a design's pages. This tool both shows the content AND enables editing — unlike `get-design-content` which is read-only. After the transaction is started, use the returned context with editing tools to make changes.
+
+Do NOT use this for structural page operations (combine, reorder, delete pages) — use `merge-designs` for that.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| design_id | `str` | Yes | ID of the design to edit. Extract from URL: https://www.canva.com/design/{design_id}. |
+| pages | `list[int]` | No | 1-based page numbers to include in the transaction. Omit to include all pages. |
+| user_intent | `str` | No | Description of what the user is trying to accomplish (255 chars max). |
+
+**Example:**
+```python
+result = await app.start_editing_transaction(design_id="DABcde12345", user_intent="translate slide text to French")
+```
+
 ### get-design
 
 Get detailed information about a Canva design, such as a doc, presentation, whiteboard, video, or sheet. This includes design owner information, title, URLs for editing and viewing, thumbnail, created/updated time, and page count. This tool doesn't work on folders or images. You must provide the design ID, which you can find by using the `search-designs` or `list-folder-items` tools. When given a URL to a Canva design, you can extract the design ID from the URL. Example URL: https://www.canva.com/design/{design_id}. If the user provides a shortlink (e.g. https://canva.link/abc123), use `resolve-shortlink` with the shortlink ID first to get the full URL.

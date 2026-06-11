@@ -166,7 +166,7 @@ def serve_files_for_upload(file_paths: list[str | Path]):
 class CanvaApp:
     """
     Application for interacting with Canva via MCP.
-    Provides tools to interact with tools: upload-asset-from-url, resolve-shortlink, search-designs, get-design, get-design-pages and 17 more.
+    Provides tools to interact with tools: upload-asset-from-url, resolve-shortlink, search-designs, search-brand-templates, get-design, get-design-pages and 19 more.
     """
 
     def __init__(self, url: str = "https://mcp.canva.com/mcp", auth=None) -> None:
@@ -1240,6 +1240,116 @@ class CanvaApp:
             except (json.JSONDecodeError, TypeError):
                 return {"result": text}
 
+    async def search_brand_templates(
+        self,
+        continuation: str = None,
+        ownership: str = None,
+        query: str = None,
+        sort_by: str = None,
+        user_intent: str = None,
+    ) -> dict[str, Any]:
+        """
+        Search brand templates in Canva. Use this tool when the user is searching for templates
+        or wants to use a template as a starting point for a design.
+
+        CRITICAL: ALWAYS use this tool (NOT search-designs) when the user mentions:
+        - searching for a template
+        - generating from a template
+        - starting from a template
+        - using their template
+        - picking a template for generation
+
+        Use the continuation token to get the next page of results when there are more results.
+
+        Args:
+            continuation: Pagination token from a previous response. Omit on first call or new searches.
+            ownership: Filter by ownership: 'any' (default), 'owned', or 'shared'.
+            query: Search term to filter templates by title or content.
+            sort_by: Sort results by: 'relevance' (default when query is set), 'modified_descending', 'modified_ascending', 'title_descending', 'title_ascending'.
+            user_intent: Mandatory description of what the user is trying to accomplish with this tool call. Please keep it concise (255 characters or less).
+
+        Returns:
+            Tool execution result
+
+        Tags:
+            search, brand, templates
+        """
+        async with self._get_client() as client:
+            call_args = {}
+            if continuation is not None:
+                call_args["continuation"] = continuation
+            if ownership is not None:
+                call_args["ownership"] = ownership
+            if query is not None:
+                call_args["query"] = query
+            if sort_by is not None:
+                call_args["sort_by"] = sort_by
+            if user_intent is not None:
+                call_args["user_intent"] = user_intent
+            result = await client.call_tool("search-brand-templates", call_args)
+            texts = []
+            for block in result.content:
+                if hasattr(block, "text"):
+                    texts.append(block.text)
+            text = "\n".join(texts)
+            try:
+                return json.loads(text)
+            except (json.JSONDecodeError, TypeError):
+                return {"result": text}
+
+    async def start_editing_transaction(
+        self,
+        design_id: str,
+        pages: list[int] = None,
+        user_intent: str = None,
+    ) -> dict[str, Any]:
+        """
+        Start an editing transaction on a Canva design. Use this tool when the user wants to
+        edit, update, change, translate, or fix content within a design's pages (text, images, etc.).
+
+        This tool both shows the design content AND enables editing, unlike `get-design-content`
+        which is read-only. After calling this tool, use the returned transaction context with
+        editing tools to make changes.
+
+        Use cases:
+        - Editing text content in presentations, docs, whiteboards, or social media posts
+        - Translating content in a design
+        - Updating or fixing content in existing pages
+
+        Do NOT use this tool for structural page operations (combine, reorder, delete pages) —
+        use `merge-designs` for that.
+
+        Args:
+            design_id: ID of the design to edit. You can find the design ID using `search-designs`
+                or extract it from a Canva URL: https://www.canva.com/design/{design_id}.
+            pages: Optional list of 1-based page numbers to include in the transaction.
+                If omitted, all pages are included.
+            user_intent: Mandatory description of what the user is trying to accomplish with this tool call. Please keep it concise (255 characters or less).
+
+        Returns:
+            Tool execution result including editable content and transaction context
+
+        Tags:
+            edit, transaction, design
+        """
+        async with self._get_client() as client:
+            call_args = {}
+            call_args["design_id"] = design_id
+            if pages is not None:
+                call_args["pages"] = pages
+            if user_intent is not None:
+                call_args["user_intent"] = user_intent
+            result = await client.call_tool("start-editing-transaction", call_args)
+            texts = []
+            for block in result.content:
+                if hasattr(block, "text"):
+                    texts.append(block.text)
+            text = "\n".join(texts)
+            try:
+                return json.loads(text)
+            except (json.JSONDecodeError, TypeError):
+                return {"result": text}
+
     async def list_brand_kits(
         self, continuation: str = None, user_intent: str = None
     ) -> dict[str, Any]:
@@ -1281,6 +1391,7 @@ class CanvaApp:
             self.upload_asset_from_url,
             self.resolve_shortlink,
             self.search_designs,
+            self.search_brand_templates,
             self.get_design,
             self.get_design_pages,
             self.get_design_content,
@@ -1299,5 +1410,6 @@ class CanvaApp:
             self.reply_to_comment,
             self.generate_design,
             self.create_design_from_candidate,
+            self.start_editing_transaction,
             self.list_brand_kits,
         ]
