@@ -779,7 +779,7 @@ describe("Runtime prerequisite manifests", () => {
     );
     expectDefined(hermesContainer, "hermes container should exist");
     expect(hermesContainer.command).toBeUndefined();
-    expect(hermesContainer.args).toEqual(["gateway", "run"]);
+    expect(hermesContainer.args).toBeUndefined();
     expect(hermesContainer.env).toEqual(
       expect.arrayContaining([
         { name: "HERMES_HOME", value: "/opt/data/profiles/abra" },

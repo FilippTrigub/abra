@@ -384,6 +384,13 @@ function buildHydrationInitScript(): string {
     `  cp -r /opt/abra/skills/. ${HERMES_PROFILE_DIR}/skills/abra/`,
     "  echo 'Abra skills hydrated'",
     "fi",
+    // Seed gateway_state.json so s6 reconcile-profiles auto-starts the gateway.
+    // Without this file on a fresh PVC, the gateway would not start because the
+    // legacy-migration path is disabled (no "gateway run" in container args).
+    `if [ ! -f ${HERMES_PROFILE_DIR}/gateway_state.json ]; then`,
+    `  echo '{"gateway_state":"running","timestamp":0,"comment":"seeded-by-abra-init"}' > ${HERMES_PROFILE_DIR}/gateway_state.json`,
+    "  echo 'Gateway state seeded'",
+    "fi",
     // Patch gateway reset/welcome messages to show Abra branding instead of generic Hermes text.
     // Uses a heredoc so Python code is not shell-escaped. Runs before chown so root can write.
     "cat > /tmp/_abra_locale_patch.py << 'PYEOF'",
@@ -517,7 +524,9 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
               name: "hermes",
               image: image,
               imagePullPolicy: imagePullPolicy,
-              args: ["gateway", "run"],
+              // No args: the s6-overlay reconcile-profiles cont-init starts the gateway
+              // from gateway_state.json. Passing args here would create a legacy-services
+              // second gateway that conflicts with the reconcile-started one.
               volumeMounts: [
                 {
                   name: "hermes-data",
