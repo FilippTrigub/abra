@@ -81,6 +81,7 @@ pnpm test        # Runs both typecheck and lint together
 - **Platform accounts** — Firestore document at `accounts/{authUserId}`. Bootstrapped on first sign-in.
 - **Deployments** — Firestore-backed records with an in-memory fallback when Firestore is unavailable.
 - **Settings** — Persisted in Firestore at `accounts/{authUserId}/settings/current`, with an in-memory fallback when Firestore is unavailable.
+- **Runtime env** — User-managed skill/API env values are encrypted in Firestore at `accounts/{authUserId}/runtime-env/current`. Version snapshots live under `accounts/{authUserId}/runtime-env/current/versions/{versionId}` and audit events under `accounts/{authUserId}/runtime-env/current/audit/{eventId}`.
 - **Orchestration** — Backend selection in `src/lib/orchestration/` via `ORCHESTRATION_BACKEND=aks|mock`. AKS is the default and uses the hosted env contract documented below.
 
 ### Styling
@@ -101,6 +102,8 @@ UI components are in `src/components/ui/` and re-exported through `src/component
 
 See [`.env.example`](./.env.example) for the full list. All variables marked `NEXT_PUBLIC_` are bundled into the browser. The rest are server-only.
 
+`RUNTIME_ENV_ENCRYPTION_KEY` is required server-only configuration when Firestore-backed runtime env values are enabled. It encrypts saved user-managed skill/API env values before storage and must never be exposed to the browser or copied into runtime containers.
+
 ### AKS runtime contract
 
 When the AKS adapter is used, the runtime image is resolved in this order:
@@ -112,15 +115,26 @@ When the AKS adapter is used, the runtime image is resolved in this order:
 If none of those values is set, create requests fail with a clear missing-image error.
 
 The runtime image should be the Hermes Abra image published to ACR, for example
-`abraacr914f.azurecr.io/abra:<tag>`. The generated Kubernetes Secret exposes
-`TELEGRAM_BOT_TOKEN`, `TELEGRAM_HOME_CHANNEL`, and `TELEGRAM_ALLOWED_USERS` as
-pod environment variables and as the hydrated profile `.env`; the allowlist
-falls back to the saved home-channel value until the settings surface stores a
-separate allowlist.
+`abraacr914f.azurecr.io/abra:<tag>`. Settings lets users manage supported
+skill/API env vars such as Telegram and social provider keys. Saved values are
+encrypted in Firestore, summarized with redacted metadata and fingerprints, and
+not returned to the browser as plaintext after save or import.
+
+During deploy or apply, the server decrypts runtime env values only for
+orchestration. Those values drive the generated runtime Secret `.env`, direct
+Secret-backed env keys where the registry allows them, StatefulSet env refs, and
+Hermes `docker_forward_env`. Runtime env changes are applied through the
+existing AKS update and StatefulSet rollout path. They do not hot reload into
+already-running containers, so a rollout is required before changed process env
+values are live.
+
+Telegram still supports older saved config. If the newer runtime env document is
+missing Telegram values, orchestration falls back to `agent-config/current`, with
+the old allowlist field mapped for compatibility.
 
 ### AKS backend contract
 
-Hosted AKS mode requires the documented production env set, including the AKS runtime image plus Kubernetes auth through in-cluster auth, `KUBECONFIG`, or `KUBECONFIG_B64`. AKS remains the default backend when `ORCHESTRATION_BACKEND` is unset. Set `ORCHESTRATION_BACKEND=mock` only when intentionally running the simulator.
+Hosted AKS mode requires the documented production env set, including the AKS runtime image, `RUNTIME_ENV_ENCRYPTION_KEY`, and Kubernetes auth through in-cluster auth, `KUBECONFIG`, or `KUBECONFIG_B64`. AKS remains the default backend when `ORCHESTRATION_BACKEND` is unset. Set `ORCHESTRATION_BACKEND=mock` only when intentionally running the simulator.
 
 ### Firebase data model
 

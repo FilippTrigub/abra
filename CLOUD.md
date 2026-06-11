@@ -34,6 +34,7 @@ Three planes:
 | `AZURE_CLIENT_ID` | Managed identity client ID for AKS access |
 | `AZURE_FEDERATED_TOKEN_FILE` | Path to federated token file (workload identity) |
 | `AZURE_FOUNDRY_API_KEY` | Azure Foundry/OpenAI API key injected into the Abra runtime Secret for `provider: azure-foundry` |
+| `RUNTIME_ENV_ENCRYPTION_KEY` | Server-only AES-256-GCM key used to encrypt user-managed runtime env values before Firestore storage |
 | `ORCHESTRATION_BACKEND` | Set to `aks` in production; `mock` for local dev |
 | `FIREBASE_PROJECT_ID` | Firebase project ID |
 | `FIREBASE_CLIENT_EMAIL` | Firebase Admin SDK service account email |
@@ -61,10 +62,19 @@ payload.image  →  AKS_RUNTIME_IMAGE  →  ABRA_RUNTIME_IMAGE  →  error
 ```
 accounts/{userId}/
   agent-config/current        # AgentConfig: telegramBotToken, telegramHomeChannel
+  runtime-env/current         # Active encrypted user-managed skill/API env values
+    versions/{versionId}      # Immutable encrypted snapshots for rollback and desired/applied version tracking
+    audit/{eventId}           # Runtime env save/import/delete/rollback events, with redacted metadata
   deployments/{deploymentId}  # DashboardDeployment records
 ```
 
-Agent config is required before any deployment is allowed. The platform reads it at dispatch time and injects it into the K8s secret. Backward compat: if `telegramAllowedUsers` exists in Firestore (old field name), it is read as `telegramHomeChannel`.
+The active runtime env document path is `accounts/{authUserId}/runtime-env/current`. Version and audit records intentionally live in subcollections below that document: `accounts/{authUserId}/runtime-env/current/versions/{versionId}` and `accounts/{authUserId}/runtime-env/current/audit/{eventId}`. This keeps every Firestore document reference valid.
+
+Runtime env values are saved from Settings for user-managed skill/API keys such as Buffer, GIPHY, Freesound, Pixabay, and Telegram. Plaintext is accepted only on server actions, encrypted before Firestore writes, and never returned to the browser after save or import. Browser responses contain redacted summaries with key names, source, version metadata, timestamps, and fingerprints only.
+
+`RUNTIME_ENV_ENCRYPTION_KEY` is required server-only configuration for the platform process. It must not be exposed through `NEXT_PUBLIC_*`, checked into docs as key material, or sent to the runtime container.
+
+Legacy agent config is still supported for Telegram. If runtime env does not contain Telegram values, the platform falls back to `agent-config/current`; `TELEGRAM_ALLOWED_USERS` uses `telegramAllowedUsers` when present and falls back to `telegramHomeChannel` when the old allowlist field is absent.
 
 ---
 
@@ -91,7 +101,7 @@ Each user deployment creates a set of K8s resources in that namespace:
 
 - **Namespace** — `abra`
 - **ConfigMap** — `abra-{accountId}-{deploymentId}-config` — contains Hermes `config.yaml` and `auth.json`
-- **Secret** — `abra-{accountId}-{deploymentId}-secrets` — contains `.env` plus direct Secret keys for `TELEGRAM_BOT_TOKEN`, `TELEGRAM_HOME_CHANNEL`, `TELEGRAM_ALLOWED_USERS`, and `AZURE_FOUNDRY_API_KEY`
+- **Secret** — `abra-{accountId}-{deploymentId}-secrets` — contains `.env` plus registry-designated direct Secret keys for supported runtime env values
 - **StatefulSet** — `abra-{accountId}-{deploymentId}` — runs the Hermes Abra image; init container hydrates the Hermes profile before main container starts
 - **Service** — ClusterIP on port 18789
 - **PVC** — 1 GiB for Hermes profile data persistence (mounted at `/opt/data`)
@@ -109,7 +119,9 @@ The init container (same Abra image, s6-overlay ENTRYPOINT overridden by `comman
 
 `HERMES_HOME` is set to `/opt/data/profiles/abra` (profile-mode) so Hermes treats the abra profile as its working home. The main container name is `hermes`; the volume name is `hermes-data`.
 
-The StatefulSet also exposes selected Secret keys directly as process env vars for the main container.
+The StatefulSet also exposes selected Secret keys directly as process env vars for the main container. User-managed runtime env values from Settings drive the generated Secret `.env`, direct Secret keys where the registry allows them, StatefulSet env refs, and Hermes `docker_forward_env` entries.
+
+Runtime env changes use the existing AKS update path. The platform patches the generated runtime Secret and related pod template, then relies on the StatefulSet rollout to restart pods. Already-running container environment variables do not hot reload, so saved Settings values become live after the update and rollout complete.
 
 ### Container Registry — `abraacr914f`
 
@@ -171,15 +183,21 @@ Provisioned for future async job dispatch.
 
 ## Telegram runtime contract
 
-The deployed Hermes container receives these env vars directly from the Kubernetes Secret and also gets them in the hydrated profile `.env`:
+The deployed Hermes container receives these env vars through the same runtime env pipeline used by other skill/API keys. They are exposed directly from the Kubernetes Secret and also written into the hydrated profile `.env`:
 
 | Env var | Source | Description |
 |---------|--------|-------------|
-| `TELEGRAM_BOT_TOKEN` | Firestore `agent-config/current.telegramBotToken` | Token from @BotFather |
-| `TELEGRAM_HOME_CHANNEL` | Firestore `agent-config/current.telegramHomeChannel` | Channel/chat ID where the runtime operates (e.g. `388259993`) |
-| `TELEGRAM_ALLOWED_USERS` | Firestore `agent-config/current.telegramAllowedUsers`, falling back to `telegramHomeChannel` | Comma-separated user/chat IDs authorized to use the bot |
+| `TELEGRAM_BOT_TOKEN` | Firestore `runtime-env/current`, falling back to `agent-config/current.telegramBotToken` | Token from @BotFather |
+| `TELEGRAM_HOME_CHANNEL` | Firestore `runtime-env/current`, falling back to `agent-config/current.telegramHomeChannel` | Channel/chat ID where the runtime operates |
+| `TELEGRAM_ALLOWED_USERS` | Firestore `runtime-env/current`, falling back to `agent-config/current.telegramAllowedUsers` or `telegramHomeChannel` | Comma-separated user/chat IDs authorized to use the bot |
 
-These are set in the platform Settings → Telegram setup card and injected into the K8s Secret at deploy time. If either is missing, the deployment is blocked at the server action level.
+These are set in platform Settings and injected into the runtime Secret at deploy or runtime-env update time. If required Telegram values are missing, deployment is blocked at the server action level. Old `agent-config/current` Telegram values remain a fallback for existing users until they save the newer runtime env settings.
+
+### User-managed skill/API env vars
+
+Settings also lets users manage supported skill/API env vars without editing Kubernetes resources directly. Saved values are encrypted in Firestore at `accounts/{authUserId}/runtime-env/current`, with immutable snapshots under `current/versions/{versionId}` and redacted audit events under `current/audit/{eventId}`.
+
+The runtime manifest generator reads decrypted values only on the server for orchestration. It writes supported values into the generated Secret `.env`, direct Secret keys where the registry marks them safe for direct env refs, the StatefulSet container env, and Hermes `docker_forward_env`. The browser only sees redacted summaries and fingerprints after save.
 
 ---
 
