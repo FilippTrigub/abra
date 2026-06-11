@@ -40,12 +40,16 @@ function rewriteHydrationScriptForTest(script: string) {
   const secretsDir = join(sandboxRoot, "secrets");
   const localesDir = join(sandboxRoot, "hermes-locales");
   const localeOverrideDir = join(sandboxRoot, "locale-override");
+  const gatewayDir = join(sandboxRoot, "hermes-gateway");
+  const gatewayOverrideDir = join(sandboxRoot, "gateway-override");
 
   mkdirSync(hermesData, { recursive: true });
   mkdirSync(configDir, { recursive: true });
   mkdirSync(secretsDir, { recursive: true });
   mkdirSync(localesDir, { recursive: true });
   mkdirSync(localeOverrideDir, { recursive: true });
+  mkdirSync(gatewayDir, { recursive: true });
+  mkdirSync(gatewayOverrideDir, { recursive: true });
 
   writeFileSync(join(configDir, "config.yaml"), "model:\n  default: gpt-5.5\n");
   writeFileSync(join(configDir, "auth.json"), '{"version":1}\n');
@@ -53,7 +57,12 @@ function rewriteHydrationScriptForTest(script: string) {
   // Stub locale file so the init script cp + Python patch can run in the test sandbox
   writeFileSync(
     join(localesDir, "en.yaml"),
-    "gateway:\n  reset:\n    header_default: \"✨ Session reset! Starting fresh.\"\n    header_new: \"✨ New session started!\"\n"
+    "gateway:\n  reset:\n    header_default: \"✨ Session reset! Starting fresh.\"\n    header_new: \"✨ New session started!\"\n    tip: \"\\n✦ Tip: {tip}\"\n"
+  );
+  // Stub slash_commands.py with the session_info block that the patch removes
+  writeFileSync(
+    join(gatewayDir, "slash_commands.py"),
+    "        try:\n            session_info = self._format_session_info()\n        except Exception:\n            session_info = \"\"\n"
   );
 
   return {
@@ -66,11 +75,14 @@ function rewriteHydrationScriptForTest(script: string) {
         "true # chown skipped in test"
       )
       .replace("cp -r /opt/hermes/locales/. /locale-override/", `cp -r ${localesDir}/. ${localeOverrideDir}/`)
-      .replaceAll("/locale-override/en.yaml", `${localeOverrideDir}/en.yaml`),
+      .replaceAll("/locale-override/en.yaml", `${localeOverrideDir}/en.yaml`)
+      .replace("cp -r /opt/hermes/gateway/. /gateway-override/", `cp -r ${gatewayDir}/. ${gatewayOverrideDir}/`)
+      .replaceAll("'/gateway-override/slash_commands.py'", `'${gatewayOverrideDir}/slash_commands.py'`),
     hydratedHermesConfigPath: join(hermesData, "profiles", "abra", "config.yaml"),
     hydratedHermesAuthPath: join(hermesData, "profiles", "abra", "auth.json"),
     hydratedEnvPath: join(hermesData, "profiles", "abra", ".env"),
     localeOverrideDir,
+    gatewayOverrideDir,
   };
 }
 
@@ -435,6 +447,7 @@ describe("StatefulSet manifest", () => {
       hydratedHermesAuthPath,
       hydratedEnvPath,
       localeOverrideDir,
+      gatewayOverrideDir,
     } = rewriteHydrationScriptForTest(command[2]);
 
     execFileSync(command[0], [command[1], executableScript], {
@@ -449,11 +462,17 @@ describe("StatefulSet manifest", () => {
     expect(readFileSync(hydratedHermesAuthPath, "utf8")).toBe('{"version":1}\n');
     expect(readFileSync(hydratedEnvPath, "utf8")).toBe("AZURE_FOUNDRY_API_KEY=test-key\n");
 
-    // Verify locale patch: en.yaml should have Abra welcome message
+    // Verify locale patch: en.yaml should have Abra welcome message and no tip
     const patchedLocale = readFileSync(join(localeOverrideDir, "en.yaml"), "utf8");
     expect(patchedLocale).toContain("I'm Abra, your personal branding agent. How can I assist you?");
     expect(patchedLocale).not.toContain("✨ Session reset! Starting fresh.");
     expect(patchedLocale).not.toContain("✨ New session started!");
+    expect(patchedLocale).toContain('tip:                   ""');
+
+    // Verify gateway patch: slash_commands.py should have session_info suppressed
+    const patchedGateway = readFileSync(join(gatewayOverrideDir, "slash_commands.py"), "utf8");
+    expect(patchedGateway).toContain('session_info = ""  # Abra: model info suppressed');
+    expect(patchedGateway).not.toContain("self._format_session_info()");
   });
 
   test("applies custom image pull policy", () => {

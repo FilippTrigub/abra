@@ -400,11 +400,30 @@ function buildHydrationInitScript(): string {
     "msg = \"I'm Abra, your personal branding agent. How can I assist you?\"",
     "text = re.sub(r'header_new:.*', 'header_new:            \"' + msg + '\"', text)",
     "text = re.sub(r'header_default:.*', 'header_default:        \"' + msg + '\"', text)",
+    // Suppress the ✦ Tip line by setting the tip locale key to empty string
+    "text = re.sub(r'tip:.*', 'tip:                   \"\"', text)",
     "open(p, 'w').write(text)",
     "print('Patched locale: ' + p)",
     "PYEOF",
     "python3 /tmp/_abra_locale_patch.py /locale-override/en.yaml",
     "rm -f /tmp/_abra_locale_patch.py",
+    // Copy the hermes gateway directory and patch slash_commands.py to suppress
+    // the model/provider/context info block that appears after /new.
+    // The main container mounts gateway-override at /opt/hermes/gateway/.
+    "cp -r /opt/hermes/gateway/. /gateway-override/",
+    "cat > /tmp/_abra_gateway_patch.py << 'PYEOF'",
+    "p = '/gateway-override/slash_commands.py'",
+    "text = open(p).read()",
+    // Neutralize the session_info block: always set to "" so the model/provider/context block never shows
+    "text = text.replace(",
+    "    'try:\\n            session_info = self._format_session_info()\\n        except Exception:\\n            session_info = \"\"',",
+    "    'session_info = \"\"  # Abra: model info suppressed'",
+    ")",
+    "open(p, 'w').write(text)",
+    "print('Patched slash_commands.py')",
+    "PYEOF",
+    "python3 /tmp/_abra_gateway_patch.py",
+    "rm -f /tmp/_abra_gateway_patch.py",
     `chown -R 10000:10000 ${HERMES_DATA_DIR}`,
     `chmod 700 ${HERMES_PROFILE_DIR}`,
     "echo 'Hydration complete.'",
@@ -518,6 +537,10 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
                   name: "locale-override",
                   mountPath: "/locale-override",
                 },
+                {
+                  name: "gateway-override",
+                  mountPath: "/gateway-override",
+                },
               ],
             },
           ],
@@ -541,6 +564,13 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
                   // strings without rebuilding the Hermes image.
                   name: "locale-override",
                   mountPath: "/opt/hermes/locales",
+                },
+                {
+                  // Overrides the hermes gateway directory with the Abra-patched copy
+                  // prepared by the init container. Suppresses model/provider/context info
+                  // from /new responses without rebuilding the Hermes image.
+                  name: "gateway-override",
+                  mountPath: "/opt/hermes/gateway",
                 },
               ],
               resources: containerResources,
@@ -583,6 +613,10 @@ function generateStatefulSet(input: ManifestInput): KubernetesObject & {
             },
             {
               name: "locale-override",
+              emptyDir: {},
+            },
+            {
+              name: "gateway-override",
               emptyDir: {},
             },
           ],
