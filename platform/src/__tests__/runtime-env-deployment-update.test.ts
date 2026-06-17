@@ -287,6 +287,38 @@ describe("runtime env deployment update", () => {
     expect(loadRuntimeEnvForOrchestrationWithTelegramCompatMock).not.toHaveBeenCalled();
   });
 
+  test("dispatchDeploymentRequest (create) loads and forwards runtime env, same as update", async () => {
+    seedDeployment();
+    const { dispatchDeploymentRequest } = await import("@/lib/deployments");
+
+    await dispatchDeploymentRequest("abra-instance", "user-1");
+
+    expect(loadRuntimeEnvForOrchestrationWithTelegramCompatMock).toHaveBeenCalledWith("user-1");
+    expect(dispatchOrchestrationActionMock).toHaveBeenCalledWith("create", {
+      requestId: "req-existing",
+      target: {
+        accountId: "account-1",
+        agentId: null,
+        deploymentId: "abra-instance",
+      },
+      payload: expect.objectContaining({
+        ...baseRequest,
+        aksNames: persistedAksNames,
+        agentConfig: {
+          telegramBotToken: "telegram-secret",
+          telegramHomeChannel: "@abra-home",
+          telegramAllowedUsers: "@abra-home",
+        },
+        runtimeEnv: {
+          BUFFER_API_KEY: "buffer-secret",
+          TELEGRAM_BOT_TOKEN: "telegram-secret",
+          TELEGRAM_HOME_CHANNEL: "@abra-home",
+          TELEGRAM_ALLOWED_USERS: "@abra-home",
+        },
+      }),
+    });
+  });
+
   test("applyRuntimeEnvAction delegates to deployment update and returns product-safe applied status", async () => {
     seedDeployment();
     const { applyRuntimeEnvAction } = await import("@/lib/runtime-env/actions");

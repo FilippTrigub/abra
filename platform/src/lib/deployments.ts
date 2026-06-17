@@ -893,7 +893,10 @@ export async function dispatchDeploymentRequest(deploymentId: string, authUserId
   }
 
   try {
-    const agentConfig = await loadAgentConfig(authUserId);
+    const [runtimeEnv, agentConfig] = await Promise.all([
+      loadRuntimeEnvForOrchestrationWithTelegramCompat(authUserId),
+      loadAgentConfig(authUserId),
+    ]);
     if (!agentConfig) {
       throw new Error(
         "Telegram setup is incomplete. Add a bot token and TELEGRAM_HOME_CHANNEL before deploying.",
@@ -902,7 +905,7 @@ export async function dispatchDeploymentRequest(deploymentId: string, authUserId
 
     const operation = await dispatchOrchestrationAction(
       "create",
-      buildDeploymentOperationInput(deployment, agentConfig),
+      buildDeploymentOperationInput(deployment, agentConfig, { runtimeEnv }),
     );
 
     return await persistDeployment(mergeOperationIntoDeployment(deployment, operation), deployment.accountScope);
