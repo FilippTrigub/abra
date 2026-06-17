@@ -152,12 +152,13 @@ function buildManifestInput(input: {
   configRevision: number;
   nameOverrides?: ManifestNameOverrides;
   agentConfig?: ManifestInput["agentConfig"];
+  runtimeEnv?: ManifestInput["runtimeEnv"];
 }): ManifestInput {
   const serviceAccountName = readOptionalString(input.payload.serviceAccountName) ?? undefined;
   const useServiceAccount = readOptionalBoolean(input.payload.useServiceAccount);
   const agentConfig = input.agentConfig ?? readAgentConfig(input.payload);
   const azureFoundryApiKey = readOptionalString(process.env.AZURE_FOUNDRY_API_KEY);
-  const payloadRuntimeEnv = readRuntimeEnv(input.payload);
+  const payloadRuntimeEnv = input.runtimeEnv ?? readRuntimeEnv(input.payload);
   const runtimeEnv = {
     ...(azureFoundryApiKey ? { azureFoundryApiKey } : {}),
     ...(payloadRuntimeEnv ?? {}),
@@ -189,6 +190,26 @@ async function resolveAgentConfigForOperation(
     const { loadAgentConfig } = await import("@/lib/agent-config/service");
     const storedAgentConfig = await loadAgentConfig(accountId);
     return storedAgentConfig ?? undefined;
+  }
+
+  return undefined;
+}
+
+async function resolveRuntimeEnvForOperation(
+  accountId: string,
+  payload: Record<string, unknown>,
+): Promise<ManifestInput["runtimeEnv"] | undefined> {
+  const payloadRuntimeEnv = readRuntimeEnv(payload);
+  if (payloadRuntimeEnv) {
+    return payloadRuntimeEnv;
+  }
+
+  if (payload.runtimeEnvRef === "account-current") {
+    const { loadRuntimeEnvForOrchestrationWithTelegramCompat } = await import(
+      "@/lib/runtime-env/telegram-compat"
+    );
+    const storedRuntimeEnv = await loadRuntimeEnvForOrchestrationWithTelegramCompat(accountId);
+    return storedRuntimeEnv ?? undefined;
   }
 
   return undefined;
@@ -1191,6 +1212,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       const image = resolveRuntimeImage(payload);
       const deploymentId = readRequiredString(operation.target.deploymentId, "target.deploymentId");
       const agentConfig = await resolveAgentConfigForOperation(operation.target.accountId, payload);
+      const runtimeEnv = await resolveRuntimeEnvForOperation(operation.target.accountId, payload);
       const manifests = generateKubernetesManifests(buildManifestInput({
         accountId: operation.target.accountId,
         deploymentId,
@@ -1199,6 +1221,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
         configRevision: operation.runtimeMetadata?.aks?.configRevision ?? DEFAULT_CONFIG_REVISION,
         nameOverrides: getNameOverridesFromMetadata(operation.runtimeMetadata?.aks),
         agentConfig,
+        runtimeEnv,
       }));
       client = this.dependencies.createResourceClient(
         await this.dependencies.loadKubernetesClient()

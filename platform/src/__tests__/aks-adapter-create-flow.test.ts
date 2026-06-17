@@ -8,6 +8,11 @@ vi.mock("@/lib/orchestration/firestore-operation-store", () => ({
   },
 }));
 
+const loadRuntimeEnvForOrchestrationWithTelegramCompatMock = vi.fn();
+vi.mock("@/lib/runtime-env/telegram-compat", () => ({
+  loadRuntimeEnvForOrchestrationWithTelegramCompat: loadRuntimeEnvForOrchestrationWithTelegramCompatMock,
+}));
+
 import { AksOrchestrationAdapter } from "@/lib/orchestration/aks-adapter";
 import type {
   OrchestrationOperation,
@@ -79,6 +84,7 @@ describe("AksOrchestrationAdapter create flow", () => {
     store = new InMemoryOperationStore();
     nowIndex = 0;
     delete process.env.AZURE_FOUNDRY_API_KEY;
+    loadRuntimeEnvForOrchestrationWithTelegramCompatMock.mockReset();
   });
 
   function nextTimestamp() {
@@ -227,6 +233,44 @@ describe("AksOrchestrationAdapter create flow", () => {
         gatewayRoute: "http://abra-account-1-deployment-1-svc.abra.svc.cluster.local:18789",
       })
     );
+  });
+
+  it("re-resolves account-current runtime env during create reconciliation so the generated Secret keeps user-managed keys", async () => {
+    loadRuntimeEnvForOrchestrationWithTelegramCompatMock.mockResolvedValue({
+      GH_TOKEN: "gh_token_value",
+      HF_TOKEN: "hf_token_value",
+    });
+
+    const resourceClient = createResourceClient();
+    const adapter = new AksOrchestrationAdapter({
+      operationStore: store as never,
+      now: nextTimestamp,
+      createOperationId: () => "op-create-runtime-env",
+      loadKubernetesClient: vi.fn(async () => ({}) as never),
+      createResourceClient: vi.fn(() => resourceClient),
+    });
+
+    const created = await adapter.create(createInput({
+      payload: {
+        name: "Abra runtime",
+        image: "ghcr.io/abra/runtime:latest",
+        runtimeEnv: { GH_TOKEN: "gh_token_value", HF_TOKEN: "hf_token_value" },
+      },
+    }));
+
+    // The queued operation persists only a reference, never the plaintext map.
+    expect(created.payload.runtimeEnv).toBeUndefined();
+    expect(created.payload.runtimeEnvRef).toBe("account-current");
+
+    await adapter.getStatus(created.operationId);
+
+    expect(loadRuntimeEnvForOrchestrationWithTelegramCompatMock).toHaveBeenCalledWith("account-1");
+    const secretCall = resourceClient.ensureSecret.mock.calls.at(-1) as unknown[];
+    const secretManifest = secretCall[1] as { stringData: Record<string, string> };
+    expect(secretManifest.stringData.GH_TOKEN).toBe("gh_token_value");
+    expect(secretManifest.stringData.HF_TOKEN).toBe("hf_token_value");
+    expect(secretManifest.stringData.env).toContain("GH_TOKEN=gh_token_value");
+    expect(secretManifest.stringData.env).toContain("HF_TOKEN=hf_token_value");
   });
 
   it("fails and cleans up created service and workload when readiness becomes fatal", async () => {
