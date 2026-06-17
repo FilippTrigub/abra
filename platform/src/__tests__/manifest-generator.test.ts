@@ -125,6 +125,29 @@ function getDockerForwardEnvKeys(configYaml: string): string[] {
   return keys;
 }
 
+function getExpectedEnvPassthroughLines(): string[] {
+  return [
+    "  env_passthrough:",
+    ...SUPPORTED_RUNTIME_ENV_DEFINITIONS
+      .filter((definition) => definition.injectAsProcessEnv)
+      .map((definition) => `    - ${definition.key}`),
+  ];
+}
+
+function getEnvPassthroughKeys(configYaml: string): string[] {
+  const lines = configYaml.split("\n");
+  const envPassthroughIndex = lines.indexOf("  env_passthrough:");
+  expect(envPassthroughIndex).toBeGreaterThanOrEqual(0);
+
+  const keys: string[] = [];
+  for (const line of lines.slice(envPassthroughIndex + 1)) {
+    if (!line.startsWith("    - ")) break;
+    keys.push(line.slice("    - ".length));
+  }
+
+  return keys;
+}
+
 // ---------------------------------------------------------------------------
 // Determinism tests
 // ---------------------------------------------------------------------------
@@ -735,6 +758,7 @@ describe("Runtime prerequisite manifests", () => {
         "    - /opt/data/media",
         "terminal:",
         ...getExpectedDockerForwardEnvLines(),
+        ...getExpectedEnvPassthroughLines(),
         "skills:",
         "  disabled:",
         "    - github-pr-workflow",
@@ -837,12 +861,15 @@ describe("Runtime prerequisite manifests", () => {
   test("Hermes config.yaml forwards every supported process env key even when values are not configured", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     const forwardedKeys = getDockerForwardEnvKeys(manifests.configMap.data["config.yaml"]);
+    const passthroughKeys = getEnvPassthroughKeys(manifests.configMap.data["config.yaml"]);
 
-    expect(forwardedKeys).toEqual(
-      SUPPORTED_RUNTIME_ENV_DEFINITIONS
-        .filter((definition) => definition.injectAsProcessEnv)
-        .map((definition) => definition.key)
-    );
+    const expectedKeys = SUPPORTED_RUNTIME_ENV_DEFINITIONS
+      .filter((definition) => definition.injectAsProcessEnv)
+      .map((definition) => definition.key);
+    expect(forwardedKeys).toEqual(expectedKeys);
+    // env_passthrough is what the deployed `local` terminal backend actually
+    // consults (docker_forward_env only matters for the Docker backend).
+    expect(passthroughKeys).toEqual(expectedKeys);
     expect(forwardedKeys).toEqual(
       expect.arrayContaining([
         "ANTHROPIC_API_KEY",
@@ -854,6 +881,8 @@ describe("Runtime prerequisite manifests", () => {
     );
     expect(forwardedKeys).not.toContain("HERMES_HOME");
     expect(forwardedKeys).not.toContain("KUBECONFIG_B64");
+    expect(passthroughKeys).not.toContain("HERMES_HOME");
+    expect(passthroughKeys).not.toContain("KUBECONFIG_B64");
   });
 
   test("with complete Telegram agentConfig: secret env has Telegram values", () => {
@@ -892,6 +921,13 @@ describe("Runtime prerequisite manifests", () => {
       ])
     );
     expect(getDockerForwardEnvKeys(manifests.configMap.data["config.yaml"])).toEqual(
+      expect.arrayContaining([
+        "TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_HOME_CHANNEL",
+        "TELEGRAM_ALLOWED_USERS",
+      ])
+    );
+    expect(getEnvPassthroughKeys(manifests.configMap.data["config.yaml"])).toEqual(
       expect.arrayContaining([
         "TELEGRAM_BOT_TOKEN",
         "TELEGRAM_HOME_CHANNEL",
@@ -983,6 +1019,10 @@ describe("Runtime prerequisite manifests", () => {
       expect.arrayContaining(["AZURE_FOUNDRY_API_KEY", "BUFFER_API_KEY"])
     );
     expect(getDockerForwardEnvKeys(manifests.configMap.data["config.yaml"])).not.toContain("HERMES_HOME");
+    expect(getEnvPassthroughKeys(manifests.configMap.data["config.yaml"])).toEqual(
+      expect.arrayContaining(["AZURE_FOUNDRY_API_KEY", "BUFFER_API_KEY"])
+    );
+    expect(getEnvPassthroughKeys(manifests.configMap.data["config.yaml"])).not.toContain("HERMES_HOME");
   });
 
   test("with explicit Telegram allowed users: secret env uses the allowlist separately from the home channel", () => {
