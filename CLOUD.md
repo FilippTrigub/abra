@@ -119,7 +119,7 @@ The init container (same Abra image, s6-overlay ENTRYPOINT overridden by `comman
 
 `HERMES_HOME` is set to `/opt/data/profiles/abra` (profile-mode) so Hermes treats the abra profile as its working home. The main container name is `hermes`; the volume name is `hermes-data`.
 
-The StatefulSet also exposes selected Secret keys directly as process env vars for the main container. User-managed runtime env values from Settings drive the generated Secret `.env`, direct Secret keys where the registry allows them, StatefulSet env refs, and Hermes `docker_forward_env` entries.
+The StatefulSet also exposes selected Secret keys directly as process env vars for the main container. User-managed runtime env values from Settings drive the generated Secret `.env`, direct Secret keys where the registry allows them, StatefulSet env refs, and the Hermes `terminal.env_passthrough` allowlist (see "Terminal backend and env forwarding" below).
 
 Runtime env changes use the existing AKS update path. The platform patches the generated runtime Secret and related pod template, then relies on the StatefulSet rollout to restart pods. Already-running container environment variables do not hot reload, so saved Settings values become live after the update and rollout complete.
 
@@ -197,7 +197,15 @@ These are set in platform Settings and injected into the runtime Secret at deplo
 
 Settings also lets users manage supported skill/API env vars without editing Kubernetes resources directly. Saved values are encrypted in Firestore at `accounts/{authUserId}/runtime-env/current`, with immutable snapshots under `current/versions/{versionId}` and redacted audit events under `current/audit/{eventId}`.
 
-The runtime manifest generator reads decrypted values only on the server for orchestration. It writes supported values into the generated Secret `.env`, direct Secret keys where the registry marks them safe for direct env refs, the StatefulSet container env, and Hermes `docker_forward_env`. The browser only sees redacted summaries and fingerprints after save.
+The runtime manifest generator reads decrypted values only on the server for orchestration. It writes supported values into the generated Secret `.env`, direct Secret keys where the registry marks them safe for direct env refs, the StatefulSet container env, and Hermes `terminal.env_passthrough`. The browser only sees redacted summaries and fingerprints after save.
+
+### Terminal backend and env forwarding
+
+The deployed Hermes runtime has no Docker-in-Docker available (the image installs no `docker` binary/daemon, and no `docker.sock` is mounted), so it always runs the **`local`** terminal backend — `terminal.backend` is intentionally left unset in the generated `config.yaml` and Hermes defaults that to `local` (`hermes_cli/doctor.py` explicitly detects this container-mode case and logs "using local terminal backend (docker-in-docker is not configured by default)").
+
+The `local` backend (`tools/environments/local.py`) strips any env var classified as a Hermes-managed provider credential (`_HERMES_PROVIDER_ENV_BLOCKLIST`, derived from `PROVIDER_REGISTRY.api_key_env_vars` plus a hardcoded messaging/tool list — notably **`HF_TOKEN`** and **`GH_TOKEN`**) from every skill/terminal subprocess, unless the var is listed in `terminal.env_passthrough` or a skill's own `SKILL.md` frontmatter declares it via `required_environment_variables` (none of the Abra skills currently do). `terminal.docker_forward_env` is read **only** by the Docker backend (`tools/environments/docker.py`) and has **no effect** on this deployment — it mirrors the local dev profile (`~/.hermes/profiles/abra/config.yaml`, which genuinely uses `terminal.backend: docker`) but doesn't apply here.
+
+`manifest-generator.ts`'s `buildHermesProfileConfig()` therefore emits **both** `docker_forward_env` and `env_passthrough` with the same key list (`SUPPORTED_RUNTIME_ENV_DEFINITIONS` filtered by `injectAsProcessEnv`) — `env_passthrough` is what actually matters for the runtime as deployed today; `docker_forward_env` is kept only so forwarding keeps working if the backend is ever switched to `docker`.
 
 ---
 
@@ -292,6 +300,7 @@ Do not store the raw key in `auth.json` or the ConfigMap. The raw value belongs 
 | Provider authentication failed | Most likely cause: `AZURE_FOUNDRY_API_KEY` missing from Vercel → manifest generator emits empty credential pool → init container overwrites the profile's `auth.json` with an empty one on every pod start. Verify with `vercel env ls production \| grep AZURE_FOUNDRY`, then check `kubectl get secret … -o jsonpath='{.data.AZURE_FOUNDRY_API_KEY}' \| base64 -d \| sha256sum` matches `db1ad608e95d1843`. To recover the raw key: `az cognitiveservices account keys list --name azure-openai-746596 --resource-group SonaAndAtla --query key1 -o tsv` |
 | Image error | Verify `AKS_RUNTIME_IMAGE` in Vercel dashboard → Settings → Env Vars |
 | K8s auth failing | Check `KUBECONFIG_B64` is current in Vercel; re-export from AKS if expired |
+| Skill/terminal command can't see a saved API key (e.g. `HF_TOKEN`, `GH_TOKEN`) | The runtime always uses the `local` terminal backend (no Docker-in-Docker) — `local` strips Hermes-managed provider credentials unless allowlisted in `terminal.env_passthrough` (see "Terminal backend and env forwarding"). Check `kubectl exec <pod> -n abra -- grep -A3 env_passthrough /opt/data/profiles/abra/config.yaml`; if the key is missing or the section is absent entirely, the platform predates the `env_passthrough` fix (commit `fix: forward runtime env keys via terminal.env_passthrough`) — redeploy. `docker_forward_env` alone does **not** fix this. |
 | New image to deploy | Build via `az acr build -f Dockerfile.hermes`, update `AKS_RUNTIME_IMAGE` in Vercel, then `kubectl set image` both `hermes` and `init-hydration` containers on the StatefulSet |
 
 Useful safe checks, with secret values redacted manually before sharing output:
