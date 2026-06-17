@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Badge, Button, Card, Input, Label, Panel, Textarea } from "@/components/ui";
 import {
+  applyRuntimeEnvAction,
   loadRuntimeEnvSummaryAction,
   previewRuntimeEnvDotenvImport,
   saveRuntimeEnvFieldsAction,
@@ -214,6 +215,29 @@ export function RuntimeEnvCard() {
     setMessage(deployStatusLabels[nextDeployStatus]);
   }
 
+  async function handleApplyNow() {
+    setSaveStatus("applying");
+    setMessage("");
+
+    const result = await applyRuntimeEnvAction();
+    if (!result.success) {
+      setSaveStatus("error");
+      setMessage(result.error?.message ?? "Could not apply runtime environment values.");
+      return;
+    }
+
+    setSummary(result.summary);
+    setDeployStatus(mapDeploymentUpdateStatus({
+      applied: result.applied,
+      status: result.status,
+      message: result.message,
+      reason: null,
+      warning: null,
+    }));
+    setSaveStatus("success");
+    setMessage(result.message);
+  }
+
   async function handleFieldSave(e: React.FormEvent) {
     e.preventDefault();
     if (changedFieldCount === 0) return;
@@ -284,6 +308,15 @@ export function RuntimeEnvCard() {
           <Badge variant={configuredCount > 0 ? "success" : "warning"}>
             {configuredCount > 0 ? `${configuredCount} saved` : "No saved values"}
           </Badge>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={handleApplyNow}
+            disabled={busy || configuredCount === 0}
+            className={modeButtonClassName}
+          >
+            {saveStatus === "applying" ? "Applying…" : "Apply now"}
+          </Button>
         </div>
       </div>
 
