@@ -70,8 +70,8 @@ jobs:
           set -euo pipefail
           STS_LIST=$(kubectl get statefulsets -n "$NAMESPACE" -l app=abra -o name)
           if [ -z "$STS_LIST" ]; then
-            echo "No StatefulSets found with label app=abra in namespace $NAMESPACE" >&2
-            exit 1
+            echo "No live StatefulSets in namespace $NAMESPACE right now — nothing to roll out. Image is pushed and Vercel AKS_RUNTIME_IMAGE is updated for the next deployment."
+            exit 0
           fi
           for sts in $STS_LIST; do
             echo "Rolling out $sts -> $IMAGE"
