@@ -51,9 +51,10 @@ jobs:
         run: az acr build -r "$ACR_NAME" -t "abra:${{ steps.tag.outputs.tag }}" -f Dockerfile.hermes .
 
       - name: Update Vercel AKS_RUNTIME_IMAGE
-        working-directory: platform
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_63yuFRf1G2OY6nDQPI4IyaAQ
+          VERCEL_PROJECT_ID: prj_MS1g3jQ2SzC7kpr1uJRhIXQJhk2L
           IMAGE: ${{ steps.tag.outputs.image }}
         run: |
           npx --yes vercel@latest env rm AKS_RUNTIME_IMAGE production --yes --token="$VERCEL_TOKEN" || true
