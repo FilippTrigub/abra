@@ -1,0 +1,84 @@
+name: Deploy Hermes runtime image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - Dockerfile.hermes
+      - SOUL.md
+      - WORKFLOW.md
+      - AGENTS.md
+      - skills/**
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-hermes-image
+  cancel-in-progress: false
+
+env:
+  ACR_NAME: abraacr914f
+  RESOURCE_GROUP: abra-rg-foundation
+  AKS_CLUSTER: abra-aks
+  NAMESPACE: abra
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Compute image tag
+        id: tag
+        run: |
+          TAG="hermes-$(date -u +%Y%m%d%H%M)-$(git rev-parse --short HEAD)"
+          IMAGE="${ACR_NAME}.azurecr.io/abra:${TAG}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push image (ACR Tasks, remote build)
+        run: az acr build -r "$ACR_NAME" -t "abra:${{ steps.tag.outputs.tag }}" -f Dockerfile.hermes .
+
+      - name: Update Vercel AKS_RUNTIME_IMAGE
+        working-directory: platform
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          IMAGE: ${{ steps.tag.outputs.image }}
+        run: |
+          npx --yes vercel@latest env rm AKS_RUNTIME_IMAGE production --yes --token="$VERCEL_TOKEN" || true
+          echo "$IMAGE" | npx --yes vercel@latest env add AKS_RUNTIME_IMAGE production --token="$VERCEL_TOKEN"
+
+      - name: Get AKS credentials
+        run: az aks get-credentials --admin --resource-group "$RESOURCE_GROUP" --name "$AKS_CLUSTER" --overwrite-existing
+
+      - name: Roll out new image to all Abra StatefulSets
+        env:
+          IMAGE: ${{ steps.tag.outputs.image }}
+        run: |
+          set -euo pipefail
+          STS_LIST=$(kubectl get statefulsets -n "$NAMESPACE" -l app=abra -o name)
+          if [ -z "$STS_LIST" ]; then
+            echo "No StatefulSets found with label app=abra in namespace $NAMESPACE" >&2
+            exit 1
+          fi
+          for sts in $STS_LIST; do
+            echo "Rolling out $sts -> $IMAGE"
+            kubectl set image "$sts" hermes="$IMAGE" init-hydration="$IMAGE" -n "$NAMESPACE"
+            kubectl rollout status "$sts" -n "$NAMESPACE" --timeout=300s
+          done
+
+      - name: Summary
+        env:
+          IMAGE: ${{ steps.tag.outputs.image }}
+        run: echo "Deployed image ${IMAGE}" >> "$GITHUB_STEP_SUMMARY"
