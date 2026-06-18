@@ -345,12 +345,12 @@ def cmd_create(args: argparse.Namespace) -> None:
         for url in url_map.values():
             _probe_url(url)
 
-    assets: dict = {}
+    assets: list[dict] = []
     if args.image_url:
-        assets["images"] = [
-            {"url": url_map[u] if u in url_map else resolve_image_url(u)}
+        assets.extend(
+            {"image": {"url": url_map[u] if u in url_map else resolve_image_url(u)}}
             for u in args.image_url
-        ]
+        )
     if args.video_url:
         if video_uses_staging:
             video_url = stage_local_video(
@@ -363,7 +363,7 @@ def cmd_create(args: argparse.Namespace) -> None:
             _probe_url(video_url)
         else:
             video_url = url_map.get(args.video_url) or resolve_video_url(args.video_url)
-        assets["videos"] = [{"url": video_url}]
+        assets.append({"video": {"url": video_url}})
     if assets:
         post_input["assets"] = assets
 
