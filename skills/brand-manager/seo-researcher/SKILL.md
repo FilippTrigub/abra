@@ -5,7 +5,20 @@ description: Research SEO opportunities through audits, keyword discovery, traff
 
 # SEO Researcher
 
-SEO research and analysis bundle that performs audits, keyword discovery, programmatic SEO exploration, and site architecture analysis.
+SEO research and analysis bundle that performs audits, keyword discovery, programmatic SEO exploration, and site architecture analysis. Each task calls real provider APIs directly (no input files are read) and writes a real JSON result to `./output/`.
+
+## Providers
+
+Each task calls a subset of these providers, wrapped per-call so a missing key degrades gracefully (see Troubleshooting) instead of failing the whole task:
+
+- Google Search Console: `GSC_CLIENT_ID`, `GSC_CLIENT_SECRET`, `GSC_REFRESH_TOKEN`
+- Semrush: `SEMRUSH_API_KEY`
+- Ahrefs: `AHREFS_API_KEY`
+- DataForSEO: `DATAFORSEO_LOGIN`, `DATAFORSEO_PASSWORD`
+- Keywords Everywhere: `KEYWORDS_EVERYWHERE_API_KEY`
+- Plausible: `PLAUSIBLE_API_KEY`, `PLAUSIBLE_SITE_ID`
+
+At least one is required for any task to return real data; with none set, tasks still run and write output, but every `providers.*` entry will report `status: "unavailable"`.
 
 ## Usage
 
@@ -17,13 +30,13 @@ node scripts/run.mjs --task <task-name> [options]
 
 ### Available Tasks
 
-| Task | marketingSkills Name | Description |
-|------|---------------------|-------------|
-| `audit` | `seo-audit` | Comprehensive SEO site audit |
-| `aiseo` | `ai-seo` | AI-powered SEO content recommendations |
-| `pseo` | `programmatic-seo` | Programmatic SEO cluster generation |
-| `clusters` | `site-architecture` | Site architecture and clustering analysis |
-| `competitors` | `competitor-alternatives` | Competitor alternative analysis |
+| Task | Output `task` value | Description | Providers used |
+|------|---------------------|-------------|-----------------|
+| `audit` | `seo-audit` | Site audit | DataForSEO, Ahrefs, Semrush, GSC |
+| `aiseo` | `ai-seo` | Keyword/content recommendations | GSC, Semrush, Ahrefs, Plausible |
+| `pseo` | `programmatic-seo` | Keyword cluster generation | DataForSEO, Keywords Everywhere, Semrush, GSC, Ahrefs |
+| `clusters` | `site-architecture` | Site architecture and clustering analysis | Ahrefs, GSC, DataForSEO |
+| `competitors` | `competitor-alternatives` | Competitor discovery and overlap analysis | Semrush, DataForSEO, Ahrefs |
 
 ### Task-Specific Options
 
@@ -89,12 +102,7 @@ Options:
 
 ## Input / Output
 
-### Input Directory (`./input/`)
-
-Drop any reference files here:
-- `sitemap.xml` - Sitemap to analyze
-- `keywords.txt` - Initial keyword list
-- `competitors.txt` - Competitor domains list
+No task currently reads from `./input/` — all parameters are passed via CLI flags (`--domain`, `--keywords`, `--competitors`, etc.) or `config.json` defaults.
 
 ### Output Directory (`./output/`)
 
@@ -114,8 +122,6 @@ Edit `config.json` to set defaults:
   "input_dir": "./input",
   "output_dir": "./output",
   "domain": "example.com",
-  "marketingskills_api_key": "your-api-key",
-  "seo_api_key": "your-api-key",
   "output_format": "json",
   "include_sitemaps": true,
   "include_robots": true,
@@ -125,24 +131,21 @@ Edit `config.json` to set defaults:
 }
 ```
 
-CLI flags always override config.json values.
+Provider credentials are never read from `config.json` — they're read directly from the environment variables listed under Providers above. CLI flags always override config.json values.
 
-## Integration with marketingSkills
+## Provider Mapping
 
-This bundle uses marketingSkills for:
-- **SEO Audit**: Crawls site, analyzes on-page SEO, technical issues
-- **AI SEO**: Generates content recommendations using AI
-- **Programmatic SEO**: Creates keyword clusters for PSEO
-- **Site Architecture**: Analyzes URL structure and internal linking
-- **Competitor Analysis**: Compares against competitor sites
+- **SEO Audit**: DataForSEO (on-page audit), Ahrefs (top pages), Semrush (domain overview), GSC (sitemaps)
+- **AI SEO**: GSC (current rankings), Semrush (keyword opportunities), Ahrefs (content suggestions, top pages), Plausible (traffic validation)
+- **Programmatic SEO**: DataForSEO + Keywords Everywhere (keyword candidates), Semrush (keyword relationships), GSC + Ahrefs (filters out keywords already ranked for)
+- **Site Architecture**: Ahrefs (URL inventory), GSC (page list, sitemaps), DataForSEO (keyword-based content silos)
+- **Competitor Analysis**: Semrush + DataForSEO (competitor discovery), DataForSEO (keyword overlap with named competitors), Ahrefs (domain authority comparison at `--analysis-depth deep`)
 
 ## Troubleshooting
 
 ### Missing API Keys
 
-If you see authentication errors, ensure your API keys are set in `config.json` or as environment variables:
-- `MARKETINGSKILLS_API_KEY`
-- `SEO_API_KEY`
+Each task calls every relevant provider independently and catches missing-credential errors per provider — a missing key never crashes the whole task. Check the `providers` object in the output JSON: each provider reports either `{ "status": "ok", "data": ... }` or `{ "status": "unavailable", "reason": "<which env var is missing>" }`. Set the corresponding environment variable from the Providers section above and re-run.
 
 ### Rate Limiting
 

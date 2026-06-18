@@ -703,8 +703,8 @@ uv run python scripts/strategy.py --input ./input --output ./output
 
 **Usage:**
 ```bash
-cd skills/brand-manager/seo-researcher && uv sync
-uv run python scripts/seo.py --input ./input --output ./output
+cd skills/brand-manager/seo-researcher
+node scripts/run.mjs --task audit --domain example.com
 ```
 
 ---
