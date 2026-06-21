@@ -11,6 +11,7 @@ REPO_URL="${REPO_URL:-https://github.com/FilippTrigub/abra.git}"
 REPO_BRANCH="${REPO_BRANCH:-main}"
 HERMES_INSTALL_GATEWAY="${HERMES_INSTALL_GATEWAY:-1}"
 HERMES_ENV_COPY_KEYS="${ABRA_COPY_HERMES_ENV_VARS:-}"
+FORCE_FULL_INSTALL="${HERMES_FORCE_FULL_INSTALL:-0}"
 
 # When run via sudo, $HOME is /root — resolve the real user's home instead.
 if [ -n "${SUDO_USER:-}" ]; then
@@ -27,12 +28,16 @@ ENV_FILE_OVERRIDE=""
 
 usage() {
     cat <<EOF
-Usage: $0 [--env-file PATH] [--profile NAME]
+Usage: $0 [--env-file PATH] [--profile NAME] [--full]
 
 Options:
   -e, --env-file PATH   Use PATH as the source .env file for installer env values
   -p, --profile NAME    Hermes profile name (default: abra)
       --no-gateway       Do not run 'hermes -p PROFILE gateway install'
+      --full             Force the full first-time setup even if the profile already
+                         exists (regenerates SOUL.md, resyncs sessions/auth.json,
+                         reinstalls the gateway). Default for an existing profile is
+                         update mode: only skill directories and .env are refreshed.
   -h, --help            Show this help message
 
 Environment:
@@ -40,6 +45,7 @@ Environment:
                              TELEGRAM_BOT_TOKEN is always excluded; enter it when prompted
                              TELEGRAM_ALLOWED_USERS always comes from ~/.hermes/.env or ~/.openclaw/.env
   HERMES_INSTALL_GATEWAY     Set to 0 to skip gateway service installation
+  HERMES_FORCE_FULL_INSTALL  Set to 1 to behave like --full
 EOF
 }
 
@@ -78,6 +84,10 @@ parse_args() {
                 ;;
             --no-gateway)
                 HERMES_INSTALL_GATEWAY=0
+                shift
+                ;;
+            --full)
+                FORCE_FULL_INSTALL=1
                 shift
                 ;;
             -h|--help)
@@ -435,7 +445,7 @@ resolve_telegram_allowed_users() {
 skill_to_env_keys() {
     local skill="$1"
     case "${skill}" in
-        post-scheduler) printf '%s\n' "BUFFER_API_KEY" ;;
+        post-scheduler) printf '%s\n' "BUFFER_API_KEY" "BACKBLAZE_B2_KEY_ID" "BACKBLAZE_B2_APPLICATION_KEY" "BACKBLAZE_B2_BUCKET_ID" "BACKBLAZE_B2_BUCKET_NAME" ;;
         giphy) printf '%s\n' "GIPHY_API_KEY" ;;
         freesound) printf '%s\n' "FREESOUND_API_KEY" ;;
         pixabay) printf '%s\n' "PIXABAY_API_KEY" ;;
@@ -444,7 +454,7 @@ skill_to_env_keys() {
         ads-manager) printf '%s\n' "GA4_CLIENT_ID" "GA4_CLIENT_SECRET" "GA4_REFRESH_TOKEN" "GA4_PROPERTY_ID" "GOOGLE_ADS_CLIENT_ID" "GOOGLE_ADS_CLIENT_SECRET" "GOOGLE_ADS_REFRESH_TOKEN" "GOOGLE_ADS_DEVELOPER_TOKEN" "GOOGLE_ADS_CUSTOMER_ID" "GOOGLE_ADS_LOGIN_CUSTOMER_ID" ;;
         funnel-optimizer) printf '%s\n' "GA4_CLIENT_ID" "GA4_CLIENT_SECRET" "GA4_REFRESH_TOKEN" "GA4_PROPERTY_ID" "MIXPANEL_SA_USERNAME" "MIXPANEL_SECRET" "AMPLITUDE_API_KEY" "AMPLITUDE_SECRET_KEY" "HOTJAR_SITE_ID" "HOTJAR_API_TOKEN" "OPTIMIZELY_SDK_KEY" "OPTIMIZELY_ACCESS_TOKEN" "POSTHOG_PROJECT_ID" "POSTHOG_PERSONAL_API_KEY" "POSTHOG_PROJECT_TOKEN" "POSTHOG_HOST" ;;
         revenue-manager) printf '%s\n' "HUBSPOT_ACCESS_TOKEN" "SALESFORCE_CLIENT_ID" "SALESFORCE_CLIENT_SECRET" "SALESFORCE_USERNAME" "SALESFORCE_PASSWORD" "SALESFORCE_SECURITY_TOKEN" "CLOSE_API_KEY" "OUTREACH_CLIENT_ID" "OUTREACH_CLIENT_SECRET" "OUTREACH_REFRESH_TOKEN" "CROSSBEAM_API_KEY" "APOLLO_API_KEY" "CLEARBIT_API_KEY" "ZOOMINFO_USERNAME" "ZOOMINFO_PASSWORD" "CLAY_API_KEY" "SEGMENT_WRITE_KEY" ;;
-        runpod-gpu) printf '%s\n' "RUNPOD_API_KEY" "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR" "RUNPOD_ENDPOINT_ID_VIDEO_MATTE" "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR" "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT" "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER" "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER" "RUNPOD_ENDPOINT_ID_PHOTO_PICKER" ;;
+        runpod-gpu) printf '%s\n' "RUNPOD_API_KEY" "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR" "RUNPOD_ENDPOINT_ID_VIDEO_MATTE" "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR" "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT" "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER" "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER" "RUNPOD_ENDPOINT_ID_PHOTO_PICKER" "BACKBLAZE_B2_RUNPOD_KEY_ID" "BACKBLAZE_B2_RUNPOD_APPLICATION_KEY" "BACKBLAZE_B2_RUNPOD_BUCKET_NAME" ;;
         ml-models) printf '%s\n' "HF_TOKEN" "REPLICATE_API_TOKEN" ;;
         animate-image) printf '%s\n' "FAL_API_KEY" ;;
     esac
@@ -776,14 +786,33 @@ for skill_dir in sorted(host_skill_base.iterdir()):
 cfg = yaml.safe_load(config_file.read_text(encoding="utf-8")) or {}
 
 # ── Augment terminal.docker_volumes ──────────────────────────────────────────
+# Dedup by container destination (the part after the first ":"), not by exact
+# string match. Mounting two different host paths onto the same container
+# path makes `docker run` fail with exit 125 ("Duplicate mount point"). An
+# older installer revision baked in a non-profile-scoped bash_profile mount
+# (e.g. ".../sandboxes/docker/default/home/.bash_profile") whose host path
+# differed from the current profile-scoped one ("pn-home/.bash_profile") —
+# exact-string dedup let both pile up. Keying off the destination ensures the
+# current entry always replaces any stale one pointing at the same path.
+def _vol_dest(spec):
+    parts = spec.split(":")
+    return parts[1] if len(parts) >= 2 else spec
+
 terminal = cfg.setdefault("terminal", {})
 existing_vols = list(terminal.get("docker_volumes") or [])
-existing_set  = set(str(v) for v in existing_vols)
+by_dest = {}
+order = []
+for v in existing_vols:
+    dest = _vol_dest(v)
+    if dest not in by_dest:
+        order.append(dest)
+    by_dest[dest] = v
 for v in new_volumes:
-    if v not in existing_set:
-        existing_vols.append(v)
-        existing_set.add(v)
-terminal["docker_volumes"] = existing_vols
+    dest = _vol_dest(v)
+    if dest not in by_dest:
+        order.append(dest)
+    by_dest[dest] = v
+terminal["docker_volumes"] = [by_dest[d] for d in order]
 
 # ── Augment gateway.media_delivery_allow_dirs ────────────────────────────────
 gateway    = cfg.setdefault("gateway", {})
@@ -809,6 +838,10 @@ profile_env_keys = [
     "PIXABAY_API_KEY",
     "HF_TOKEN",
     "REPLICATE_API_TOKEN",
+    "BACKBLAZE_B2_KEY_ID",
+    "BACKBLAZE_B2_APPLICATION_KEY",
+    "BACKBLAZE_B2_BUCKET_ID",
+    "BACKBLAZE_B2_BUCKET_NAME",
     "RUNPOD_API_KEY",
     "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR",
     "RUNPOD_ENDPOINT_ID_VIDEO_MATTE",
@@ -817,6 +850,9 @@ profile_env_keys = [
     "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER",
     "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER",
     "RUNPOD_ENDPOINT_ID_PHOTO_PICKER",
+    "BACKBLAZE_B2_RUNPOD_KEY_ID",
+    "BACKBLAZE_B2_RUNPOD_APPLICATION_KEY",
+    "BACKBLAZE_B2_RUNPOD_BUCKET_NAME",
     "GA4_CLIENT_ID",
     "GA4_CLIENT_SECRET",
     "GA4_REFRESH_TOKEN",
@@ -935,10 +971,12 @@ write_env_file() {
     local anthropic_api_key openrouter_api_key
     local telegram_bot_token telegram_allowed_users telegram_home_channel telegram_home_channel_name
     local buffer_api_key giphy_api_key freesound_api_key pixabay_api_key
+    local backblaze_b2_key_id backblaze_b2_application_key backblaze_b2_bucket_id backblaze_b2_bucket_name
     local hf_token replicate_api_token
     local runpod_api_key
     local runpod_endpoint_video_editor runpod_endpoint_video_matte runpod_endpoint_frame_interpolator
     local runpod_endpoint_bokeh_effect runpod_endpoint_background_remover runpod_endpoint_audio_splitter runpod_endpoint_photo_picker
+    local backblaze_b2_runpod_key_id backblaze_b2_runpod_application_key backblaze_b2_runpod_bucket_name
     local ga4_client_id ga4_client_secret ga4_refresh_token ga4_property_id
     local google_ads_client_id google_ads_client_secret google_ads_refresh_token google_ads_developer_token
     local gsc_client_id gsc_client_secret gsc_refresh_token
@@ -969,6 +1007,10 @@ write_env_file() {
     # Resolve skill-dependent keys only if skill is enabled
     if [ "${SKILL_ENABLED_POST_SCHEDULER}" = "1" ]; then
         buffer_api_key="$(resolve_installer_env_value "BUFFER_API_KEY")"
+        backblaze_b2_key_id="$(resolve_installer_env_value "BACKBLAZE_B2_KEY_ID")"
+        backblaze_b2_application_key="$(resolve_installer_env_value "BACKBLAZE_B2_APPLICATION_KEY")"
+        backblaze_b2_bucket_id="$(resolve_installer_env_value "BACKBLAZE_B2_BUCKET_ID")"
+        backblaze_b2_bucket_name="$(resolve_installer_env_value "BACKBLAZE_B2_BUCKET_NAME")"
     fi
     if [ "${SKILL_ENABLED_GIPHY}" = "1" ]; then
         giphy_api_key="$(resolve_installer_env_value "GIPHY_API_KEY")"
@@ -992,6 +1034,9 @@ write_env_file() {
         runpod_endpoint_background_remover="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER")"
         runpod_endpoint_audio_splitter="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER")"
         runpod_endpoint_photo_picker="$(resolve_installer_env_value "RUNPOD_ENDPOINT_ID_PHOTO_PICKER")"
+        backblaze_b2_runpod_key_id="$(resolve_installer_env_value "BACKBLAZE_B2_RUNPOD_KEY_ID")"
+        backblaze_b2_runpod_application_key="$(resolve_installer_env_value "BACKBLAZE_B2_RUNPOD_APPLICATION_KEY")"
+        backblaze_b2_runpod_bucket_name="$(resolve_installer_env_value "BACKBLAZE_B2_RUNPOD_BUCKET_NAME")"
     fi
     if [ "${SKILL_ENABLED_ADS_MANAGER}" = "1" ] || [ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ]; then
         ga4_client_id="$(resolve_installer_env_value "GA4_CLIENT_ID")"
@@ -1083,6 +1128,10 @@ FREESOUND_API_KEY="$(escape_env_value "${freesound_api_key}")"
 PIXABAY_API_KEY="$(escape_env_value "${pixabay_api_key}")"
 HF_TOKEN="$(escape_env_value "${hf_token}")"
 REPLICATE_API_TOKEN="$(escape_env_value "${replicate_api_token}")"
+BACKBLAZE_B2_KEY_ID="$(escape_env_value "${backblaze_b2_key_id}")"
+BACKBLAZE_B2_APPLICATION_KEY="$(escape_env_value "${backblaze_b2_application_key}")"
+BACKBLAZE_B2_BUCKET_ID="$(escape_env_value "${backblaze_b2_bucket_id}")"
+BACKBLAZE_B2_BUCKET_NAME="$(escape_env_value "${backblaze_b2_bucket_name}")"
 
 # =============================================================================
 # RUNPOD GPU INFERENCE
@@ -1095,6 +1144,9 @@ RUNPOD_ENDPOINT_ID_BOKEH_EFFECT="$(escape_env_value "${runpod_endpoint_bokeh_eff
 RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER="$(escape_env_value "${runpod_endpoint_background_remover}")"
 RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER="$(escape_env_value "${runpod_endpoint_audio_splitter}")"
 RUNPOD_ENDPOINT_ID_PHOTO_PICKER="$(escape_env_value "${runpod_endpoint_photo_picker}")"
+BACKBLAZE_B2_RUNPOD_KEY_ID="$(escape_env_value "${backblaze_b2_runpod_key_id}")"
+BACKBLAZE_B2_RUNPOD_APPLICATION_KEY="$(escape_env_value "${backblaze_b2_runpod_application_key}")"
+BACKBLAZE_B2_RUNPOD_BUCKET_NAME="$(escape_env_value "${backblaze_b2_runpod_bucket_name}")"
 
 # =============================================================================
 # ANALYTICS
@@ -1248,6 +1300,20 @@ select_hermes_env_copy_keys
 select_enabled_skills
 
 # ---------------------------------------------------------------------------
+# Update mode: if the profile already exists and --full / HERMES_FORCE_FULL_INSTALL
+# wasn't requested, only refresh skill directories and .env below. SOUL.md,
+# workspace docs, sessions/channel_directory/auth.json, and the gateway install
+# are skipped so an existing, running profile isn't disturbed on every rerun.
+# ---------------------------------------------------------------------------
+
+UPDATE_MODE=0
+if [ "${FORCE_FULL_INSTALL}" != "1" ]; then
+    if (command -v hermes >/dev/null 2>&1 && hermes profile show "${PROFILE_NAME}" >/dev/null 2>&1) || [ -d "${HOST_PROFILE_DIR}" ]; then
+        UPDATE_MODE=1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # Create profile through Hermes first so aliases/services/state are registered,
 # then ensure Abra-specific directories exist.
 # ---------------------------------------------------------------------------
@@ -1256,25 +1322,31 @@ ensure_hermes_profile
 mkdir -p "${HOST_PROFILE_DIR}"/{memories,sessions,skills,skins,logs,plans,workspace,cron,hooks,home}
 echo "  ✓ profile directory: ${HOST_PROFILE_DIR}"
 
-# ---------------------------------------------------------------------------
-# SOUL.md — adapted from claw-parade SOUL.md
-# ---------------------------------------------------------------------------
-
-write_soul_md "${HOST_PROFILE_DIR}/SOUL.md"
-
-# ---------------------------------------------------------------------------
-# workspace/ — agent's working directory for file operations.
-# Holds documentation the agent reads; NOT a skills store.
-# ---------------------------------------------------------------------------
-
-if [ -f "${SOURCE_ROOT}/AGENTS.md" ]; then
-    cp "${SOURCE_ROOT}/AGENTS.md" "${HOST_PROFILE_DIR}/workspace/AGENTS.md"
-    echo "  ✓ workspace/AGENTS.md"
+if [ "${UPDATE_MODE}" = "1" ]; then
+    echo "  ✓ update mode: existing profile detected — refreshing skills + .env only (use --full to force a complete reinstall)"
 fi
 
-if [ -f "${SOURCE_ROOT}/WORKFLOW.md" ]; then
-    cp "${SOURCE_ROOT}/WORKFLOW.md" "${HOST_PROFILE_DIR}/workspace/WORKFLOW.md"
-    echo "  ✓ workspace/WORKFLOW.md"
+if [ "${UPDATE_MODE}" != "1" ]; then
+    # -----------------------------------------------------------------------
+    # SOUL.md — adapted from claw-parade SOUL.md
+    # -----------------------------------------------------------------------
+
+    write_soul_md "${HOST_PROFILE_DIR}/SOUL.md"
+
+    # -----------------------------------------------------------------------
+    # workspace/ — agent's working directory for file operations.
+    # Holds documentation the agent reads; NOT a skills store.
+    # -----------------------------------------------------------------------
+
+    if [ -f "${SOURCE_ROOT}/AGENTS.md" ]; then
+        cp "${SOURCE_ROOT}/AGENTS.md" "${HOST_PROFILE_DIR}/workspace/AGENTS.md"
+        echo "  ✓ workspace/AGENTS.md"
+    fi
+
+    if [ -f "${SOURCE_ROOT}/WORKFLOW.md" ]; then
+        cp "${SOURCE_ROOT}/WORKFLOW.md" "${HOST_PROFILE_DIR}/workspace/WORKFLOW.md"
+        echo "  ✓ workspace/WORKFLOW.md"
+    fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -1349,32 +1421,34 @@ fi
 # here take precedence and are writable.
 patch_hermes_config "${HOST_PROFILE_DIR}/config.yaml"
 
-# ---------------------------------------------------------------------------
-# sessions/sessions.json — the real source of truth for telegram channels.
-# channel_directory.json is rebuilt from this on every gateway start, so
-# copying the sessions index is what makes telegram contacts stick.
-# ---------------------------------------------------------------------------
+if [ "${UPDATE_MODE}" != "1" ]; then
+    # -----------------------------------------------------------------------
+    # sessions/sessions.json — the real source of truth for telegram channels.
+    # channel_directory.json is rebuilt from this on every gateway start, so
+    # copying the sessions index is what makes telegram contacts stick.
+    # -----------------------------------------------------------------------
 
-if [ -f "${HOST_HERMES_ROOT}/sessions/sessions.json" ]; then
-    cp "${HOST_HERMES_ROOT}/sessions/sessions.json" "${HOST_PROFILE_DIR}/sessions/sessions.json"
-    echo "  ✓ sessions/sessions.json (copied from ${HOST_HERMES_ROOT}/sessions/sessions.json)"
+    if [ -f "${HOST_HERMES_ROOT}/sessions/sessions.json" ]; then
+        cp "${HOST_HERMES_ROOT}/sessions/sessions.json" "${HOST_PROFILE_DIR}/sessions/sessions.json"
+        echo "  ✓ sessions/sessions.json (copied from ${HOST_HERMES_ROOT}/sessions/sessions.json)"
+    fi
+
+    # -----------------------------------------------------------------------
+    # channel_directory.json — copy as well so it's correct before first start
+    # -----------------------------------------------------------------------
+
+    if [ -f "${HOST_HERMES_ROOT}/channel_directory.json" ]; then
+        cp "${HOST_HERMES_ROOT}/channel_directory.json" "${HOST_PROFILE_DIR}/channel_directory.json"
+        echo "  ✓ channel_directory.json (copied from ${HOST_HERMES_ROOT}/channel_directory.json)"
+    fi
+
+    # -----------------------------------------------------------------------
+    # auth.json — default profile Portal/OAuth token store, copied for
+    # deployments that expect profile-local auth material.
+    # -----------------------------------------------------------------------
+
+    copy_default_auth_json
 fi
-
-# ---------------------------------------------------------------------------
-# channel_directory.json — copy as well so it's correct before first start
-# ---------------------------------------------------------------------------
-
-if [ -f "${HOST_HERMES_ROOT}/channel_directory.json" ]; then
-    cp "${HOST_HERMES_ROOT}/channel_directory.json" "${HOST_PROFILE_DIR}/channel_directory.json"
-    echo "  ✓ channel_directory.json (copied from ${HOST_HERMES_ROOT}/channel_directory.json)"
-fi
-
-# ---------------------------------------------------------------------------
-# auth.json — default profile Portal/OAuth token store, copied for deployments
-# that expect profile-local auth material.
-# ---------------------------------------------------------------------------
-
-copy_default_auth_json
 
 # ---------------------------------------------------------------------------
 # .env
@@ -1384,10 +1458,15 @@ write_env_file "${HOST_PROFILE_DIR}/.env"
 
 # ---------------------------------------------------------------------------
 # Gateway service — use Hermes CLI so service names and launchd/systemd files
-# match Hermes' profile-aware gateway conventions.
+# match Hermes' profile-aware gateway conventions. Skipped in update mode so an
+# already-running gateway isn't restarted on every rerun.
 # ---------------------------------------------------------------------------
 
-install_hermes_gateway
+if [ "${UPDATE_MODE}" != "1" ]; then
+    install_hermes_gateway
+else
+    echo "  ✓ gateway install skipped (update mode)"
+fi
 
 # ---------------------------------------------------------------------------
 # Cleanup temp clone if used
@@ -1400,7 +1479,11 @@ install_hermes_gateway
 # ---------------------------------------------------------------------------
 
 echo
-echo "Done! Hermes profile '${PROFILE_NAME}' installed."
+if [ "${UPDATE_MODE}" = "1" ]; then
+    echo "Done! Hermes profile '${PROFILE_NAME}' updated (skills + .env refreshed)."
+else
+    echo "Done! Hermes profile '${PROFILE_NAME}' installed."
+fi
 echo "Profile:   ${HOST_PROFILE_DIR}"
 echo "Skills:    ${HOST_PROFILE_DIR}/skills/abra"
 echo "Workspace: ${HOST_PROFILE_DIR}/workspace"

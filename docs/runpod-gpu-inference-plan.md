@@ -188,9 +188,9 @@ the endpoint ID (not the ID itself), consistent with how other API keys are hand
 | `RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER` | Endpoint for background-remover | `openclaw.json env` |
 | `RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER` | Endpoint for audio-splitter | `openclaw.json env` |
 | `RUNPOD_ENDPOINT_ID_PHOTO_PICKER` | Endpoint for photo-picker | `openclaw.json env` |
-| `BACKBLAZE_B2_RUNPOD_KEY_ID` | B2 staging bucket key ID | `runpod-b2-staging.env` |
-| `BACKBLAZE_B2_RUNPOD_APPLICATION_KEY` | B2 staging bucket app key | `runpod-b2-staging.env` |
-| `BACKBLAZE_B2_RUNPOD_BUCKET_NAME` | B2 staging bucket name | `runpod-b2-staging.env` |
+| `BACKBLAZE_B2_RUNPOD_KEY_ID` | B2 staging bucket key ID | `openclaw.json env` |
+| `BACKBLAZE_B2_RUNPOD_APPLICATION_KEY` | B2 staging bucket app key | `openclaw.json env` |
+| `BACKBLAZE_B2_RUNPOD_BUCKET_NAME` | B2 staging bucket name | `openclaw.json env` |
 | `RUNPOD_MODELS_PATH` | Mount path of the Network Volume | baked into Docker image |
 
 ---

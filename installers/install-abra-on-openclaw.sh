@@ -19,22 +19,29 @@ OPENCLAW_ENV_FILE="${HOST_OPENCLAW_DIR}/.env"
 HERMES_ENV_FILE="${HOST_HERMES_DIR}/.env"
 POST_SCHEDULER_ENV_FILE="${HOST_OPENCLAW_DIR}/post-scheduler-backblaze.env"
 POST_SCHEDULER_ENV_FILE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/post-scheduler-backblaze.env"
-BACKBLAZE_B2_RUNPOD_ENV_FILE="${HOST_OPENCLAW_DIR}/runpod-backblaze.env"
-BACKBLAZE_B2_RUNPOD_ENV_FILE_CONTAINER="${CONTAINER_OPENCLAW_DIR}/runpod-backblaze.env"
 LEGACY_POST_SCHEDULER_ENV_FILE="${AGENT_WORKSPACE_HOST}/skills/post-scheduler/.env"
 ENV_FILE_OVERRIDE=""
+FORCE_FULL_INSTALL="${ABRA_FORCE_FULL_INSTALL:-0}"
 
 usage() {
     cat <<EOF
-Usage: $0 [--env-file PATH]
+Usage: $0 [--env-file PATH] [--full]
 
 Options:
   -e, --env-file PATH   Use PATH as the source .env file for installer env values
+      --full             Force the full first-time setup even if the agent already
+                         exists (resyncs AGENTS.md/SOUL.md/WORKFLOW.md/workflows,
+                         restarts the gateway). Default for an existing agent is
+                         update mode: only skill directories and env values are
+                         refreshed.
   -h, --help            Show this help message
 
 Telegram env policy:
   TELEGRAM_BOT_TOKEN      Shell env, selected installer .env, or visible prompt only
   TELEGRAM_ALLOWED_USERS  Always copied from ~/.hermes/.env or ~/.openclaw/.env
+
+Environment:
+  ABRA_FORCE_FULL_INSTALL  Set to 1 to behave like --full
 EOF
 }
 
@@ -52,6 +59,10 @@ parse_args() {
                 ;;
             --env-file=*)
                 ENV_FILE_OVERRIDE="${1#*=}"
+                shift
+                ;;
+            --full)
+                FORCE_FULL_INSTALL=1
                 shift
                 ;;
             -h|--help)
@@ -1143,21 +1154,14 @@ configure_runpod_b2_staging_env() {
         return 0
     fi
 
-    mkdir -p "$(dirname "${BACKBLAZE_B2_RUNPOD_ENV_FILE}")"
-
-    local existing_key_id existing_app_key existing_bucket_name
-    existing_key_id="$(read_env_value "${BACKBLAZE_B2_RUNPOD_ENV_FILE}" "BACKBLAZE_B2_RUNPOD_KEY_ID")"
-    existing_app_key="$(read_env_value "${BACKBLAZE_B2_RUNPOD_ENV_FILE}" "BACKBLAZE_B2_RUNPOD_APPLICATION_KEY")"
-    existing_bucket_name="$(read_env_value "${BACKBLAZE_B2_RUNPOD_ENV_FILE}" "BACKBLAZE_B2_RUNPOD_BUCKET_NAME")"
-
-    local b2_key_id="${BACKBLAZE_B2_RUNPOD_KEY_ID:-${existing_key_id}}"
-    local b2_app_key="${BACKBLAZE_B2_RUNPOD_APPLICATION_KEY:-${existing_app_key}}"
-    local b2_bucket_name="${BACKBLAZE_B2_RUNPOD_BUCKET_NAME:-${existing_bucket_name}}"
+    local b2_key_id b2_app_key b2_bucket_name
+    b2_key_id="${BACKBLAZE_B2_RUNPOD_KEY_ID:-$(resolve_installer_env_value "BACKBLAZE_B2_RUNPOD_KEY_ID")}"
+    b2_app_key="${BACKBLAZE_B2_RUNPOD_APPLICATION_KEY:-$(resolve_installer_env_value "BACKBLAZE_B2_RUNPOD_APPLICATION_KEY")}"
+    b2_bucket_name="${BACKBLAZE_B2_RUNPOD_BUCKET_NAME:-$(resolve_installer_env_value "BACKBLAZE_B2_RUNPOD_BUCKET_NAME")}"
 
     if [ -t 0 ]; then
         echo
         echo "Backblaze B2 staging bucket for RunPod GPU inference:"
-        echo "  File: ${BACKBLAZE_B2_RUNPOD_ENV_FILE}"
         echo "  Create bucket first: b2 create-bucket runpod-staging allPrivate"
         read -r -p "BACKBLAZE_B2_RUNPOD_KEY_ID [${b2_key_id}]: " reply
         b2_key_id="${reply:-${b2_key_id}}"
@@ -1167,17 +1171,11 @@ configure_runpod_b2_staging_env() {
         b2_bucket_name="${reply:-${b2_bucket_name}}"
     fi
 
-    cat > "${BACKBLAZE_B2_RUNPOD_ENV_FILE}" <<EOF
-# Backblaze B2 staging bucket for RunPod GPU inference file transfer.
-# Stored next to openclaw.json and referenced via env.BACKBLAZE_B2_RUNPOD_ENV_FILE.
-# Create bucket: b2 create-bucket runpod-staging allPrivate
-BACKBLAZE_B2_RUNPOD_KEY_ID="$(escape_env_value "${b2_key_id}")"
-BACKBLAZE_B2_RUNPOD_APPLICATION_KEY="$(escape_env_value "${b2_app_key}")"
-BACKBLAZE_B2_RUNPOD_BUCKET_NAME="$(escape_env_value "${b2_bucket_name}")"
-EOF
+    INSTALL_BACKBLAZE_B2_RUNPOD_KEY_ID="${b2_key_id}"
+    INSTALL_BACKBLAZE_B2_RUNPOD_APPLICATION_KEY="${b2_app_key}"
+    INSTALL_BACKBLAZE_B2_RUNPOD_BUCKET_NAME="${b2_bucket_name}"
 
-    echo "  ✓ RunPod B2 staging env file: ${BACKBLAZE_B2_RUNPOD_ENV_FILE}"
-    echo "    openclaw.json env.BACKBLAZE_B2_RUNPOD_ENV_FILE -> ${BACKBLAZE_B2_RUNPOD_ENV_FILE_CONTAINER}"
+    echo "  ✓ RunPod B2 staging credentials resolved (persisted in openclaw.json env)"
 }
 
 configure_post_scheduler_env() {
@@ -1278,7 +1276,25 @@ echo
 command -v jq >/dev/null 2>&1 || { echo "jq required: brew install jq"; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 required to scaffold post-scheduler env values"; exit 1; }
 
+# ---------------------------------------------------------------------------
+# Update mode: if the agent already exists and --full / ABRA_FORCE_FULL_INSTALL
+# wasn't requested, only refresh skill directories and env values below.
+# AGENTS.md/SOUL.md/WORKFLOW.md, workflows/, and the gateway restart are
+# skipped so a running agent isn't disturbed on every rerun.
+# ---------------------------------------------------------------------------
+
+UPDATE_MODE=0
+if [ "${FORCE_FULL_INSTALL}" != "1" ]; then
+    if [ -d "${AGENT_WORKSPACE_HOST}" ] || { [ -f "${CONFIG_FILE}" ] && jq -e --arg id "${AGENT_NAME}" '.agents.list[]? | select(.id == $id)' "${CONFIG_FILE}" >/dev/null 2>&1; }; then
+        UPDATE_MODE=1
+    fi
+fi
+
 mkdir -p "${AGENT_WORKSPACE_HOST}"
+
+if [ "${UPDATE_MODE}" = "1" ]; then
+    echo "  ✓ update mode: existing agent detected — refreshing skills + env only (use --full to force a complete reinstall)"
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PARENT="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -1324,18 +1340,21 @@ fi
 # Select which skills to enable before any processing
 select_enabled_skills
 
-cp "${SOURCE_ROOT}/AGENTS.md"   "${AGENT_WORKSPACE_HOST}/AGENTS.md"
-cp "${SOURCE_ROOT}/SOUL.md"     "${AGENT_WORKSPACE_HOST}/SOUL.md"
-cp "${SOURCE_ROOT}/WORKFLOW.md" "${AGENT_WORKSPACE_HOST}/WORKFLOW.md"
-echo "  ✓ AGENTS.md"
-echo "  ✓ SOUL.md"
-echo "  ✓ WORKFLOW.md"
-
 WORKFLOWS_DEST="${AGENT_WORKSPACE_HOST}/workflows"
-mkdir -p "${WORKFLOWS_DEST}"
-rm -rf "${WORKFLOWS_DEST}"/*
-cp -r "${SOURCE_ROOT}/workflows"/* "${WORKFLOWS_DEST}/"
-echo "  ✓ workflows"
+
+if [ "${UPDATE_MODE}" != "1" ]; then
+    cp "${SOURCE_ROOT}/AGENTS.md"   "${AGENT_WORKSPACE_HOST}/AGENTS.md"
+    cp "${SOURCE_ROOT}/SOUL.md"     "${AGENT_WORKSPACE_HOST}/SOUL.md"
+    cp "${SOURCE_ROOT}/WORKFLOW.md" "${AGENT_WORKSPACE_HOST}/WORKFLOW.md"
+    echo "  ✓ AGENTS.md"
+    echo "  ✓ SOUL.md"
+    echo "  ✓ WORKFLOW.md"
+
+    mkdir -p "${WORKFLOWS_DEST}"
+    rm -rf "${WORKFLOWS_DEST}"/*
+    cp -r "${SOURCE_ROOT}/workflows"/* "${WORKFLOWS_DEST}/"
+    echo "  ✓ workflows"
+fi
 
 SKILL_SOURCE="${SOURCE_ROOT}/skills"
 
@@ -1404,7 +1423,6 @@ if ! jq -e ".bindings[]? | select(.agentId == \"${AGENT_NAME}\")" "${CONFIG_FILE
 fi
 
 jq --arg path "${POST_SCHEDULER_ENV_FILE_CONTAINER}" '.env.BACKBLAZE_B2_ENV_FILE = $path' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
-jq --arg path "${BACKBLAZE_B2_RUNPOD_ENV_FILE_CONTAINER}" '.env.BACKBLAZE_B2_RUNPOD_ENV_FILE = $path' "${CONFIG_FILE}" > "${CONFIG_FILE}.tmp" && mv "${CONFIG_FILE}.tmp" "${CONFIG_FILE}"
 
 set_config_env_value "TELEGRAM_BOT_TOKEN" "${INSTALL_TELEGRAM_BOT_TOKEN}"
 set_config_env_value "TELEGRAM_ALLOWED_USERS" "${INSTALL_TELEGRAM_ALLOWED_USERS}"
@@ -1423,6 +1441,10 @@ set_config_env_value "TELEGRAM_ALLOWED_USERS" "${INSTALL_TELEGRAM_ALLOWED_USERS}
 [ "${SKILL_ENABLED_RUNPOD_GPU}" = "1" ] && set_config_env_value "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER" "${INSTALL_RUNPOD_ENDPOINT_BACKGROUND_REMOVER}"
 [ "${SKILL_ENABLED_RUNPOD_GPU}" = "1" ] && set_config_env_value "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER" "${INSTALL_RUNPOD_ENDPOINT_AUDIO_SPLITTER}"
 [ "${SKILL_ENABLED_RUNPOD_GPU}" = "1" ] && set_config_env_value "RUNPOD_ENDPOINT_ID_PHOTO_PICKER" "${INSTALL_RUNPOD_ENDPOINT_PHOTO_PICKER}"
+
+set_config_env_value "BACKBLAZE_B2_RUNPOD_KEY_ID" "${INSTALL_BACKBLAZE_B2_RUNPOD_KEY_ID}"
+set_config_env_value "BACKBLAZE_B2_RUNPOD_APPLICATION_KEY" "${INSTALL_BACKBLAZE_B2_RUNPOD_APPLICATION_KEY}"
+set_config_env_value "BACKBLAZE_B2_RUNPOD_BUCKET_NAME" "${INSTALL_BACKBLAZE_B2_RUNPOD_BUCKET_NAME}"
 
 if [ "${SKILL_ENABLED_ADS_MANAGER}" = "1" ] || [ "${SKILL_ENABLED_FUNNEL_OPTIMIZER}" = "1" ]; then
     set_config_env_value "GA4_CLIENT_ID" "${INSTALL_GA4_CLIENT_ID}"
@@ -1491,10 +1513,18 @@ fi
 
 [ "${SKILL_ENABLED_ANIMATE_IMAGE}" = "1" ] && set_config_env_value "FAL_API_KEY" "${INSTALL_FAL_API_KEY}"
 
-openclaw gateway restart || true
+if [ "${UPDATE_MODE}" != "1" ]; then
+    openclaw gateway restart || true
+else
+    echo "  ✓ gateway restart skipped (update mode) — run 'openclaw gateway restart' to pick up the refreshed skills/env"
+fi
 
 echo
-echo "Done! Agent '${AGENT_DISPLAY_NAME}' installed."
+if [ "${UPDATE_MODE}" = "1" ]; then
+    echo "Done! Agent '${AGENT_DISPLAY_NAME}' updated (skills + env refreshed)."
+else
+    echo "Done! Agent '${AGENT_DISPLAY_NAME}' installed."
+fi
 echo "Workspace: ${AGENT_WORKSPACE_HOST}"
 echo "Workflows: ${WORKFLOWS_DEST}"
 echo "Skills: ${SKILLS_DEST}"
