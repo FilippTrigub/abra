@@ -122,6 +122,9 @@ export const RUNTIME_ENV_DEFINITIONS = [
   runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER", "RunPod background remover endpoint", "runpod", "RunPod endpoint ID for background removal.", nonSecret),
   runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER", "RunPod audio splitter endpoint", "runpod", "RunPod endpoint ID for audio splitting.", nonSecret),
   runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_PHOTO_PICKER", "RunPod photo picker endpoint", "runpod", "RunPod endpoint ID for photo scoring.", nonSecret),
+  runtimeEnvDefinition("BACKBLAZE_B2_RUNPOD_KEY_ID", "Backblaze B2 RunPod key ID", "runpod", "Backblaze B2 application key ID used by RunPod staging.", nonSecret),
+  runtimeEnvDefinition("BACKBLAZE_B2_RUNPOD_APPLICATION_KEY", "Backblaze B2 RunPod application key", "runpod", "Backblaze B2 application key used by RunPod staging."),
+  runtimeEnvDefinition("BACKBLAZE_B2_RUNPOD_BUCKET_NAME", "Backblaze B2 RunPod bucket name", "runpod", "Backblaze B2 bucket name used by RunPod staging.", nonSecret),
 
   runtimeEnvDefinition("GA4_CLIENT_ID", "GA4 client ID", "analytics", "Google Analytics 4 OAuth client ID.", nonSecret),
   runtimeEnvDefinition("GA4_CLIENT_SECRET", "GA4 client secret", "analytics", "Google Analytics 4 OAuth client secret."),
