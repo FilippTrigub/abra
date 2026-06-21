@@ -10,6 +10,7 @@ export const RUNTIME_ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export type RuntimeEnvGroup =
   | "llm"
+  | "observability"
   | "telegram"
   | "utilities"
   | "contentMedia"
@@ -79,6 +80,10 @@ export const RUNTIME_ENV_DEFINITIONS = [
   runtimeEnvDefinition("OPENROUTER_API_KEY", "OpenRouter API key", "llm", "OpenRouter model routing provider key."),
   runtimeEnvDefinition("AZURE_FOUNDRY_API_KEY", "Azure Foundry API key", "llm", "Compatibility key used by the current runtime manifest hydration."),
 
+  runtimeEnvDefinition("LANGFUSE_HOST", "Langfuse host", "observability", "Langfuse instance base URL for LLM tracing.", nonSecret),
+  runtimeEnvDefinition("LANGFUSE_PUBLIC_KEY", "Langfuse public key", "observability", "Langfuse project public key.", nonSecret),
+  runtimeEnvDefinition("LANGFUSE_SECRET_KEY", "Langfuse secret key", "observability", "Langfuse project secret key."),
+
   runtimeEnvDefinition("TELEGRAM_BOT_TOKEN", "Telegram bot token", "telegram", "Bot token used by the Hermes Telegram gateway."),
   runtimeEnvDefinition("TELEGRAM_ALLOWED_USERS", "Telegram allowed users", "telegram", "Comma-separated allowlist of Telegram users permitted to access the bot.", nonSecret),
   runtimeEnvDefinition("TELEGRAM_HOME_CHANNEL", "Telegram home channel", "telegram", "Default Telegram channel or chat identifier.", nonSecret),
@@ -104,6 +109,10 @@ export const RUNTIME_ENV_DEFINITIONS = [
   runtimeEnvDefinition("HF_TOKEN", "Hugging Face token", "contentMedia", "Hugging Face token used by ML model skills."),
   runtimeEnvDefinition("REPLICATE_API_TOKEN", "Replicate API token", "contentMedia", "Replicate token used by hosted model skills."),
   runtimeEnvDefinition("FAL_API_KEY", "fal.ai API key", "contentMedia", "fal.ai key used by image animation skills."),
+  runtimeEnvDefinition("BACKBLAZE_B2_KEY_ID", "Backblaze B2 key ID", "contentMedia", "Backblaze B2 application key ID used by post scheduling video staging.", nonSecret),
+  runtimeEnvDefinition("BACKBLAZE_B2_APPLICATION_KEY", "Backblaze B2 application key", "contentMedia", "Backblaze B2 application key used by post scheduling video staging."),
+  runtimeEnvDefinition("BACKBLAZE_B2_BUCKET_ID", "Backblaze B2 bucket ID", "contentMedia", "Backblaze B2 bucket identifier used by post scheduling video staging.", nonSecret),
+  runtimeEnvDefinition("BACKBLAZE_B2_BUCKET_NAME", "Backblaze B2 bucket name", "contentMedia", "Backblaze B2 bucket name used by post scheduling video staging.", nonSecret),
 
   runtimeEnvDefinition("RUNPOD_API_KEY", "RunPod API key", "runpod", "RunPod API key for GPU inference endpoints."),
   runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_VIDEO_EDITOR", "RunPod video editor endpoint", "runpod", "RunPod endpoint ID for video editing.", nonSecret),
@@ -242,6 +251,7 @@ export function getRuntimeEnvDefinitionsByGroup(
 export function getRuntimeEnvGroupOrder(): RuntimeEnvGroup[] {
   return [
     "llm",
+    "observability",
     "telegram",
     "utilities",
     "contentMedia",
@@ -258,6 +268,7 @@ export function getRuntimeEnvGroupOrder(): RuntimeEnvGroup[] {
 export function getRuntimeEnvGroupLabel(group: RuntimeEnvGroup): string {
   const labels: Record<RuntimeEnvGroup, string> = {
     llm: "LLM providers",
+    observability: "LLM observability",
     telegram: "Telegram",
     utilities: "Utilities",
     contentMedia: "Content and media skills",
