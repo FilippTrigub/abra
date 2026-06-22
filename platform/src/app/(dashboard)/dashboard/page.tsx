@@ -56,18 +56,34 @@ export default async function DashboardPage() {
   const telegramConfigured = await hasAgentConfig(user.id);
 
   return (
-    <div className="space-y-10">
-      <h1 className="text-h4 font-display font-bold text-white">Dashboard</h1>
+    <div className="space-y-8 sm:space-y-10">
+      <section className="animate-fade-up space-y-3">
+        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-shell-signal)]">
+          Control room
+        </p>
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+          <div className="max-w-2xl">
+            <h1 className="text-h3 font-display font-bold tracking-[-0.03em] text-white sm:text-h2">
+              Dashboard
+            </h1>
+            <p className="mt-3 text-body text-zinc-400">
+              Start, stop, and review the Abra runtime without losing sight of what still needs approval.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {feedLoadError && (
         <FeedErrorBanner message={feedLoadError} />
       )}
 
-      <DeploymentConsole
-        initialDeployment={currentDeployment}
-        persistenceWarning={feedWarning}
-        telegramConfigured={telegramConfigured}
-      />
+      <div className="animate-fade-up stagger-2">
+        <DeploymentConsole
+          initialDeployment={currentDeployment}
+          persistenceWarning={feedWarning}
+          telegramConfigured={telegramConfigured}
+        />
+      </div>
 
       <div className="h-px bg-[color-mix(in_srgb,var(--color-shell-border-strong)_82%,transparent)]" />
       <div className="flex items-center justify-between gap-3 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-500 sm:text-[12px]">

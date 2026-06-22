@@ -128,13 +128,14 @@ export function DeploymentConsole({
         <Button
           type="button"
           variant="ghost"
+          className="w-full sm:w-auto"
           disabled={deletePending}
           onClick={() => setConfirmingStopFor(null)}
         >
           Cancel
         </Button>
-        <form action={deleteAction}>
-          <Button type="submit" variant="danger" size="lg" disabled={deletePending}>
+        <form action={deleteAction} className="flex sm:inline-flex">
+          <Button type="submit" variant="danger" size="lg" className="w-full sm:w-auto" disabled={deletePending}>
             {deletePending ? "Stopping…" : "Confirm stop"}
           </Button>
         </form>
@@ -142,8 +143,8 @@ export function DeploymentConsole({
     );
   } else if (shouldShowStart) {
     actionRow = (
-      <form action={deployAction}>
-        <Button type="submit" size="lg" disabled={deployPending || !telegramConfigured}>
+      <form action={deployAction} className="flex sm:inline-flex">
+        <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={deployPending || !telegramConfigured}>
           {deployPending ? "Starting…" : "Start"}
         </Button>
       </form>
@@ -155,6 +156,7 @@ export function DeploymentConsole({
         type="button"
         variant={startingUp ? "primary" : "danger"}
         size="lg"
+        className="w-full sm:w-auto"
         disabled={!canStop(deployment)}
         onClick={() => setConfirmingStopFor(deployment?.id ?? null)}
       >
@@ -164,11 +166,13 @@ export function DeploymentConsole({
   }
 
   return (
-    <Card className="animate-fade-up" id="deployment-request">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-shell-border-strong)] pb-6">
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">Abra instance</p>
-          <h2 className="mt-4 text-h4 font-display font-bold text-white">
+    <Card id="deployment-request" className="relative overflow-hidden">
+      <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-brand-500/10 blur-3xl" />
+
+      <div className="relative flex flex-wrap items-start justify-between gap-5 border-b border-white/10 pb-7">
+        <div className="min-w-0">
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-shell-signal)]">Abra instance</p>
+          <h2 className="mt-4 max-w-2xl text-h4 font-display font-bold tracking-[-0.025em] text-white">
             {deployment ? deployment.request.name : "No instance deployed"}
           </h2>
         </div>
@@ -206,15 +210,15 @@ export function DeploymentConsole({
         </Panel>
       )}
 
-      <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+      <div className="relative mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
         {actionRow}
-        <Button variant="ghost" href="/dashboard/settings">
+        <Button variant="ghost" href="/dashboard/settings" className="w-full sm:w-auto">
           Settings
         </Button>
       </div>
 
       {shouldShowStart && !telegramConfigured && (
-        <p className="mt-3 text-center text-caption text-zinc-500">
+        <p className="mt-4 text-center text-caption text-zinc-500">
           Set up Telegram in{" "}
           <a href="/dashboard/settings#bot-setup" className="underline hover:text-zinc-300">
             Settings
@@ -224,7 +228,7 @@ export function DeploymentConsole({
       )}
 
       {deployment && (
-        <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-500">
+        <p className="mt-7 border-t border-white/10 pt-5 text-center font-mono text-[11px] uppercase tracking-[0.13em] text-zinc-500">
           Created {formatTimestamp(deployment.createdAt)} · Updated {formatTimestamp(deployment.updatedAt)}
         </p>
       )}

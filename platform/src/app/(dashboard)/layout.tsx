@@ -38,7 +38,7 @@ export default async function DashboardLayout({
   const hasAccount = !!account;
   const subInfo = getSubscriptionInfo(account);
   const navItemClassName =
-    "min-h-10 rounded-sm px-4 py-2 text-[11px] sm:text-[12px]";
+    "min-h-10 rounded-xl px-4 py-2 text-[11px] sm:text-[12px]";
 
   return (
     <div className="min-h-screen bg-[var(--color-shell-canvas)] text-[var(--color-shell-text-strong)]">
@@ -47,7 +47,7 @@ export default async function DashboardLayout({
         <div className="mx-auto flex min-h-[4.5rem] max-w-screen-xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-3 text-[var(--color-shell-text-strong)]">
-              <span className="flex h-9 w-9 items-center justify-center rounded-md border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-signal)]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/12 bg-white/[0.035] text-[var(--color-shell-signal)] shadow-[0_16px_40px_-32px_var(--color-shell-signal)]">
                 <svg
                   className="h-4 w-4"
                   viewBox="0 0 16 16"
@@ -72,7 +72,7 @@ export default async function DashboardLayout({
                 ABRA
               </span>
             </div>
-            <nav className="hidden items-center gap-1 border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_86%,black)] p-1 sm:flex">
+            <nav className="hidden items-center gap-1 rounded-2xl border border-white/10 bg-[color-mix(in_srgb,var(--color-shell-panel)_86%,black)] p-1 sm:flex">
               {DASHBOARD_NAV_ITEMS.map((item) => (
                 <NavItem
                   key={item.href}
@@ -89,7 +89,7 @@ export default async function DashboardLayout({
             {isNew && (
               <Badge
                 variant="brand"
-                className="rounded-sm border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] px-3 py-1 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-shell-signal)]"
+                className="border-white/12 bg-white/[0.035] px-3 py-1 font-mono text-[11px] uppercase tracking-[0.13em] text-[var(--color-shell-signal)]"
               >
                 Welcome aboard!
               </Badge>
@@ -100,7 +100,7 @@ export default async function DashboardLayout({
       </header>
 
       <nav className="border-b border-[var(--color-shell-border-strong)] bg-[var(--color-shell-canvas)] px-4 py-3 sm:hidden">
-        <div className="mx-auto flex max-w-screen-xl items-center gap-1 border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_86%,black)] p-1">
+        <div className="mx-auto flex max-w-screen-xl items-center gap-1 rounded-2xl border border-white/10 bg-[color-mix(in_srgb,var(--color-shell-panel)_86%,black)] p-1">
           {DASHBOARD_NAV_ITEMS.map((item) => (
             <NavItem
               key={item.href}
@@ -134,7 +134,7 @@ export default async function DashboardLayout({
       )}
 
       {/* ── Main content ────────────────────────────────── */}
-      <main className="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto max-w-screen-xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8">
         {children}
       </main>
     </div>

@@ -8,7 +8,7 @@ interface AccountMenuProps {
 }
 
 const menuItemClassName =
-  "focus-ring-brand flex w-full items-center px-4 py-2.5 text-left font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-300 transition-colors duration-150 ease-smooth hover:bg-white/[0.03] hover:text-white";
+  "focus-ring-brand flex w-full items-center px-4 py-2.5 text-left font-mono text-[11px] uppercase tracking-[0.13em] text-zinc-300 transition-colors duration-150 ease-smooth hover:bg-white/[0.045] hover:text-white";
 
 export function AccountMenu({ displayName }: AccountMenuProps) {
   const [open, setOpen] = useState(false);
@@ -50,7 +50,7 @@ export function AccountMenu({ displayName }: AccountMenuProps) {
         aria-expanded={open}
         aria-label="Account menu"
         onClick={() => setOpen((value) => !value)}
-        className="focus-ring-brand flex items-center gap-2 rounded-sm px-2 py-1.5 font-mono text-[11px] uppercase tracking-[0.14em] text-white/54 transition-colors duration-150 ease-smooth hover:bg-white/[0.03] hover:text-white"
+        className="focus-ring-brand flex min-h-10 items-center gap-2 rounded-xl border border-transparent px-3 py-2 font-mono text-[11px] uppercase tracking-[0.13em] text-white/60 transition-colors duration-150 ease-smooth hover:border-white/10 hover:bg-white/[0.04] hover:text-white"
       >
         <span title={displayName} className="max-w-[7rem] truncate sm:max-w-[10rem] lg:max-w-none">
           {displayName}
@@ -76,7 +76,7 @@ export function AccountMenu({ displayName }: AccountMenuProps) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+var(--s-2))] z-[var(--z-dropdown)] w-48 rounded-sm border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_86%,black)] py-1 shadow-none"
+          className="absolute right-0 top-[calc(100%+var(--s-2))] z-[var(--z-dropdown)] w-48 rounded-2xl border border-white/12 bg-[color-mix(in_srgb,var(--color-shell-panel)_88%,black)] py-2 shadow-[0_22px_70px_-48px_var(--color-brand-300)]"
         >
           <a
             href="/dashboard/deployments"
