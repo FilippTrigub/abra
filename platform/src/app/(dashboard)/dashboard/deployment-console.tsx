@@ -134,7 +134,7 @@ export function DeploymentConsole({
           Cancel
         </Button>
         <form action={deleteAction}>
-          <Button type="submit" variant="danger" disabled={deletePending}>
+          <Button type="submit" variant="danger" size="lg" disabled={deletePending}>
             {deletePending ? "Stopping…" : "Confirm stop"}
           </Button>
         </form>
@@ -143,7 +143,7 @@ export function DeploymentConsole({
   } else if (shouldShowStart) {
     actionRow = (
       <form action={deployAction}>
-        <Button type="submit" disabled={deployPending || !telegramConfigured}>
+        <Button type="submit" size="lg" disabled={deployPending || !telegramConfigured}>
           {deployPending ? "Starting…" : "Start"}
         </Button>
       </form>
@@ -154,6 +154,7 @@ export function DeploymentConsole({
       <Button
         type="button"
         variant={startingUp ? "primary" : "danger"}
+        size="lg"
         disabled={!canStop(deployment)}
         onClick={() => setConfirmingStopFor(deployment?.id ?? null)}
       >
@@ -174,21 +175,6 @@ export function DeploymentConsole({
         <Badge variant={badge.variant} className={transitioning ? "animate-pulse-slow" : ""}>
           {badge.label}
         </Badge>
-      </div>
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <Panel bordered muted className="rounded-sm">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">Created</p>
-          <p className="mt-2 text-caption text-white">
-            {deployment ? formatTimestamp(deployment.createdAt) : "Never"}
-          </p>
-        </Panel>
-        <Panel bordered muted className="rounded-sm">
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">Last update</p>
-          <p className="mt-2 text-caption text-white">
-            {deployment ? formatTimestamp(deployment.updatedAt) : "Never"}
-          </p>
-        </Panel>
       </div>
 
       {deployment?.errorMessage && (
@@ -234,6 +220,12 @@ export function DeploymentConsole({
             Settings
           </a>{" "}
           to enable Start.
+        </p>
+      )}
+
+      {deployment && (
+        <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-500">
+          Created {formatTimestamp(deployment.createdAt)} · Updated {formatTimestamp(deployment.updatedAt)}
         </p>
       )}
     </Card>

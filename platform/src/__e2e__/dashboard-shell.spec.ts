@@ -122,12 +122,12 @@ test.beforeEach(async ({ context }) => {
 });
 
 test.describe("Authenticated dashboard shell", () => {
-  test("should render the dashboard command center on /dashboard", async ({ page }) => {
+  test("should render the dashboard shell on /dashboard", async ({ page }) => {
     await page.goto("/dashboard");
 
     await expect(page).toHaveURL(/(?:\/en)?\/dashboard$/);
     await expect(
-      page.getByRole("heading", { name: "Your brand command center" }),
+      page.getByRole("heading", { name: "Dashboard", exact: true }),
     ).toBeVisible();
     // No Telegram config seeded for this test user, so Start is disabled
     // until Telegram is configured in Settings.

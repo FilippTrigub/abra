@@ -57,19 +57,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-10">
-      <section className="animate-fade-up overflow-hidden border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_78%,black)] text-[var(--color-shell-text-strong)]">
-        <div className="px-6 py-7 md:px-8 md:py-8 lg:px-10 lg:py-10">
-          <span className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--color-shell-signal)] sm:text-[13px]">
-            Welcome back
-          </span>
-          <h1 className="mt-5 max-w-3xl text-[2.75rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white md:text-[3.5rem]">
-            Your brand command center
-          </h1>
-          <p className="mt-5 max-w-2xl text-[1.05rem] leading-7 text-zinc-300 md:text-[1.15rem]">
-            Start one Abra runtime for your account, monitor its status, and stop it when you want to replace the instance.
-          </p>
-        </div>
-      </section>
+      <h1 className="text-h4 font-display font-bold text-white">Dashboard</h1>
 
       {feedLoadError && (
         <FeedErrorBanner message={feedLoadError} />
