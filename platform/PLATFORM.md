@@ -36,8 +36,12 @@ src/
   lib/
     auth/               session + Firebase auth helpers
     firebase/           Admin SDK + client config
-    agent-config/       Telegram bot token/channel (legacy single-doc config)
-    runtime-env/        user-managed skill/API env vars (encrypted at rest)
+    agent-config/       Telegram bot identity (token/home channel/allowed
+                        users) — the sole source for Telegram; gates deploy
+                        via hasAgentConfig()
+    runtime-env/        user-managed skill/API env vars (encrypted at rest).
+                        Telegram identity keys are reserved here and rejected
+                        on save/import so they can't shadow agent-config
     orchestration/      deployment adapters (AKS in prod, mock in local dev)
     deployments.ts      deployment record CRUD + dispatch
     platform-account.ts account bootstrap, subscription info
@@ -74,10 +78,18 @@ dashboard hero above it is a status/CTA summary computed server-side from
 `router.refresh()` after actions and status-changing polls so it doesn't go
 stale relative to the client-driven console below it.
 
-**Settings** — two functional cards: Telegram bot connection (same shared
-form as the dashboard) and Runtime environment (user-managed skill/API keys,
-field entry or `.env` paste-and-preview import, encrypted at rest — see
-`lib/runtime-env`).
+**Settings** — four sections, ordered by necessity (`(dashboard)/dashboard/settings/`):
+`bot-setup-card.tsx` (Telegram, required to deploy, same shared `TelegramBotForm`
+as the dashboard), `publishing-card.tsx` (Buffer — the one optional key that's
+functionally critical, since it's what turns an approved draft into a
+scheduled post), `model-provider-card.tsx` (explains the Azure Foundry
+platform default and exposes an optional override), and
+`optional-integrations-card.tsx` (every other provider group from the
+registry, collapsed `Disclosure`s with a one-line "what this unlocks"
+summary, plus the field-entry/`.env` paste-and-preview import modes,
+encrypted at rest — see `lib/runtime-env`). The registry
+(`lib/runtime-env/definitions.ts`) is the source of truth for grouping,
+necessity, and copy.
 
 ## Local development
 
