@@ -129,7 +129,9 @@ test.describe("Authenticated dashboard shell", () => {
     await expect(
       page.getByRole("heading", { name: "Your brand command center" }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Start" })).toBeVisible();
+    // No Telegram config seeded for this test user, so the hero CTA is a
+    // jump link to the deploy-gating step rather than a live submit button.
+    await expect(page.getByRole("link", { name: "Set up Telegram to deploy" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Logs" }).first()).toBeVisible();
   });
 
@@ -137,10 +139,8 @@ test.describe("Authenticated dashboard shell", () => {
     await page.goto("/dashboard/settings");
 
     await expect(page).toHaveURL(/(?:\/en)?\/dashboard\/settings$/);
-    await expect(page.getByRole("heading", { name: "Dashboard settings" })).toBeVisible();
-    await expect(page.getByLabel("Default deployment environment")).toBeVisible();
-    await expect(page.getByLabel("Auto-poll deployment status")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Reset to defaults" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Save changes" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Telegram bot" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Runtime environment" })).toBeVisible();
   });
 });

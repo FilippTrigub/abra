@@ -1,18 +1,14 @@
-import { Badge, Button, Card, Panel } from "@/components/ui";
+import { Badge, Button, Panel } from "@/components/ui";
 import { getUser } from "@/lib/auth/firebase-auth";
 import { getDeploymentFeed } from "@/lib/deployments";
+import { hasAgentConfig } from "@/lib/agent-config/service";
 import { DeploymentConsole } from "./deployment-console";
-import { startAbraInstance, stopAbraInstance } from "./actions";
-
-const NAV_LINKS = [
-  { label: "Abra instance", href: "#deployment-request" },
-  { label: "Logs", href: "/dashboard/deployments" },
-  { label: "Settings", href: "/dashboard/settings" },
-];
+import { canDeploy } from "./deployment-rules";
+import { startAbraInstance } from "./actions";
 
 function AuthErrorBanner({ message }: { message: string }) {
   return (
-    <Panel className="border border-[color-mix(in_srgb,var(--color-danger-400)_40%,var(--color-shell-border-strong))] bg-[color-mix(in_srgb,var(--color-danger-900)_26%,var(--color-shell-panel))] p-6 text-left text-[var(--color-shell-text-strong)] shadow-none">
+    <Panel bordered className="border-[color-mix(in_srgb,var(--color-danger-400)_40%,var(--color-shell-border-strong))] bg-[color-mix(in_srgb,var(--color-danger-900)_26%,var(--color-shell-panel))] p-6 text-left">
       <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-danger-200">
         Authentication required
       </p>
@@ -25,7 +21,7 @@ function AuthErrorBanner({ message }: { message: string }) {
 
 function FeedErrorBanner({ message }: { message: string }) {
   return (
-    <Panel className="border border-[color-mix(in_srgb,var(--color-danger-400)_40%,var(--color-shell-border-strong))] bg-[color-mix(in_srgb,var(--color-danger-900)_22%,var(--color-shell-panel))] p-6 text-[var(--color-shell-text-strong)] shadow-none">
+    <Panel bordered className="border-[color-mix(in_srgb,var(--color-danger-400)_40%,var(--color-shell-border-strong))] bg-[color-mix(in_srgb,var(--color-danger-900)_22%,var(--color-shell-panel))] p-6">
       <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-danger-200">
         Feed unavailable
       </p>
@@ -59,6 +55,8 @@ export default async function DashboardPage() {
     feedLoadError = err instanceof Error ? err.message : "Could not load deployment feed.";
   }
 
+  const telegramConfigured = await hasAgentConfig(user.id);
+
   const instanceStatus = currentDeployment?.status ?? "idle";
   const statusLabel = currentDeployment
     ? instanceStatus === "succeeded"
@@ -73,161 +71,55 @@ export default async function DashboardPage() {
               ? "Deleted"
               : "Failed"
     : "Not deployed";
-  const isStopAction = Boolean(
-    currentDeployment &&
-      currentDeployment.status !== "deleted" &&
-      !(currentDeployment.status === "failed" && currentDeployment.orchestration?.action !== "destroy"),
-  );
-  const primaryActionLabel = isStopAction ? "Stop" : "Start";
-  const primaryAction = isStopAction ? stopAbraInstance : startAbraInstance;
-  const shellGhostButtonClassName =
-    "rounded-sm border border-white/12 bg-transparent font-mono text-[12px] uppercase tracking-[0.14em] text-zinc-100 shadow-none hover:border-white/25 hover:bg-white/[0.04] hover:text-white";
-  const shellStatusBadgeClassName =
-    "rounded-sm border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em]";
+
+  const readyToDeploy = canDeploy(currentDeployment);
+  const heroCtaLabel = readyToDeploy
+    ? telegramConfigured
+      ? "Deploy Abra"
+      : "Set up Telegram to deploy"
+    : "Manage instance";
 
   return (
     <div className="space-y-10">
       <section className="animate-fade-up overflow-hidden border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_78%,black)] text-[var(--color-shell-text-strong)]">
-        <div className="grid gap-10 px-6 py-7 md:grid-cols-[minmax(0,1.2fr)_minmax(17rem,0.8fr)] md:px-8 md:py-8 lg:px-10 lg:py-10">
-          <div>
-            <span className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--color-shell-signal)] sm:text-[13px]">
-              Welcome back
-            </span>
-            <h1 className="mt-5 max-w-3xl text-[2.75rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white md:text-[3.5rem]">
-              Your brand command center
-            </h1>
-            <p className="mt-5 max-w-2xl text-[1.05rem] leading-7 text-zinc-300 md:text-[1.15rem]">
-              Deploy one Abra runtime for your account, monitor its status, and delete it when you want to replace the instance.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <form action={primaryAction}>
-                <Button
-                  type="submit"
-                  variant="primary"
-                  className="rounded-sm border border-brand-400/40 shadow-none"
-                >
-                  {primaryActionLabel}
+        <div className="px-6 py-7 md:px-8 md:py-8 lg:px-10 lg:py-10">
+          <span className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--color-shell-signal)] sm:text-[13px]">
+            Welcome back
+          </span>
+          <h1 className="mt-5 max-w-3xl text-[2.75rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white md:text-[3.5rem]">
+            Your brand command center
+          </h1>
+          <p className="mt-5 max-w-2xl text-[1.05rem] leading-7 text-zinc-300 md:text-[1.15rem]">
+            Deploy one Abra runtime for your account, monitor its status, and delete it when you want to replace the instance.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            {readyToDeploy && telegramConfigured ? (
+              <form action={startAbraInstance}>
+                <Button type="submit" variant="primary">
+                  {heroCtaLabel}
                 </Button>
               </form>
-              <Button
-                variant="ghost"
-                href="/dashboard/settings"
-                className={shellGhostButtonClassName}
-              >
-                Settings
+            ) : (
+              <Button variant="primary" href="#deployment-request">
+                {heroCtaLabel}
               </Button>
-              <Badge
-                variant={currentDeployment ? "info" : "success"}
-                className={shellStatusBadgeClassName}
-              >
-                {statusLabel}
-              </Badge>
-            </div>
-          </div>
-
-          <div className="self-start border border-[var(--color-shell-border-strong)] bg-black/10">
-            {[
-              ["Instance", currentDeployment ? currentDeployment.request.name : "Not deployed"],
-              ["Status", statusLabel],
-              ["Logs", "Header"],
-            ].map(([label, value]) => (
-              <div
-                key={label}
-                className="border-b border-[var(--color-shell-border-strong)] px-5 py-5 last:border-b-0"
-              >
-                <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                  {label}
-                </p>
-                <p className="mt-3 text-[1.2rem] leading-6 font-semibold text-white md:text-[1.35rem]">
-                  {value}
-                </p>
-              </div>
-            ))}
+            )}
+            <Button variant="ghost" href="/dashboard/settings">
+              Settings
+            </Button>
+            <Badge variant={currentDeployment ? "info" : "success"}>{statusLabel}</Badge>
           </div>
         </div>
       </section>
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <Card className="animate-scale-in stagger-1 rounded-[1.25rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none hover:border-white/[0.14] hover:bg-white/[0.03]">
-          <div className="border-l border-[var(--color-shell-border-strong)] pl-4">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                Abra instance
-              </p>
-              <p className="mt-3 text-h2 font-display font-bold text-white">
-                {currentDeployment ? "1" : "0"}
-              </p>
-              <p className="mt-2 text-caption text-zinc-400">
-                Active runtime allowed for this account
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="animate-scale-in stagger-2 rounded-[1.25rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none hover:border-white/[0.14] hover:bg-white/[0.03]">
-          <div className="border-l border-[var(--color-shell-border-strong)] pl-4">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                Runtime status
-              </p>
-              <p className="mt-3 text-h5 font-display font-bold text-white">
-                {statusLabel}
-              </p>
-              <p className="mt-2 text-caption text-zinc-400">
-                Live state from the orchestration adapter
-              </p>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="animate-scale-in stagger-3 rounded-[1.25rem] border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none hover:border-white/[0.14] hover:bg-white/[0.03]">
-          <div className="border-l border-[var(--color-shell-border-strong)] pl-4">
-            <div>
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-zinc-500">
-                Deployment logs
-              </p>
-              <p className="mt-3 text-h2 font-display font-bold text-white">
-                ↗
-              </p>
-              <p className="mt-2 text-caption text-zinc-400">
-                Available from the header navigation
-              </p>
-            </div>
-          </div>
-        </Card>
-      </div>
 
       {feedLoadError && (
         <FeedErrorBanner message={feedLoadError} />
       )}
 
-      <div id="deployment-request">
-        <DeploymentConsole
-          initialDeployment={currentDeployment}
-          persistenceWarning={feedWarning}
-        />
-      </div>
-
-      <Panel bordered className="rounded-[1.25rem] border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] p-6 text-[var(--color-shell-text-strong)] shadow-none">
-        <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-shell-signal)]">
-          Navigate
-        </p>
-        <h3 className="mt-3 mb-5 text-[1.6rem] leading-[1.08] font-display font-bold tracking-[-0.03em] text-white">
-          Quick links
-        </h3>
-        <div className="flex flex-wrap gap-3">
-          {NAV_LINKS.map((link) => (
-            <Button
-              key={link.href}
-              variant="ghost"
-              href={link.href}
-              className={shellGhostButtonClassName}
-            >
-              {link.label}
-            </Button>
-          ))}
-        </div>
-      </Panel>
+      <DeploymentConsole
+        initialDeployment={currentDeployment}
+        persistenceWarning={feedWarning}
+      />
 
       <div className="h-px bg-[color-mix(in_srgb,var(--color-shell-border-strong)_82%,transparent)]" />
       <div className="flex items-center justify-between gap-3 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-500 sm:text-[12px]">

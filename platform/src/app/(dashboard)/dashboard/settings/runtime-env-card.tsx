@@ -27,20 +27,8 @@ type RuntimeEnvSaveStatus = "idle" | "loading" | "saving" | "applying" | "succes
 type RuntimeEnvDeployStatus = "saved" | "applying" | "live" | "saved-not-deployed";
 type RuntimeEnvFieldState = Partial<Record<RuntimeEnvKey, string>>;
 
-const shellCardClassName =
-  "border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-[var(--color-shell-text-strong)] shadow-none";
-
-const shellInsetClassName =
-  "border border-[var(--color-shell-border-strong)] bg-black/20";
-
 const shellLabelClassName =
   "font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500";
-
-const inputClassName =
-  "w-full rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 px-3 py-2 text-body text-white transition-all duration-150 ease-smooth placeholder:text-zinc-500 hover:border-white/20 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-200";
-
-const modeButtonClassName =
-  "rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-400 shadow-none hover:border-white/20 hover:bg-white/[0.06] hover:text-white";
 
 const sourceLabels: Record<RuntimeEnvKeySummary["source"], string> = {
   manual: "Manual entry",
@@ -122,7 +110,7 @@ function PreviewIssueList({
   if (issues.length === 0) return null;
 
   return (
-    <div className={`rounded-sm px-4 py-4 ${shellInsetClassName}`}>
+    <Panel bordered muted className="rounded-sm">
       <p className={shellLabelClassName}>{title}</p>
       <ul className="mt-3 space-y-2 text-caption text-zinc-300">
         {issues.map((issue) => (
@@ -136,7 +124,7 @@ function PreviewIssueList({
           </li>
         ))}
       </ul>
-    </div>
+    </Panel>
   );
 }
 
@@ -144,7 +132,7 @@ function AcceptedPreviewList({ accepted }: { accepted: RuntimeEnvDotenvAcceptedP
   if (accepted.length === 0) return null;
 
   return (
-    <div className={`rounded-sm px-4 py-4 ${shellInsetClassName}`}>
+    <Panel bordered muted className="rounded-sm">
       <p className={shellLabelClassName}>Accepted keys</p>
       <div className="mt-3 grid gap-2 md:grid-cols-2">
         {accepted.map((entry) => (
@@ -160,7 +148,7 @@ function AcceptedPreviewList({ accepted }: { accepted: RuntimeEnvDotenvAcceptedP
           </div>
         ))}
       </div>
-    </div>
+    </Panel>
   );
 }
 
@@ -293,7 +281,7 @@ export function RuntimeEnvCard() {
   }
 
   return (
-    <Card className={shellCardClassName} id="runtime-env">
+    <Card id="runtime-env">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-shell-border-strong)] pb-5">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--color-shell-signal)]">
@@ -313,7 +301,6 @@ export function RuntimeEnvCard() {
             variant="ghost"
             onClick={handleApplyNow}
             disabled={busy || configuredCount === 0}
-            className={modeButtonClassName}
           >
             {saveStatus === "applying" ? "Applying…" : "Apply now"}
           </Button>
@@ -334,7 +321,7 @@ export function RuntimeEnvCard() {
         </Panel>
       )}
 
-      <div className={`mb-6 grid gap-3 px-4 py-4 md:grid-cols-3 ${shellInsetClassName}`}>
+      <Panel bordered muted className="mb-6 grid gap-3 rounded-sm md:grid-cols-2">
         <div>
           <p className={shellLabelClassName}>Status</p>
           <p className="mt-3 text-body font-semibold text-white">{deployStatusLabels[deployStatus]}</p>
@@ -343,20 +330,14 @@ export function RuntimeEnvCard() {
           <p className={shellLabelClassName}>Last saved</p>
           <p className="mt-3 text-body font-semibold text-white">{formatTimestamp(summary?.updatedAt ?? null)}</p>
         </div>
-        <div>
-          <p className={shellLabelClassName}>Version</p>
-          <p className="mt-3 truncate font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-400">
-            {summary?.versionId ?? "No version yet"}
-          </p>
-        </div>
-      </div>
+      </Panel>
 
       <div className="mb-6 flex flex-wrap gap-2">
         <Button
           type="button"
           variant="ghost"
           onClick={() => setMode("fields")}
-          className={`${modeButtonClassName} ${mode === "fields" ? "border-brand-300 text-white" : ""}`}
+          className={mode === "fields" ? "border-brand-300 text-white" : ""}
         >
           Field entry
         </Button>
@@ -364,7 +345,7 @@ export function RuntimeEnvCard() {
           type="button"
           variant="ghost"
           onClick={() => setMode("import")}
-          className={`${modeButtonClassName} ${mode === "import" ? "border-brand-300 text-white" : ""}`}
+          className={mode === "import" ? "border-brand-300 text-white" : ""}
         >
           .env import
         </Button>
@@ -373,7 +354,7 @@ export function RuntimeEnvCard() {
       {mode === "fields" ? (
         <form onSubmit={handleFieldSave} className="space-y-5">
           {groupedDefinitions.map(([group, definitions]) => (
-            <div key={group} className={`rounded-sm px-4 py-4 ${shellInsetClassName}`}>
+            <Panel key={group} bordered muted className="rounded-sm">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <p className={shellLabelClassName}>{getRuntimeEnvGroupLabel(group)}</p>
@@ -394,7 +375,7 @@ export function RuntimeEnvCard() {
                     <div key={key} className="rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 px-4 py-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <Label htmlFor={inputId} className="mb-0 text-white">
+                          <Label htmlFor={inputId} className="mb-0">
                             {definition.label}
                           </Label>
                           <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-500">{key}</p>
@@ -422,19 +403,18 @@ export function RuntimeEnvCard() {
                           onChange={(e) => setFieldValues((prev) => ({ ...prev, [key]: e.target.value }))}
                           placeholder={configured?.configured ? "Enter replacement value" : "Enter value"}
                           disabled={busy}
-                          className={inputClassName}
                           autoComplete="off"
                         />
                         {definition.secret && (
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
                             onClick={() => setRevealedKeys((prev) => ({ ...prev, [key]: !prev[key] }))}
-                            className="shrink-0 rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-400 hover:border-white/20 hover:text-white"
                             aria-label={`${revealed ? "Hide" : "Show"} ${definition.label}`}
                             disabled={busy}
                           >
                             {revealed ? "Hide" : "Show"}
-                          </button>
+                          </Button>
                         )}
                       </div>
                       <p className="mt-2 text-caption text-zinc-500">{definition.description}</p>
@@ -442,7 +422,7 @@ export function RuntimeEnvCard() {
                   );
                 })}
               </div>
-            </div>
+            </Panel>
           ))}
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -455,7 +435,6 @@ export function RuntimeEnvCard() {
               variant="primary"
               type="submit"
               disabled={busy || changedFieldCount === 0}
-              className="rounded-sm shadow-none"
             >
               {saveStatus === "saving" || saveStatus === "applying" ? "Saving…" : "Save runtime values"}
             </Button>
@@ -463,10 +442,8 @@ export function RuntimeEnvCard() {
         </form>
       ) : (
         <form onSubmit={handlePreview} className="space-y-5">
-          <div className={`rounded-sm px-4 py-4 ${shellInsetClassName}`}>
-            <Label htmlFor="runtime-env-dotenv" className="text-white">
-              Paste .env content
-            </Label>
+          <Panel bordered muted className="rounded-sm">
+            <Label htmlFor="runtime-env-dotenv">Paste .env content</Label>
             <Textarea
               id="runtime-env-dotenv"
               value={dotenvContent}
@@ -477,13 +454,13 @@ export function RuntimeEnvCard() {
               placeholder="BUFFER_API_KEY=..."
               disabled={busy}
               rows={8}
-              className="rounded-sm border-[var(--color-shell-border-strong)] bg-black/20 font-mono text-[12px] leading-6 text-white placeholder:text-zinc-500 hover:border-white/20 focus:border-brand-300"
+              className="font-mono text-[12px] leading-6"
               autoComplete="off"
             />
             <p className="mt-2 text-caption text-zinc-500">
               Preview checks supported keys and never displays imported values back to you.
             </p>
-          </div>
+          </Panel>
 
           {preview && (
             <div className="space-y-3">
@@ -504,7 +481,6 @@ export function RuntimeEnvCard() {
                 variant="ghost"
                 type="submit"
                 disabled={busy || dotenvContent.trim().length === 0}
-                className={modeButtonClassName}
               >
                 Preview import
               </Button>
@@ -513,7 +489,6 @@ export function RuntimeEnvCard() {
                 type="button"
                 onClick={handleImportSave}
                 disabled={busy || !preview || preview.accepted.length === 0}
-                className="rounded-sm shadow-none"
               >
                 {saveStatus === "saving" || saveStatus === "applying" ? "Saving…" : "Confirm import"}
               </Button>

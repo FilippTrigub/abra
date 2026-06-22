@@ -133,6 +133,7 @@ export default async function DashboardLayout({
               key={item.href}
               href={item.href}
               className={`${navItemClassName} flex-1 text-center`}
+              style={{ paddingLeft: "var(--s-2)", paddingRight: "var(--s-2)" }}
             >
               {item.label}
             </NavItem>

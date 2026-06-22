@@ -213,6 +213,7 @@ test.describe("AKS deployment lifecycle", () => {
     if (hasExisting) {
       console.log("Existing deployment found — deleting before test run...");
       await deleteBtn.click();
+      await page.getByRole("button", { name: "Confirm delete" }).click();
 
       const destroyed = await pollUntil(request, deploymentId, ["deleted", "failed"], DESTROY_TIMEOUT_MS)
         .catch((err) => { throw new Error(`Cleanup failed: ${err.message}`); });

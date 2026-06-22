@@ -1,6 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    refresh: vi.fn(),
+  }),
+}));
+
 vi.mock("@/app/(dashboard)/dashboard/actions", () => ({
   deleteAbraInstance: vi.fn(),
   submitDeploymentRequest: vi.fn(),
