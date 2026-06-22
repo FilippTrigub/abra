@@ -42,8 +42,14 @@ src/
     runtime-env/        user-managed skill/API env vars (encrypted at rest).
                         Telegram identity keys are reserved here and rejected
                         on save/import so they can't shadow agent-config.
-                        AZURE_FOUNDRY_API_KEY is reserved too — the model
-                        provider is platform-managed, not a user setting
+                        Also reserved: AZURE_FOUNDRY_API_KEY (model provider
+                        is platform-managed), all RunPod GPU inference keys
+                        (ops/system concern, pending platform-side wiring),
+                        and Telegram's thread/channel-name fields (configured
+                        within Telegram itself). Reserved keys stay
+                        injectable into the deployed container even though
+                        they're not user-settable — see
+                        RUNTIME_INJECTABLE_DEFINITIONS in definitions.ts
     orchestration/      deployment adapters (AKS in prod, mock in local dev)
     deployments.ts      deployment record CRUD + dispatch
     platform-account.ts account bootstrap, subscription info
