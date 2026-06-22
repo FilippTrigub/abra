@@ -49,7 +49,7 @@ export default async function DeploymentLogsPage() {
   if (error || !user) {
     return (
       <div className="space-y-8">
-        <AuthErrorBanner message="You need to be signed in to view deployment logs." />
+        <AuthErrorBanner message="You need to be signed in to view usage." />
       </div>
     );
   }
@@ -61,27 +61,27 @@ export default async function DeploymentLogsPage() {
     const feed = await getDeploymentFeed(user.id);
     deployments = feed.deployments;
   } catch (err) {
-    loadError = err instanceof Error ? err.message : "Could not load deployment logs.";
+    loadError = err instanceof Error ? err.message : "Could not load usage.";
   }
 
   return (
     <div className="space-y-8">
       <section className="animate-fade-up overflow-hidden border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_78%,black)] px-6 py-7 text-[var(--color-shell-text-strong)] md:px-8 md:py-8 lg:px-10 lg:py-10">
         <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-[var(--color-shell-signal)] sm:text-[13px]">
-          Deployment logs
+          Usage
         </p>
         <h1 className="mt-5 max-w-3xl text-[2.75rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white md:text-[3.5rem]">
           Instance history
         </h1>
         <p className="mt-5 max-w-2xl text-[1.05rem] leading-7 text-zinc-300 md:text-[1.15rem]">
-          Logs are separate from the live Abra instance so the dashboard can stay focused on deploy, status, and delete.
+          Usage history is separate from the live Abra instance so the dashboard can stay focused on start, status, and stop.
         </p>
       </section>
 
       {loadError && (
         <Panel className="border border-[color-mix(in_srgb,var(--color-danger-400)_40%,var(--color-shell-border-strong))] bg-[color-mix(in_srgb,var(--color-danger-900)_22%,var(--color-shell-panel))] p-6 text-[var(--color-shell-text-strong)] shadow-none">
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-danger-200">
-            Logs unavailable
+            Usage unavailable
           </p>
           <p className="mt-3 max-w-2xl text-[1rem] leading-7 text-danger-50/88">
             {loadError}
@@ -100,7 +100,7 @@ export default async function DeploymentLogsPage() {
         <div className="mt-5 space-y-3">
           {deployments.length === 0 ? (
             <div className={`px-5 py-6 ${shellInsetClassName}`}>
-              <p className={shellLabelClassName}>No logs</p>
+              <p className={shellLabelClassName}>No usage yet</p>
               <p className="mt-2 text-body text-zinc-300">
                 Deployment records will appear here after the first Abra instance action.
               </p>
