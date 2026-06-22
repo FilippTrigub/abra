@@ -220,7 +220,7 @@ export function DeploymentConsole({
         </Panel>
       )}
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
+      <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
         {actionRow}
         <Button variant="ghost" href="/dashboard/settings">
           Settings
@@ -228,7 +228,7 @@ export function DeploymentConsole({
       </div>
 
       {shouldShowStart && !telegramConfigured && (
-        <p className="mt-3 text-caption text-zinc-500">
+        <p className="mt-3 text-center text-caption text-zinc-500">
           Set up Telegram in{" "}
           <a href="/dashboard/settings#bot-setup" className="underline hover:text-zinc-300">
             Settings

@@ -43,7 +43,7 @@ export default async function DashboardLayout({
     "min-h-10 rounded-sm px-4 py-2 text-[11px] sm:text-[12px]";
 
   return (
-    <div className="min-h-full bg-[var(--color-shell-canvas)] text-[var(--color-shell-text-strong)]">
+    <div className="min-h-screen bg-[var(--color-shell-canvas)] text-[var(--color-shell-text-strong)]">
       {/* ── Top bar ─────────────────────────────────────── */}
       <header className="sticky top-0 z-sticky border-b border-[var(--color-shell-border-strong)] bg-[var(--color-shell-canvas)]">
         <div className="mx-auto flex min-h-[4.5rem] max-w-screen-xl items-center justify-between px-4 sm:px-6 lg:px-8">

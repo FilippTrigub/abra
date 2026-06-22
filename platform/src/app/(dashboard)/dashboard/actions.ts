@@ -104,7 +104,7 @@ export async function deleteAbraInstance(
     ...initialDeploymentFormState,
     status: destroyed ? "success" : "error",
     message: destroyed
-      ? "Abra instance deletion started. The status box will update as AKS removes the runtime."
+      ? "Abra instance deletion started."
       : deployment.errorMessage ?? "Unable to delete this Abra instance.",
     warning,
     deployment,
