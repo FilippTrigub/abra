@@ -14,11 +14,11 @@ export const Panel = forwardRef<HTMLDivElement, PanelProps>(
       <div
         ref={ref}
         className={cn(
-          "rounded-xl p-4",
+          "rounded-sm p-4 text-[var(--color-shell-text-strong)]",
           "transition-all duration-150 ease-smooth",
-          bordered && "border border-border-subtle",
-          muted && "bg-surface-muted",
-          !muted && !bordered && "bg-surface-default shadow-card",
+          bordered && "border border-[var(--color-shell-border-strong)]",
+          muted && "bg-black/20",
+          !muted && !bordered && "border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] shadow-none",
           className
         )}
         {...props}

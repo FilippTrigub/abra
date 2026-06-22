@@ -15,35 +15,35 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-brand-500 text-white hover:bg-brand-600 hover:-translate-y-0.5 hover:shadow-panel active:scale-[0.97] active:translate-y-0 focus-ring-brand",
+    "border border-brand-400/40 bg-brand-500 text-white hover:bg-brand-600 active:scale-[0.97] focus-ring-brand",
   secondary:
-    "bg-secondary-600 text-white hover:bg-secondary-700 hover:-translate-y-0.5 hover:shadow-panel active:scale-[0.97] active:translate-y-0 focus-ring-secondary",
+    "border border-secondary-400/40 bg-secondary-600 text-white hover:bg-secondary-700 active:scale-[0.97] focus-ring-secondary",
   ghost:
-    "bg-transparent text-content-500 hover:bg-surface-100 hover:text-content-100 active:scale-[0.97] focus-ring-brand",
+    "border border-white/12 bg-transparent font-mono text-[12px] uppercase tracking-[0.14em] text-zinc-100 hover:border-white/25 hover:bg-white/[0.04] hover:text-white active:scale-[0.97] focus-ring-brand",
   danger:
-    "bg-danger-500 text-white hover:bg-danger-600 hover:-translate-y-0.5 hover:shadow-panel active:scale-[0.97] active:translate-y-0 focus-ring-danger",
+    "border border-danger-400/40 bg-danger-500 text-white hover:bg-danger-600 active:scale-[0.97] focus-ring-danger",
   success:
-    "bg-success-500 text-white hover:bg-success-600 hover:-translate-y-0.5 hover:shadow-panel active:scale-[0.97] active:translate-y-0 focus-ring-success",
+    "border border-success-400/40 bg-success-500 text-white hover:bg-success-600 active:scale-[0.97] focus-ring-success",
   warning:
-    "bg-warning-500 text-white hover:bg-warning-600 hover:-translate-y-0.5 hover:shadow-panel active:scale-[0.97] active:translate-y-0 focus-ring-brand",
+    "border border-warning-400/40 bg-warning-500 text-white hover:bg-warning-600 active:scale-[0.97] focus-ring-brand",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "px-3 py-1.5 text-caption gap-1.5",
-  md: "px-4 py-2 text-body gap-2",
-  lg: "px-6 py-3 text-h6 gap-2",
+  sm: "min-h-9 px-3 py-1.5 text-caption gap-1.5",
+  md: "min-h-11 px-4 py-2 text-body gap-2",
+  lg: "min-h-12 px-6 py-3 text-h6 gap-2",
 };
 
 const sizeRadius: Record<ButtonSize, string> = {
-  sm: "rounded-lg",
-  md: "rounded-xl",
-  lg: "rounded-2xl",
+  sm: "rounded-sm",
+  md: "rounded-sm",
+  lg: "rounded-sm",
 };
 
 const sizeShadow: Record<ButtonSize, string> = {
-  sm: "shadow-card",
-  md: "shadow-panel",
-  lg: "shadow-card",
+  sm: "shadow-none",
+  md: "shadow-none",
+  lg: "shadow-none",
 };
 
 export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(

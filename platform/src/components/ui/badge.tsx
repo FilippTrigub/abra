@@ -17,13 +17,20 @@ export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default: "bg-surface-200 text-content-600",
-  brand: "bg-brand-100 text-brand-700",
-  secondary: "bg-secondary-100 text-secondary-700",
-  success: "bg-success-100 text-success-700",
-  warning: "bg-warning-100 text-warning-700",
-  danger: "bg-danger-100 text-danger-700",
-  info: "bg-info-100 text-info-700",
+  default:
+    "border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] text-zinc-300",
+  brand:
+    "border-brand-400/40 bg-[color-mix(in_srgb,var(--color-brand-900)_30%,var(--color-shell-panel))] text-brand-200",
+  secondary:
+    "border-secondary-400/40 bg-[color-mix(in_srgb,var(--color-secondary-900)_30%,var(--color-shell-panel))] text-secondary-200",
+  success:
+    "border-success-400/40 bg-[color-mix(in_srgb,var(--color-success-900)_30%,var(--color-shell-panel))] text-success-200",
+  warning:
+    "border-warning-400/40 bg-[color-mix(in_srgb,var(--color-warning-900)_30%,var(--color-shell-panel))] text-warning-200",
+  danger:
+    "border-danger-400/40 bg-[color-mix(in_srgb,var(--color-danger-900)_28%,var(--color-shell-panel))] text-danger-200",
+  info:
+    "border-info-400/40 bg-[color-mix(in_srgb,var(--color-info-900)_30%,var(--color-shell-panel))] text-info-200",
 };
 
 export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
@@ -32,8 +39,8 @@ export const Badge = forwardRef<HTMLSpanElement, BadgeProps>(
       <span
         ref={ref}
         className={cn(
-          "inline-flex items-center gap-1 text-caption font-semibold",
-          "px-2.5 py-0.5 rounded-full",
+          "inline-flex items-center gap-1.5 rounded-sm border px-2.5 py-1",
+          "font-mono text-[11px] font-semibold uppercase tracking-[0.14em]",
           "transition-colors duration-150 ease-smooth",
           variantClasses[variant],
           className

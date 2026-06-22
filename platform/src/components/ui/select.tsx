@@ -28,21 +28,21 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ) => {
     const stateClass =
       variant === "error"
-        ? "input-error border-danger-400 text-danger-700"
+        ? "input-error border-danger-400 text-white"
         : variant === "warning"
-          ? "input-warning border-warning-400 text-warning-700"
+          ? "input-warning border-warning-400 text-white"
           : variant === "success"
-            ? "input-success border-success-400 text-success-700"
-            : "border-border-default hover:border-border-subtle focus:border-brand-300 focus-ring-brand";
+            ? "input-success border-success-400 text-white"
+            : "border-[var(--color-shell-border-strong)] hover:border-white/20 focus:border-brand-300 focus-ring-brand";
 
     return (
       <div className="w-full">
         <select
           ref={ref}
           className={cn(
-            "w-full px-3 py-2 text-body appearance-none",
-            "bg-surface-default border rounded-xl",
-            "placeholder-content-400",
+            "w-full px-3 py-2 text-body text-white appearance-none",
+            "bg-black/20 border rounded-sm",
+            "placeholder-zinc-500",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             "transition-all duration-150 ease-smooth",
             stateClass,
@@ -59,7 +59,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           {children}
         </select>
         {errorText && (
-          <p className="mt-1.5 text-caption text-danger-600 flex items-center gap-1">
+          <p className="mt-1.5 text-caption text-danger-300 flex items-center gap-1">
             <svg
               width="14"
               height="14"
@@ -86,7 +86,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           </p>
         )}
         {helperText && !errorText && (
-          <p className="mt-1.5 text-caption text-content-500">{helperText}</p>
+          <p className="mt-1.5 text-caption text-zinc-500">{helperText}</p>
         )}
       </div>
     );

@@ -12,3 +12,4 @@ export { Select, type SelectProps } from "./select";
 export { ToggleSwitch, type ToggleSwitchProps } from "./toggle-switch";
 export { EmptyState, type EmptyStateProps, type EmptyStateVariant } from "./empty-state";
 export { ErrorState, type ErrorStateProps } from "./error-state";
+export { Toast, type ToastProps, type ToastTone } from "./toast";

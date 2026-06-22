@@ -17,7 +17,7 @@
   /* Focus ring system — visible, token-aligned, non-color-only */
   :focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px var(--color-surface-default),
+    box-shadow: 0 0 0 3px var(--color-shell-canvas),
                 0 0 0 5px var(--color-brand-300);
     border-radius: var(--radius-sm);
   }
@@ -74,22 +74,22 @@
    Focus ring variants for specific primitive types
    ═══════════════════════════════════════════════════════ */
 .focus-ring-brand:focus-visible {
-  box-shadow: 0 0 0 3px var(--color-surface-default),
+  box-shadow: 0 0 0 3px var(--color-shell-canvas),
               0 0 0 5px var(--color-brand-300);
 }
 
 .focus-ring-secondary:focus-visible {
-  box-shadow: 0 0 0 3px var(--color-surface-default),
+  box-shadow: 0 0 0 3px var(--color-shell-canvas),
               0 0 0 5px var(--color-secondary-300);
 }
 
 .focus-ring-danger:focus-visible {
-  box-shadow: 0 0 0 3px var(--color-surface-default),
+  box-shadow: 0 0 0 3px var(--color-shell-canvas),
               0 0 0 5px var(--color-danger-300);
 }
 
 .focus-ring-success:focus-visible {
-  box-shadow: 0 0 0 3px var(--color-surface-default),
+  box-shadow: 0 0 0 3px var(--color-shell-canvas),
               0 0 0 5px var(--color-success-300);
 }
 

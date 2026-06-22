@@ -20,7 +20,9 @@ export const ErrorState = forwardRef<HTMLDivElement, ErrorStateProps>(
       <div
         ref={ref}
         className={cn(
-          "flex flex-col items-center justify-center rounded-2xl border border-danger-200 bg-danger-50/60 p-8 text-center",
+          "flex flex-col items-center justify-center rounded-sm border p-8 text-center",
+          "border-[color-mix(in_srgb,var(--color-danger-400)_40%,var(--color-shell-border-strong))]",
+          "bg-[color-mix(in_srgb,var(--color-danger-900)_26%,var(--color-shell-panel))]",
           className,
         )}
         role="alert"
@@ -28,14 +30,23 @@ export const ErrorState = forwardRef<HTMLDivElement, ErrorStateProps>(
       >
         <div
           aria-hidden
-          className="mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-danger-100 text-2xl"
+          className="mb-4 flex h-14 w-14 items-center justify-center rounded-sm border border-danger-400/40 bg-black/20"
         >
-          ⚠️
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="text-danger-300">
+            <path
+              d="M12 3.5 21 19.5H3L12 3.5Z"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+            <path d="M12 10v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="12" cy="16.6" r="0.9" fill="currentColor" />
+          </svg>
         </div>
-        <p className="text-h6 font-semibold text-content-100">
+        <p className="text-h6 font-semibold text-[var(--color-shell-text-strong)]">
           {title ?? DEFAULT_TITLE}
         </p>
-        <p className="mt-2 max-w-sm text-body text-content-600">
+        <p className="mt-2 max-w-sm text-body text-danger-50/80">
           {description ?? DEFAULT_DESCRIPTION}
         </p>
         {retryLabel && (
@@ -43,7 +54,7 @@ export const ErrorState = forwardRef<HTMLDivElement, ErrorStateProps>(
             type="button"
             onClick={onRetry}
             className={cn(
-              "mt-5 inline-flex items-center justify-center rounded-xl bg-danger-500 px-4 py-2 text-body font-semibold text-white shadow-card transition-all duration-150 ease-smooth hover:bg-danger-600",
+              "mt-5 inline-flex min-h-11 items-center justify-center rounded-sm bg-danger-500 px-4 py-2 text-body font-semibold text-white shadow-none transition-all duration-150 ease-smooth hover:bg-danger-600",
               !onRetry && "cursor-default opacity-50",
             )}
             disabled={!onRetry}

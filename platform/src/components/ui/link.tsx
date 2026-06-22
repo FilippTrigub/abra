@@ -11,10 +11,10 @@ export interface LinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
 }
 
 const variantClasses: Record<LinkVariant, string> = {
-  brand: "text-brand-500 hover:text-brand-600",
-  secondary: "text-secondary-600 hover:text-secondary-700",
-  muted: "text-content-500 hover:text-content-100",
-  danger: "text-danger-500 hover:text-danger-600",
+  brand: "text-brand-400 hover:text-brand-300",
+  secondary: "text-secondary-400 hover:text-secondary-300",
+  muted: "text-zinc-400 hover:text-white",
+  danger: "text-danger-400 hover:text-danger-300",
 };
 
 export const Link = forwardRef<HTMLAnchorElement, LinkProps>(

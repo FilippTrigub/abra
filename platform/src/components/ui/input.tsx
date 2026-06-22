@@ -25,21 +25,21 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
   ) => {
     const stateClass =
       variant === "error"
-        ? "input-error border-danger-400 text-danger-700 placeholder-content-400"
+        ? "input-error border-danger-400 text-white placeholder-zinc-500"
         : variant === "warning"
-          ? "input-warning border-warning-400 text-warning-700 placeholder-content-400"
+          ? "input-warning border-warning-400 text-white placeholder-zinc-500"
           : variant === "success"
-            ? "input-success border-success-400 text-success-700 placeholder-content-400"
-            : "border-border-default hover:border-border-subtle focus:border-brand-300 focus-ring-brand";
+            ? "input-success border-success-400 text-white placeholder-zinc-500"
+            : "border-[var(--color-shell-border-strong)] hover:border-white/20 focus:border-brand-300 focus-ring-brand";
 
     return (
       <div className="w-full">
         <input
           ref={ref}
           className={cn(
-            "w-full px-3 py-2 text-body",
-            "bg-surface-default border rounded-lg",
-            "placeholder-content-400",
+            "w-full px-3 py-2 text-body text-white",
+            "bg-black/20 border rounded-sm",
+            "placeholder-zinc-500",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             "transition-all duration-150 ease-smooth",
             stateClass,
@@ -49,7 +49,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           {...props}
         />
         {errorText && (
-          <p className="mt-1.5 text-caption text-danger-600 flex items-center gap-1">
+          <p className="mt-1.5 text-caption text-danger-300 flex items-center gap-1">
             <svg
               width="14"
               height="14"
@@ -70,7 +70,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           </p>
         )}
         {helperText && !errorText && (
-          <p className="mt-1.5 text-caption text-content-500">{helperText}</p>
+          <p className="mt-1.5 text-caption text-zinc-500">{helperText}</p>
         )}
       </div>
     );

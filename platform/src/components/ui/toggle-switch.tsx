@@ -47,24 +47,24 @@ export const ToggleSwitch = forwardRef<HTMLInputElement, ToggleSwitchProps>(
             <div
               className={cn(
                 "w-11 h-6 rounded-full transition-colors duration-200 ease-smooth",
-                "bg-surface-300 peer-checked:bg-brand-500",
-                "border border-border-subtle peer-checked:border-brand-500",
+                "bg-black/30 peer-checked:bg-brand-500",
+                "border border-[var(--color-shell-border-strong)] peer-checked:border-brand-500",
                 variant === "error" && "border-danger-400",
                 disabled && "opacity-50 cursor-not-allowed",
               )}
             />
             <div
               className={cn(
-                "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-card transition-transform duration-200 ease-snappy",
+                "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-none transition-transform duration-200 ease-snappy",
                 "peer-checked:translate-x-5",
                 disabled && "opacity-50",
               )}
             />
           </div>
-          {label && <span className="text-body text-content-100">{label}</span>}
+          {label && <span className="text-body text-[var(--color-shell-text-strong)]">{label}</span>}
         </label>
         {errorText && (
-          <p className="text-caption text-danger-600 ml-14">{errorText}</p>
+          <p className="text-caption text-danger-300 ml-14">{errorText}</p>
         )}
       </div>
     );

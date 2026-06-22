@@ -10,9 +10,9 @@ export interface SurfaceProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 const variantClasses: Record<SurfaceVariant, string> = {
-  default: "bg-surface-default",
-  muted: "bg-surface-muted",
-  elevated: "bg-surface-default shadow-elevated",
+  default: "border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)]",
+  muted: "bg-black/20",
+  elevated: "border border-white/[0.14] bg-[var(--color-shell-panel)]",
 };
 
 export const Surface = forwardRef<HTMLDivElement, SurfaceProps>(
@@ -21,7 +21,7 @@ export const Surface = forwardRef<HTMLDivElement, SurfaceProps>(
       <div
         ref={ref}
         className={cn(
-          "rounded-2xl p-6",
+          "rounded-sm p-6 text-[var(--color-shell-text-strong)]",
           variantClasses[variant],
           className
         )}
