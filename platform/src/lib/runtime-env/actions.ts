@@ -72,7 +72,7 @@ export type RuntimeEnvApplyActionResult = {
 };
 
 const applyStatusMessages: Record<RuntimeEnvApplyActionResult["status"], string> = {
-  saved: "Runtime environment values are saved. Deploy Abra to apply them.",
+  saved: "Runtime environment values are saved. Start Abra to apply them.",
   applying: "Runtime environment values were saved and Abra is updating.",
   live: "Runtime environment values are live on Abra.",
 };

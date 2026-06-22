@@ -1,10 +1,8 @@
-import { Badge, Button, Panel } from "@/components/ui";
+import { Panel } from "@/components/ui";
 import { getUser } from "@/lib/auth/firebase-auth";
 import { getDeploymentFeed } from "@/lib/deployments";
 import { hasAgentConfig } from "@/lib/agent-config/service";
 import { DeploymentConsole } from "./deployment-console";
-import { canDeploy } from "./deployment-rules";
-import { startAbraInstance } from "./actions";
 
 function AuthErrorBanner({ message }: { message: string }) {
   return (
@@ -57,28 +55,6 @@ export default async function DashboardPage() {
 
   const telegramConfigured = await hasAgentConfig(user.id);
 
-  const instanceStatus = currentDeployment?.status ?? "idle";
-  const statusLabel = currentDeployment
-    ? instanceStatus === "succeeded"
-      ? "Ready"
-      : instanceStatus === "running"
-        ? "Deploying"
-        : instanceStatus === "queued"
-          ? "Queued"
-          : instanceStatus === "deleting"
-            ? "Deleting"
-            : instanceStatus === "deleted"
-              ? "Deleted"
-              : "Failed"
-    : "Not deployed";
-
-  const readyToDeploy = canDeploy(currentDeployment);
-  const heroCtaLabel = readyToDeploy
-    ? telegramConfigured
-      ? "Deploy Abra"
-      : "Set up Telegram to deploy"
-    : "Manage instance";
-
   return (
     <div className="space-y-10">
       <section className="animate-fade-up overflow-hidden border border-[var(--color-shell-border-strong)] bg-[color-mix(in_srgb,var(--color-shell-panel)_78%,black)] text-[var(--color-shell-text-strong)]">
@@ -90,25 +66,8 @@ export default async function DashboardPage() {
             Your brand command center
           </h1>
           <p className="mt-5 max-w-2xl text-[1.05rem] leading-7 text-zinc-300 md:text-[1.15rem]">
-            Deploy one Abra runtime for your account, monitor its status, and delete it when you want to replace the instance.
+            Start one Abra runtime for your account, monitor its status, and stop it when you want to replace the instance.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-3">
-            {readyToDeploy && telegramConfigured ? (
-              <form action={startAbraInstance}>
-                <Button type="submit" variant="primary">
-                  {heroCtaLabel}
-                </Button>
-              </form>
-            ) : (
-              <Button variant="primary" href="#deployment-request">
-                {heroCtaLabel}
-              </Button>
-            )}
-            <Button variant="ghost" href="/dashboard/settings">
-              Settings
-            </Button>
-            <Badge variant={currentDeployment ? "info" : "success"}>{statusLabel}</Badge>
-          </div>
         </div>
       </section>
 
@@ -119,6 +78,7 @@ export default async function DashboardPage() {
       <DeploymentConsole
         initialDeployment={currentDeployment}
         persistenceWarning={feedWarning}
+        telegramConfigured={telegramConfigured}
       />
 
       <div className="h-px bg-[color-mix(in_srgb,var(--color-shell-border-strong)_82%,transparent)]" />

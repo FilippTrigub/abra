@@ -129,10 +129,10 @@ test.describe("Authenticated dashboard shell", () => {
     await expect(
       page.getByRole("heading", { name: "Your brand command center" }),
     ).toBeVisible();
-    // No Telegram config seeded for this test user, so the hero CTA is a
-    // jump link to the deploy-gating step rather than a live submit button.
-    await expect(page.getByRole("link", { name: "Set up Telegram to deploy" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Logs" }).first()).toBeVisible();
+    // No Telegram config seeded for this test user, so Start is disabled
+    // until Telegram is configured in Settings.
+    await expect(page.getByRole("button", { name: "Start" })).toBeDisabled();
+    await expect(page.getByRole("link", { name: "Usage" }).first()).toBeVisible();
   });
 
   test("should render dashboard settings controls on /dashboard/settings", async ({ page }) => {

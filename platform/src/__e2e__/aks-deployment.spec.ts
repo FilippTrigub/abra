@@ -205,15 +205,15 @@ test.describe("AKS deployment lifecycle", () => {
     await page.goto("/dashboard");
     await page.waitForLoadState("networkidle");
 
-    const deleteBtn = page.getByRole("button", { name: "Delete instance" });
-    const deployBtn = page.getByRole("button", { name: "Deploy Abra" });
+    const stopBtn = page.getByRole("button", { name: "Stop" });
+    const startBtn = page.getByRole("button", { name: "Start" });
 
-    const hasExisting = await deleteBtn.isVisible({ timeout: 5_000 }).catch(() => false);
+    const hasExisting = await stopBtn.isVisible({ timeout: 5_000 }).catch(() => false);
 
     if (hasExisting) {
-      console.log("Existing deployment found — deleting before test run...");
-      await deleteBtn.click();
-      await page.getByRole("button", { name: "Confirm delete" }).click();
+      console.log("Existing deployment found — stopping before test run...");
+      await stopBtn.click();
+      await page.getByRole("button", { name: "Confirm stop" }).click();
 
       const destroyed = await pollUntil(request, deploymentId, ["deleted", "failed"], DESTROY_TIMEOUT_MS)
         .catch((err) => { throw new Error(`Cleanup failed: ${err.message}`); });
@@ -224,8 +224,8 @@ test.describe("AKS deployment lifecycle", () => {
     }
 
     // --- Step 2: trigger new deployment ----------------------------------------
-    await expect(deployBtn).toBeVisible({ timeout: 10_000 });
-    await deployBtn.click();
+    await expect(startBtn).toBeVisible({ timeout: 10_000 });
+    await startBtn.click();
 
     // Give the server action a moment to register the queued state
     await page.waitForTimeout(2_000);

@@ -7,11 +7,11 @@ import type { DashboardDeployment } from "@/lib/deployments";
 import { deleteAbraInstance, submitDeploymentRequest } from "./actions";
 import { canDeploy } from "./deployment-rules";
 import { initialDeploymentFormState } from "./deployment-form-state";
-import { TelegramBotForm, type TelegramBotStatus } from "./telegram-bot-form";
 
 interface DeploymentConsoleProps {
   initialDeployment: DashboardDeployment | null;
   persistenceWarning: string | null;
+  telegramConfigured: boolean;
 }
 
 const STATUS_BADGES: Record<
@@ -27,12 +27,16 @@ const STATUS_BADGES: Record<
   deleted: { variant: "default", label: "Deleted" },
 };
 
-function isPollingStatus(deployment: DashboardDeployment | null): deployment is DashboardDeployment {
-  return deployment?.status === "queued" || deployment?.status === "running" || deployment?.status === "deleting";
+function isTransitioning(deployment: DashboardDeployment | null) {
+  return (
+    deployment?.status === "queued" ||
+    deployment?.status === "running" ||
+    deployment?.status === "deleting"
+  );
 }
 
-function hasDeletableInstance(deployment: DashboardDeployment | null) {
-  return Boolean(deployment && deployment.status !== "deleted" && deployment.status !== "deleting");
+function canStop(deployment: DashboardDeployment | null) {
+  return !canDeploy(deployment) && !isTransitioning(deployment);
 }
 
 function formatTimestamp(value: string) {
@@ -42,62 +46,132 @@ function formatTimestamp(value: string) {
   }).format(new Date(value));
 }
 
-function SubmitButton({ pending }: { pending: boolean }) {
-  return <Button type="submit" disabled={pending}>{pending ? "Deploying Abra…" : "Deploy Abra"}</Button>;
-}
+export function DeploymentConsole({
+  initialDeployment,
+  persistenceWarning,
+  telegramConfigured,
+}: DeploymentConsoleProps) {
+  const router = useRouter();
+  const [deployState, deployAction, deployPending] = useActionState(
+    submitDeploymentRequest,
+    initialDeploymentFormState,
+  );
+  const [deleteState, deleteAction, deletePending] = useActionState(
+    deleteAbraInstance,
+    initialDeploymentFormState,
+  );
+  const [polledDeployment, setPolledDeployment] = useState<DashboardDeployment | null>(null);
+  // Keyed to the deployment id (rather than reset via effect) so confirmation
+  // state can't leak across a stop-then-restart cycle in the same session.
+  const [confirmingStopFor, setConfirmingStopFor] = useState<string | null>(null);
 
-function DeleteButton({
-  pending,
-  disabled,
-  confirming,
-  onRequestConfirm,
-  onCancel,
-}: {
-  pending: boolean;
-  disabled: boolean;
-  confirming: boolean;
-  onRequestConfirm: () => void;
-  onCancel: () => void;
-}) {
-  if (!confirming) {
-    return (
-      <Button type="button" variant="danger" disabled={disabled} onClick={onRequestConfirm}>
-        Delete instance
+  const deployment = useMemo(
+    () => [initialDeployment, deployState.deployment, deleteState.deployment, polledDeployment]
+      .filter((item): item is DashboardDeployment => item !== null)
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0] ?? null,
+    [deleteState.deployment, deployState.deployment, initialDeployment, polledDeployment],
+  );
+  const latestMessage = deleteState.message ?? deployState.message;
+  const latestStatus = deleteState.message ? deleteState.status : deployState.status;
+  const latestWarning = deleteState.warning ?? deployState.warning ?? persistenceWarning;
+  // Once the stop actually starts processing (status flips to "deleting"),
+  // fall through to the disabled "Stopping…" state instead of leaving the
+  // confirm step active and re-clickable.
+  const confirmingStop =
+    deployment !== null && confirmingStopFor === deployment.id && !isTransitioning(deployment);
+
+  const skipNextRefresh = useRef(true);
+  useEffect(() => {
+    // The dashboard hero is rendered server-side; refresh it whenever a
+    // start/stop action here resolves so it doesn't go stale until the next
+    // full navigation.
+    if (skipNextRefresh.current) {
+      skipNextRefresh.current = false;
+      return;
+    }
+    router.refresh();
+  }, [deployState, deleteState, router]);
+
+  useEffect(() => {
+    const pollingDeployment = deployment;
+
+    if (!isTransitioning(pollingDeployment) || !pollingDeployment?.orchestration?.operationId) {
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      const response = await fetch(
+        `/api/dashboard/deployments/${pollingDeployment.id}/status`,
+        { cache: "no-store" },
+      );
+
+      if (response.ok) {
+        const next = (await response.json()) as DashboardDeployment;
+        setPolledDeployment(next);
+        if (next.status !== pollingDeployment.status) {
+          router.refresh();
+        }
+      }
+    }, Math.max(800, pollingDeployment.orchestration.pollAfterMs));
+
+    return () => window.clearTimeout(timer);
+  }, [deployment, router]);
+
+  const badge = STATUS_BADGES[deployment?.status ?? "idle"];
+  const transitioning = isTransitioning(deployment);
+  const shouldShowStart = canDeploy(deployment);
+
+  let actionRow: React.ReactNode;
+  if (confirmingStop) {
+    actionRow = (
+      <>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={deletePending}
+          onClick={() => setConfirmingStopFor(null)}
+        >
+          Cancel
+        </Button>
+        <form action={deleteAction}>
+          <Button type="submit" variant="danger" disabled={deletePending}>
+            {deletePending ? "Stopping…" : "Confirm stop"}
+          </Button>
+        </form>
+      </>
+    );
+  } else if (shouldShowStart) {
+    actionRow = (
+      <form action={deployAction}>
+        <Button type="submit" disabled={deployPending || !telegramConfigured}>
+          {deployPending ? "Starting…" : "Start"}
+        </Button>
+      </form>
+    );
+  } else {
+    const startingUp = deployment?.status === "queued" || deployment?.status === "running";
+    actionRow = (
+      <Button
+        type="button"
+        variant={startingUp ? "primary" : "danger"}
+        disabled={!canStop(deployment)}
+        onClick={() => setConfirmingStopFor(deployment?.id ?? null)}
+      >
+        {startingUp ? "Starting…" : transitioning ? "Stopping…" : "Stop"}
       </Button>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Button type="button" variant="ghost" disabled={pending} onClick={onCancel}>
-        Cancel
-      </Button>
-      <Button type="submit" variant="danger" disabled={pending || disabled}>
-        {pending ? "Deleting…" : "Confirm delete"}
-      </Button>
-    </div>
-  );
-}
-
-function InstanceStatusBox({ deployment }: { deployment: DashboardDeployment | null }) {
-  const badge = STATUS_BADGES[deployment?.status ?? "idle"];
-  const isTransitioning = deployment?.status === "queued" || deployment?.status === "running" || deployment?.status === "deleting";
-
-  return (
-    <Card>
+    <Card className="animate-fade-up" id="deployment-request">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-shell-border-strong)] pb-6">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">Abra instance</p>
           <h2 className="mt-4 text-h4 font-display font-bold text-white">
             {deployment ? deployment.request.name : "No instance deployed"}
           </h2>
-          <p className="mt-3 max-w-2xl text-body leading-7 text-zinc-300">
-            {deployment
-              ? "This is the single Abra runtime for your account. Delete it before deploying another instance."
-              : "Deploy one Abra runtime for this account. History is kept separately from the live instance."}
-          </p>
         </div>
-        <Badge variant={badge.variant} className={isTransitioning ? "animate-pulse-slow" : ""}>
+        <Badge variant={badge.variant} className={transitioning ? "animate-pulse-slow" : ""}>
           {badge.label}
         </Badge>
       </div>
@@ -123,158 +197,45 @@ function InstanceStatusBox({ deployment }: { deployment: DashboardDeployment | n
           <p className="mt-2 text-caption text-danger-50">{deployment.errorMessage}</p>
         </Panel>
       )}
+
+      {latestWarning && (
+        <Panel bordered className="mt-5 border-warning-400/40 bg-[color-mix(in_srgb,var(--color-warning-900)_30%,var(--color-shell-panel))]">
+          <p className="text-caption font-semibold uppercase tracking-wide text-warning-200">Storage notice</p>
+          <p className="mt-2 text-body text-warning-100/90">{latestWarning}</p>
+        </Panel>
+      )}
+
+      {latestMessage && (
+        <Panel
+          bordered
+          className={`mt-5 ${
+            latestStatus === "success"
+              ? "border-success-400/40 bg-[color-mix(in_srgb,var(--color-success-900)_30%,var(--color-shell-panel))]"
+              : "border-danger-400/40 bg-[color-mix(in_srgb,var(--color-danger-900)_28%,var(--color-shell-panel))]"
+          }`}
+        >
+          <p className={`text-body font-medium ${latestStatus === "success" ? "text-success-50" : "text-danger-50"}`}>
+            {latestMessage}
+          </p>
+        </Panel>
+      )}
+
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        {actionRow}
+        <Button variant="ghost" href="/dashboard/settings">
+          Settings
+        </Button>
+      </div>
+
+      {shouldShowStart && !telegramConfigured && (
+        <p className="mt-3 text-caption text-zinc-500">
+          Set up Telegram in{" "}
+          <a href="/dashboard/settings#bot-setup" className="underline hover:text-zinc-300">
+            Settings
+          </a>{" "}
+          to enable Start.
+        </p>
+      )}
     </Card>
-  );
-}
-
-export function DeploymentConsole({
-  initialDeployment,
-  persistenceWarning,
-}: DeploymentConsoleProps) {
-  const router = useRouter();
-  const [deployState, deployAction, deployPending] = useActionState(
-    submitDeploymentRequest,
-    initialDeploymentFormState,
-  );
-  const [deleteState, deleteAction, deletePending] = useActionState(
-    deleteAbraInstance,
-    initialDeploymentFormState,
-  );
-  const [polledDeployment, setPolledDeployment] = useState<DashboardDeployment | null>(null);
-  const [telegramStatus, setTelegramStatus] = useState<TelegramBotStatus>({ loaded: false, configured: false });
-  const [confirmingDeleteFor, setConfirmingDeleteFor] = useState<string | null>(null);
-
-  const deployment = useMemo(
-    () => [initialDeployment, deployState.deployment, deleteState.deployment, polledDeployment]
-      .filter((item): item is DashboardDeployment => item !== null)
-      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0] ?? null,
-    [deleteState.deployment, deployState.deployment, initialDeployment, polledDeployment],
-  );
-  const latestMessage = deleteState.message ?? deployState.message;
-  const latestStatus = deleteState.message ? deleteState.status : deployState.status;
-  const latestWarning = deleteState.warning ?? deployState.warning ?? persistenceWarning;
-  // Keyed to the deployment id (rather than reset via effect) so confirmation
-  // state can't leak across a delete-then-redeploy cycle in the same session.
-  const confirmingDelete = deployment !== null && confirmingDeleteFor === deployment.id;
-
-  const skipNextRefresh = useRef(true);
-  useEffect(() => {
-    // The dashboard hero status/CTA is rendered server-side from the initial
-    // deployment snapshot; refresh it whenever a deploy/delete action here
-    // resolves so it doesn't go stale until the next full navigation.
-    if (skipNextRefresh.current) {
-      skipNextRefresh.current = false;
-      return;
-    }
-    router.refresh();
-  }, [deployState, deleteState, router]);
-
-  useEffect(() => {
-    const pollingDeployment = deployment;
-
-    if (!isPollingStatus(pollingDeployment) || !pollingDeployment.orchestration?.operationId) {
-      return;
-    }
-
-    const timer = window.setTimeout(async () => {
-      const response = await fetch(
-        `/api/dashboard/deployments/${pollingDeployment.id}/status`,
-        { cache: "no-store" },
-      );
-
-      if (response.ok) {
-        const next = (await response.json()) as DashboardDeployment;
-        setPolledDeployment(next);
-        if (next.status !== pollingDeployment.status) {
-          router.refresh();
-        }
-      }
-    }, Math.max(800, pollingDeployment.orchestration.pollAfterMs));
-
-    return () => window.clearTimeout(timer);
-  }, [deployment, router]);
-
-  const shouldShowDeployForm = canDeploy(deployment);
-
-  return (
-    <div className="animate-fade-up space-y-6" id="deployment-request">
-      <InstanceStatusBox deployment={deployment} />
-
-      <Card>
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-shell-border-strong)] pb-6">
-          <div>
-            <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">Instance controls</p>
-            <h3 className="mt-4 text-h5 font-display font-bold text-white">
-              {shouldShowDeployForm ? "Deploy your Abra runtime" : "Manage current runtime"}
-            </h3>
-            <p className="mt-3 max-w-2xl text-body leading-7 text-zinc-300">
-              {shouldShowDeployForm
-                ? "Create the only Abra instance for this account."
-                : "A runtime already exists. Delete it before deploying another one."}
-            </p>
-          </div>
-        </div>
-
-        {latestWarning && (
-          <Panel bordered className="mt-6 border-warning-400/40 bg-[color-mix(in_srgb,var(--color-warning-900)_30%,var(--color-shell-panel))]">
-            <p className="text-caption font-semibold uppercase tracking-wide text-warning-200">Storage notice</p>
-            <p className="mt-2 text-body text-warning-100/90">{latestWarning}</p>
-          </Panel>
-        )}
-
-        {latestMessage && (
-          <Panel
-            bordered
-            className={`mt-6 ${
-              latestStatus === "success"
-                ? "border-success-400/40 bg-[color-mix(in_srgb,var(--color-success-900)_30%,var(--color-shell-panel))]"
-                : "border-danger-400/40 bg-[color-mix(in_srgb,var(--color-danger-900)_28%,var(--color-shell-panel))]"
-            }`}
-          >
-            <p className={`text-body font-medium ${latestStatus === "success" ? "text-success-50" : "text-danger-50"}`}>
-              {latestMessage}
-            </p>
-          </Panel>
-        )}
-
-        {shouldShowDeployForm ? (
-          telegramStatus.loaded && telegramStatus.configured ? (
-            <form action={deployAction} className="mt-8">
-              <Panel bordered muted className="flex flex-wrap items-center justify-between gap-4 rounded-sm">
-                <div>
-                  <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">Deployment contract</p>
-                  <p className="mt-1 text-body text-zinc-300">
-                    One click creates the single Abra instance for this account.
-                  </p>
-                </div>
-                <SubmitButton pending={deployPending} />
-              </Panel>
-            </form>
-          ) : (
-            <div className="mt-8">
-              <TelegramBotForm onStatusChange={setTelegramStatus} />
-            </div>
-          )
-        ) : (
-          <form action={deleteAction} className="mt-8">
-            <Panel bordered muted className="flex flex-wrap items-center justify-between gap-4 rounded-sm">
-              <div>
-                <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">Delete instance</p>
-                <p className="mt-1 text-body text-zinc-300">
-                  This removes AKS compute resources. Persistent storage follows the configured retention policy.
-                </p>
-              </div>
-              <DeleteButton
-                pending={deletePending}
-                disabled={!hasDeletableInstance(deployment)}
-                confirming={confirmingDelete}
-                onRequestConfirm={() => setConfirmingDeleteFor(deployment?.id ?? null)}
-                onCancel={() => setConfirmingDeleteFor(null)}
-              />
-            </Panel>
-          </form>
-        )}
-      </Card>
-    </div>
   );
 }

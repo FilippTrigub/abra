@@ -1,7 +1,6 @@
 "use server";
 
 import { after } from "next/server";
-import { revalidatePath } from "next/cache";
 import {
   createDeploymentRecord,
   destroyCurrentDeploymentForUser,
@@ -110,14 +109,4 @@ export async function deleteAbraInstance(
     warning,
     deployment,
   };
-}
-
-export async function startAbraInstance(formData: FormData): Promise<void> {
-  await submitDeploymentRequest(initialDeploymentFormState, formData);
-  revalidatePath("/dashboard");
-}
-
-export async function stopAbraInstance(): Promise<void> {
-  await deleteAbraInstance(initialDeploymentFormState);
-  revalidatePath("/dashboard");
 }

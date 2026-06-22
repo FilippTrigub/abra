@@ -52,7 +52,7 @@ const mutationResult = {
 const noRuntimeDeploymentUpdate = {
   applied: false,
   status: "saved" as const,
-  message: "Runtime environment values are saved. Deploy Abra to apply them.",
+  message: "Runtime environment values are saved. Start Abra to apply them.",
   reason: "No runtime deployed",
   warning: null,
 };
@@ -262,7 +262,7 @@ POSTHOG_HOST=https://app.posthog.com
       success: true,
       applied: false,
       status: "saved",
-      message: "Runtime environment values are saved. Deploy Abra to apply them.",
+      message: "Runtime environment values are saved. Start Abra to apply them.",
       summary: redactedSummary,
       error: null,
     });

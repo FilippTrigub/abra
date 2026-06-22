@@ -71,23 +71,23 @@ state.
 server session cookie (`__session`) via `api/auth/session`. `requireAuth()`
 (`lib/auth`) gates the `(dashboard)` route group.
 
-**Deploy/delete** — `dashboard/deployment-console.tsx` is the single source
-of truth for instance control. Deploying is gated on having a saved Telegram
-bot config (shared `TelegramBotForm` component, also rendered standalone on
-the Settings page). Deleting requires an explicit two-stage confirm. The
-dashboard hero above it is a status/CTA summary computed server-side from
-`hasAgentConfig()`/`canDeploy()` (`dashboard/deployment-rules.ts`) — it calls
-`router.refresh()` after actions and status-changing polls so it doesn't go
-stale relative to the client-driven console below it.
+**Start/stop** — `dashboard/deployment-console.tsx` is the single source of
+truth for instance control: one panel with a status badge, created/updated
+metadata, and a Start/Stop button that toggles by state (disabled with a
+pending label while queued/running/deleting). Start is disabled until
+`hasAgentConfig()` reports a saved Telegram bot config, with a hint pointing
+to Settings — the dashboard no longer renders the Telegram form inline.
+Stop requires an explicit two-stage confirm, shown inline in the same panel.
 
 **Settings** — four sections, ordered by necessity (`(dashboard)/dashboard/settings/`):
-`bot-setup-card.tsx` (Telegram, required to deploy, same shared `TelegramBotForm`
-as the dashboard), `publishing-card.tsx` (Buffer — the one optional key that's
+`bot-setup-card.tsx` (Telegram, required to start — the only place the
+`TelegramBotForm` is rendered), `publishing-card.tsx` (Buffer — the one optional key that's
 functionally critical, since it's what turns an approved draft into a
 scheduled post), `model-provider-card.tsx` (read-only status — the model
 provider is entirely platform-managed, no user override exists), and
 `optional-integrations-card.tsx` (every other provider group from the
-registry, collapsed `Disclosure`s with a one-line "what this unlocks"
+registry, lazy-loaded via `next/dynamic` since it's the heaviest of the four,
+collapsed `Disclosure`s with a one-line "what this unlocks"
 summary, plus the field-entry/`.env` paste-and-preview import modes,
 encrypted at rest — see `lib/runtime-env`). The registry
 (`lib/runtime-env/definitions.ts`) is the source of truth for grouping,

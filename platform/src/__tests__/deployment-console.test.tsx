@@ -13,20 +13,8 @@ vi.mock("@/app/(dashboard)/dashboard/actions", () => ({
   submitDeploymentRequest: vi.fn(),
 }));
 
-vi.mock("@/lib/agent-config/actions", () => ({
-  loadUserAgentConfig: vi.fn(),
-  saveUserAgentConfig: vi.fn(),
-}));
-
 describe("DeploymentConsole", () => {
-  it("renders the deploy button when Telegram config is already saved", async () => {
-    const { loadUserAgentConfig } = await import("@/lib/agent-config/actions");
-    vi.mocked(loadUserAgentConfig).mockResolvedValue({
-      configured: true,
-      token: "bot123:token",
-      homeChannel: "123456789",
-    });
-
+  it("renders the Start button when Telegram is configured", async () => {
     const { DeploymentConsole } = await import(
       "@/app/(dashboard)/dashboard/deployment-console"
     );
@@ -35,23 +23,36 @@ describe("DeploymentConsole", () => {
       <DeploymentConsole
         initialDeployment={null}
         persistenceWarning={null}
+        telegramConfigured={true}
       />,
     );
 
-    expect(await screen.findByRole("button", { name: "Deploy Abra" })).toBeTruthy();
-    expect(screen.queryByLabelText("Instance name")).toBeNull();
-    expect(screen.queryByLabelText("Environment")).toBeNull();
-    expect(screen.queryByLabelText("Branch / tag / version")).toBeNull();
+    const startButton = await screen.findByRole("button", { name: "Start" });
+    expect(startButton).toBeTruthy();
+    expect(startButton.getAttribute("disabled")).toBeNull();
   });
 
-  it("shows a delete control for a ready instance", async () => {
-    const { loadUserAgentConfig } = await import("@/lib/agent-config/actions");
-    vi.mocked(loadUserAgentConfig).mockResolvedValue({
-      configured: true,
-      token: "bot123:token",
-      homeChannel: "123456789",
-    });
+  it("disables Start and shows a setup hint when Telegram isn't configured", async () => {
+    const { DeploymentConsole } = await import(
+      "@/app/(dashboard)/dashboard/deployment-console"
+    );
 
+    render(
+      <DeploymentConsole
+        initialDeployment={null}
+        persistenceWarning={null}
+        telegramConfigured={false}
+      />,
+    );
+
+    const startButton = await screen.findByRole("button", { name: "Start" });
+    expect(startButton.getAttribute("disabled")).not.toBeNull();
+    expect(
+      screen.getByText("Set up Telegram in", { exact: false }),
+    ).toBeTruthy();
+  });
+
+  it("shows a Stop control for a ready instance", async () => {
     const { DeploymentConsole } = await import(
       "@/app/(dashboard)/dashboard/deployment-console"
     );
@@ -84,36 +85,12 @@ describe("DeploymentConsole", () => {
           },
         }}
         persistenceWarning={null}
+        telegramConfigured={true}
       />,
     );
 
     expect(await screen.findByRole("heading", { name: "Abra runtime" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Delete instance" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Deploy Abra" })).toBeNull();
-  });
-
-  it("shows inline Telegram config form when no config is saved yet", async () => {
-    const { loadUserAgentConfig } = await import("@/lib/agent-config/actions");
-    vi.mocked(loadUserAgentConfig).mockResolvedValue({
-      configured: false,
-      token: null,
-      homeChannel: null,
-    });
-
-    const { DeploymentConsole } = await import(
-      "@/app/(dashboard)/dashboard/deployment-console"
-    );
-
-    render(
-      <DeploymentConsole
-        initialDeployment={null}
-        persistenceWarning={null}
-      />,
-    );
-
-    expect(await screen.findByPlaceholderText("123456:ABC-DEF...")).toBeTruthy();
-    expect(screen.getByPlaceholderText("388259993")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Save Telegram config" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Deploy Abra" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Stop" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Start" })).toBeNull();
   });
 });
