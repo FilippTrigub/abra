@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const getPlatformAccountMock = vi.fn();
 const dispatchOrchestrationActionMock = vi.fn();
-const loadRuntimeEnvForOrchestrationWithTelegramCompatMock = vi.fn();
+const decryptRuntimeEnvForOrchestrationMock = vi.fn();
 const loadAgentConfigMock = vi.fn();
 const getStoredOperationStatusMock = vi.fn();
 const getAdapterStatusMock = vi.fn();
@@ -85,8 +85,8 @@ vi.mock("@/lib/orchestration/firestore-operation-store", () => ({
   },
 }));
 
-vi.mock("@/lib/runtime-env/telegram-compat", () => ({
-  loadRuntimeEnvForOrchestrationWithTelegramCompat: loadRuntimeEnvForOrchestrationWithTelegramCompatMock,
+vi.mock("@/lib/runtime-env/service", () => ({
+  decryptRuntimeEnvForOrchestration: decryptRuntimeEnvForOrchestrationMock,
 }));
 
 vi.mock("@/lib/agent-config/service", () => ({
@@ -207,11 +207,8 @@ describe("runtime env version application tracking", () => {
     documentStore.clear();
     updateCalls.length = 0;
     getPlatformAccountMock.mockResolvedValue({ id: "account-1", name: "Test account" });
-    loadRuntimeEnvForOrchestrationWithTelegramCompatMock.mockResolvedValue({
+    decryptRuntimeEnvForOrchestrationMock.mockResolvedValue({
       BUFFER_API_KEY: "buffer-secret",
-      TELEGRAM_BOT_TOKEN: "telegram-secret",
-      TELEGRAM_HOME_CHANNEL: "@abra-home",
-      TELEGRAM_ALLOWED_USERS: "@abra-home",
     });
     loadAgentConfigMock.mockResolvedValue({
       telegramBotToken: "telegram-secret",

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 
 const getPlatformAccountMock = vi.fn();
 const dispatchOrchestrationActionMock = vi.fn();
-const loadRuntimeEnvForOrchestrationWithTelegramCompatMock = vi.fn();
+const decryptRuntimeEnvForOrchestrationMock = vi.fn();
 const loadAgentConfigMock = vi.fn();
 const requireApiAuthMock = vi.fn();
 const loadRuntimeEnvSummaryMock = vi.fn();
@@ -75,10 +75,6 @@ vi.mock("@/lib/orchestration", () => ({
   getOrchestrationAdapter: vi.fn(),
 }));
 
-vi.mock("@/lib/runtime-env/telegram-compat", () => ({
-  loadRuntimeEnvForOrchestrationWithTelegramCompat: loadRuntimeEnvForOrchestrationWithTelegramCompatMock,
-}));
-
 vi.mock("@/lib/agent-config/service", () => ({
   loadAgentConfig: loadAgentConfigMock,
 }));
@@ -88,6 +84,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 vi.mock("@/lib/runtime-env/service", () => ({
+  decryptRuntimeEnvForOrchestration: decryptRuntimeEnvForOrchestrationMock,
   loadRuntimeEnvSummary: loadRuntimeEnvSummaryMock,
   deleteRuntimeEnvKey: vi.fn(),
   rollbackRuntimeEnvVersion: vi.fn(),
@@ -147,11 +144,8 @@ describe("runtime env deployment update", () => {
     documentStore.clear();
     updateCalls.length = 0;
     getPlatformAccountMock.mockResolvedValue({ id: "account-1", name: "Test account" });
-    loadRuntimeEnvForOrchestrationWithTelegramCompatMock.mockResolvedValue({
+    decryptRuntimeEnvForOrchestrationMock.mockResolvedValue({
       BUFFER_API_KEY: "buffer-secret",
-      TELEGRAM_BOT_TOKEN: "telegram-secret",
-      TELEGRAM_HOME_CHANNEL: "@abra-home",
-      TELEGRAM_ALLOWED_USERS: "@abra-home",
     });
     loadAgentConfigMock.mockResolvedValue({
       telegramBotToken: "telegram-secret",
@@ -223,9 +217,6 @@ describe("runtime env deployment update", () => {
         },
         runtimeEnv: {
           BUFFER_API_KEY: "buffer-secret",
-          TELEGRAM_BOT_TOKEN: "telegram-secret",
-          TELEGRAM_HOME_CHANNEL: "@abra-home",
-          TELEGRAM_ALLOWED_USERS: "@abra-home",
         },
       }),
     });
@@ -258,7 +249,7 @@ describe("runtime env deployment update", () => {
       warning: null,
     });
     expect(dispatchOrchestrationActionMock).not.toHaveBeenCalled();
-    expect(loadRuntimeEnvForOrchestrationWithTelegramCompatMock).not.toHaveBeenCalled();
+    expect(decryptRuntimeEnvForOrchestrationMock).not.toHaveBeenCalled();
   });
 
   test("does not dispatch when the current deployment is missing AKS metadata", async () => {
@@ -284,7 +275,7 @@ describe("runtime env deployment update", () => {
     expect(result.reason).toBe("Runtime deployment metadata is missing");
     expect(result.deployment?.id).toBe("abra-instance");
     expect(dispatchOrchestrationActionMock).not.toHaveBeenCalled();
-    expect(loadRuntimeEnvForOrchestrationWithTelegramCompatMock).not.toHaveBeenCalled();
+    expect(decryptRuntimeEnvForOrchestrationMock).not.toHaveBeenCalled();
   });
 
   test("dispatchDeploymentRequest (create) loads and forwards runtime env, same as update", async () => {
@@ -293,7 +284,7 @@ describe("runtime env deployment update", () => {
 
     await dispatchDeploymentRequest("abra-instance", "user-1");
 
-    expect(loadRuntimeEnvForOrchestrationWithTelegramCompatMock).toHaveBeenCalledWith("user-1");
+    expect(decryptRuntimeEnvForOrchestrationMock).toHaveBeenCalledWith("user-1");
     expect(dispatchOrchestrationActionMock).toHaveBeenCalledWith("create", {
       requestId: "req-existing",
       target: {
@@ -311,9 +302,6 @@ describe("runtime env deployment update", () => {
         },
         runtimeEnv: {
           BUFFER_API_KEY: "buffer-secret",
-          TELEGRAM_BOT_TOKEN: "telegram-secret",
-          TELEGRAM_HOME_CHANNEL: "@abra-home",
-          TELEGRAM_ALLOWED_USERS: "@abra-home",
         },
       }),
     });

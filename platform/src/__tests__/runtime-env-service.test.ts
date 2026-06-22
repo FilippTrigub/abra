@@ -111,7 +111,7 @@ describe("runtime env Firestore service", () => {
     const result = await saveRuntimeEnvFields(AUTH_USER_ID, {
       values: {
         BUFFER_API_KEY: "buf_plain_secret",
-        TELEGRAM_HOME_CHANNEL: "@abra-home",
+        OBSIDIAN_VAULT_PATH: "@abra-home",
       },
     }, context);
 
@@ -148,14 +148,14 @@ describe("runtime env Firestore service", () => {
       versionId: "ver_test_1",
       previousVersionId: null,
       action: "save",
-      keys: ["BUFFER_API_KEY", "TELEGRAM_HOME_CHANNEL"],
+      keys: ["BUFFER_API_KEY", "OBSIDIAN_VAULT_PATH"],
       values: expect.objectContaining({ BUFFER_API_KEY: expect.any(Object) }),
     }));
     expect(audit).toEqual(expect.objectContaining({
       eventId: "evt_test_1",
       versionId: "ver_test_1",
       action: "save",
-      keys: ["BUFFER_API_KEY", "TELEGRAM_HOME_CHANNEL"],
+      keys: ["BUFFER_API_KEY", "OBSIDIAN_VAULT_PATH"],
     }));
     expect(serializedActive).not.toContain("buf_plain_secret");
     expect(serializedActive).not.toContain("@abra-home");
@@ -170,7 +170,7 @@ describe("runtime env Firestore service", () => {
     await saveRuntimeEnvFields(AUTH_USER_ID, {
       values: {
         BUFFER_API_KEY: "buf_orchestration_secret",
-        TELEGRAM_HOME_CHANNEL: "@summary-safe",
+        OBSIDIAN_VAULT_PATH: "@summary-safe",
       },
     }, context);
 
@@ -180,13 +180,13 @@ describe("runtime env Firestore service", () => {
     expect(summary.versionId).toBe("ver_test_1");
     expect(summary.values).toEqual([
       expect.objectContaining({ key: "BUFFER_API_KEY", configured: true, source: "manual" }),
-      expect.objectContaining({ key: "TELEGRAM_HOME_CHANNEL", configured: true, source: "manual" }),
+      expect.objectContaining({ key: "OBSIDIAN_VAULT_PATH", configured: true, source: "manual" }),
     ]);
     expect(JSON.stringify(summary)).not.toContain("buf_orchestration_secret");
     expect(JSON.stringify(summary)).not.toContain("@summary-safe");
     expect(decrypted).toEqual({
       BUFFER_API_KEY: "buf_orchestration_secret",
-      TELEGRAM_HOME_CHANNEL: "@summary-safe",
+      OBSIDIAN_VAULT_PATH: "@summary-safe",
     });
   });
 

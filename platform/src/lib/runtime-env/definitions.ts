@@ -4,6 +4,10 @@
  * The allowlist mirrors the Hermes Abra installer profile env contract. Platform
  * and infrastructure-owned variables are modeled as reserved so import flows can
  * reject them with a specific reason instead of silently ignoring dangerous keys.
+ * A few keys are reserved for a different reason: they're owned by a dedicated
+ * settings flow elsewhere (e.g. Telegram identity lives in Settings -> Telegram
+ * bot, backed by agent-config) rather than this generic registry, so a stale
+ * value saved here can never silently shadow the dedicated flow's value.
  */
 
 export const RUNTIME_ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -27,16 +31,22 @@ export interface RuntimeEnvValidationMetadata {
   allowEmptyValue: boolean;
 }
 
+export type RuntimeEnvReservedReason = "platform" | "dedicated-flow";
+
 export interface RuntimeEnvDefinition {
   key: string;
   label: string;
   group: RuntimeEnvGroup;
   description: string;
   reserved: boolean;
+  /** Why this key isn't user-managed via this registry. Null when reserved is false. */
+  reservedReason: RuntimeEnvReservedReason | null;
   secret: boolean;
   injectIntoDotenv: boolean;
   injectAsProcessEnv: boolean;
   validation: RuntimeEnvValidationMetadata;
+  /** Set on the handful of optional keys that are functionally critical (not just nice-to-have). */
+  necessity: "critical" | null;
 }
 
 const DEFAULT_VALIDATION: RuntimeEnvValidationMetadata = {
@@ -49,7 +59,7 @@ function runtimeEnvDefinition<const Key extends string>(
   label: string,
   group: RuntimeEnvGroup,
   description: string,
-  options: Partial<Pick<RuntimeEnvDefinition, "reserved" | "secret" | "injectIntoDotenv" | "injectAsProcessEnv">> = {},
+  options: Partial<Pick<RuntimeEnvDefinition, "reserved" | "reservedReason" | "secret" | "injectIntoDotenv" | "injectAsProcessEnv" | "necessity">> = {},
 ): RuntimeEnvDefinition & { key: Key } {
   const reserved = options.reserved ?? false;
 
@@ -59,10 +69,12 @@ function runtimeEnvDefinition<const Key extends string>(
     group,
     description,
     reserved,
+    reservedReason: options.reservedReason ?? (reserved ? "platform" : null),
     secret: options.secret ?? true,
     injectIntoDotenv: options.injectIntoDotenv ?? !reserved,
     injectAsProcessEnv: options.injectAsProcessEnv ?? !reserved,
     validation: DEFAULT_VALIDATION,
+    necessity: options.necessity ?? null,
   };
 }
 
@@ -74,19 +86,33 @@ const reserved = {
   injectAsProcessEnv: false,
 };
 const reservedNonSecret = { ...reserved, secret: false };
+// Telegram identity is owned by the dedicated Bot Setup flow (agent-config),
+// not this generic registry, so it's excluded from the UI/import/save surface
+// the same way platform secrets are. Unlike platform secrets, though, it still
+// needs to reach the running container — just sourced from agent-config, not
+// from a user-editable value here — so injectIntoDotenv/injectAsProcessEnv
+// stay true (overriding the `reserved` object's defaults).
+const reservedDedicatedFlow = {
+  ...reserved,
+  reservedReason: "dedicated-flow" as const,
+  injectIntoDotenv: true,
+  injectAsProcessEnv: true,
+};
+const reservedDedicatedFlowNonSecret = { ...reservedDedicatedFlow, secret: false };
+const critical = { necessity: "critical" as const };
 
 export const RUNTIME_ENV_DEFINITIONS = [
   runtimeEnvDefinition("ANTHROPIC_API_KEY", "Anthropic API key", "llm", "Claude/Anthropic model provider key."),
   runtimeEnvDefinition("OPENROUTER_API_KEY", "OpenRouter API key", "llm", "OpenRouter model routing provider key."),
-  runtimeEnvDefinition("AZURE_FOUNDRY_API_KEY", "Azure Foundry API key", "llm", "Compatibility key used by the current runtime manifest hydration."),
+  runtimeEnvDefinition("AZURE_FOUNDRY_API_KEY", "Azure Foundry API key", "llm", "Overrides the platform's shared Azure Foundry credential with your own key."),
 
   runtimeEnvDefinition("LANGFUSE_HOST", "Langfuse host", "observability", "Langfuse instance base URL for LLM tracing.", nonSecret),
   runtimeEnvDefinition("LANGFUSE_PUBLIC_KEY", "Langfuse public key", "observability", "Langfuse project public key.", nonSecret),
   runtimeEnvDefinition("LANGFUSE_SECRET_KEY", "Langfuse secret key", "observability", "Langfuse project secret key."),
 
-  runtimeEnvDefinition("TELEGRAM_BOT_TOKEN", "Telegram bot token", "telegram", "Bot token used by the Hermes Telegram gateway."),
-  runtimeEnvDefinition("TELEGRAM_ALLOWED_USERS", "Telegram allowed users", "telegram", "Comma-separated allowlist of Telegram users permitted to access the bot.", nonSecret),
-  runtimeEnvDefinition("TELEGRAM_HOME_CHANNEL", "Telegram home channel", "telegram", "Default Telegram channel or chat identifier.", nonSecret),
+  runtimeEnvDefinition("TELEGRAM_BOT_TOKEN", "Telegram bot token", "telegram", "Bot token used by the Hermes Telegram gateway. Managed in Settings → Telegram bot, not here.", reservedDedicatedFlow),
+  runtimeEnvDefinition("TELEGRAM_ALLOWED_USERS", "Telegram allowed users", "telegram", "Comma-separated allowlist of Telegram users permitted to access the bot. Managed in Settings → Telegram bot, not here.", reservedDedicatedFlowNonSecret),
+  runtimeEnvDefinition("TELEGRAM_HOME_CHANNEL", "Telegram home channel", "telegram", "Default Telegram channel or chat identifier. Managed in Settings → Telegram bot, not here.", reservedDedicatedFlowNonSecret),
   runtimeEnvDefinition("TELEGRAM_HOME_CHANNEL_THREAD_ID", "Telegram home channel thread ID", "telegram", "Optional Telegram forum topic/thread ID for the home channel.", nonSecret),
   runtimeEnvDefinition("TELEGRAM_HOME_CHANNEL_NAME", "Telegram home channel name", "telegram", "Human-readable Telegram home channel name.", nonSecret),
 
@@ -102,7 +128,7 @@ export const RUNTIME_ENV_DEFINITIONS = [
   runtimeEnvDefinition("CLOUDFLARE_API_TOKEN", "Cloudflare API token", "utilities", "Cloudflare API token used by Cloudflare automation."),
   runtimeEnvDefinition("CLOUDFLARE_ACCOUNT_ID", "Cloudflare account ID", "utilities", "Cloudflare account identifier used by Cloudflare automation.", nonSecret),
 
-  runtimeEnvDefinition("BUFFER_API_KEY", "Buffer API key", "contentMedia", "Buffer Publish key used by post scheduling."),
+  runtimeEnvDefinition("BUFFER_API_KEY", "Buffer API key", "contentMedia", "Buffer Publish key used by post scheduling.", critical),
   runtimeEnvDefinition("GIPHY_API_KEY", "Giphy API key", "contentMedia", "Giphy API key used by GIF overlay skills."),
   runtimeEnvDefinition("FREESOUND_API_KEY", "Freesound API key", "contentMedia", "Freesound API key used by audio effect skills."),
   runtimeEnvDefinition("PIXABAY_API_KEY", "Pixabay API key", "contentMedia", "Pixabay API key used by stock media overlay skills."),
@@ -208,6 +234,9 @@ export const RESERVED_RUNTIME_ENV_KEYS = [
   "AZURE_CLIENT_ID",
   "AZURE_FEDERATED_TOKEN_FILE",
   "HERMES_HOME",
+  "TELEGRAM_BOT_TOKEN",
+  "TELEGRAM_ALLOWED_USERS",
+  "TELEGRAM_HOME_CHANNEL",
 ] as const;
 
 export type ReservedRuntimeEnvKey = (typeof RESERVED_RUNTIME_ENV_KEYS)[number];
@@ -224,6 +253,18 @@ export const RESERVED_RUNTIME_ENV_DEFINITIONS = RUNTIME_ENV_DEFINITIONS.filter(
 export const SUPPORTED_RUNTIME_ENV_KEYS = SUPPORTED_RUNTIME_ENV_DEFINITIONS.map(
   (definition) => definition.key,
 ) as RuntimeEnvKey[];
+
+/**
+ * Definitions eligible to reach the deployed runtime (.env content, Secret
+ * process env, config.yaml forwarding) — broader than SUPPORTED_RUNTIME_ENV_DEFINITIONS,
+ * since dedicated-flow keys like Telegram still need injection even though
+ * they're excluded from the generic user-editable registry. True platform
+ * secrets (KUBECONFIG etc.) stay excluded via their injectIntoDotenv/
+ * injectAsProcessEnv defaults of false.
+ */
+export const RUNTIME_INJECTABLE_DEFINITIONS = RUNTIME_ENV_DEFINITIONS.filter(
+  (definition) => definition.injectIntoDotenv || definition.injectAsProcessEnv,
+);
 
 const RUNTIME_ENV_DEFINITION_BY_KEY = new Map<string, RuntimeEnvDefinition>(
   RUNTIME_ENV_DEFINITIONS.map((definition) => [definition.key, definition]),
@@ -285,4 +326,24 @@ export function getRuntimeEnvGroupLabel(group: RuntimeEnvGroup): string {
   };
 
   return labels[group];
+}
+
+/** One-line "what this unlocks" intro shown above each optional skill-integration group. */
+export function getRuntimeEnvGroupSummary(group: RuntimeEnvGroup): string {
+  const summaries: Record<RuntimeEnvGroup, string> = {
+    llm: "Lets Abra call your own model provider account instead of the platform default.",
+    observability: "Sends LLM call traces to your own Langfuse project for debugging and cost tracking.",
+    telegram: "Advanced, optional Telegram tuning. The bot token, home channel, and allowed users themselves are managed in Settings → Telegram bot, above.",
+    utilities: "Research, browser automation, and productivity tools Abra's skills can call on.",
+    contentMedia: "Stock media, audio, and hosted-model keys for image/video/audio generation skills.",
+    runpod: "GPU inference for heavier media skills (video editing, background removal, frame interpolation).",
+    analytics: "Lets Abra pull your site/ad performance data into drafts and reports.",
+    emailMarketing: "Lets Abra send campaigns or manage links through your email/marketing tools.",
+    seo: "Lets Abra pull keyword and ranking data from your SEO research tools.",
+    productAnalytics: "Lets Abra read product usage data from your analytics tools.",
+    crmRevenue: "Lets Abra read or update records in your CRM and revenue tools.",
+    reserved: "Platform-owned. Never user-managed.",
+  };
+
+  return summaries[group];
 }

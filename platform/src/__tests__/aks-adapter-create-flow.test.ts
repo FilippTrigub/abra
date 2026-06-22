@@ -8,9 +8,9 @@ vi.mock("@/lib/orchestration/firestore-operation-store", () => ({
   },
 }));
 
-const loadRuntimeEnvForOrchestrationWithTelegramCompatMock = vi.fn();
-vi.mock("@/lib/runtime-env/telegram-compat", () => ({
-  loadRuntimeEnvForOrchestrationWithTelegramCompat: loadRuntimeEnvForOrchestrationWithTelegramCompatMock,
+const decryptRuntimeEnvForOrchestrationMock = vi.fn();
+vi.mock("@/lib/runtime-env/service", () => ({
+  decryptRuntimeEnvForOrchestration: decryptRuntimeEnvForOrchestrationMock,
 }));
 
 import { AksOrchestrationAdapter } from "@/lib/orchestration/aks-adapter";
@@ -84,7 +84,7 @@ describe("AksOrchestrationAdapter create flow", () => {
     store = new InMemoryOperationStore();
     nowIndex = 0;
     delete process.env.AZURE_FOUNDRY_API_KEY;
-    loadRuntimeEnvForOrchestrationWithTelegramCompatMock.mockReset();
+    decryptRuntimeEnvForOrchestrationMock.mockReset();
   });
 
   function nextTimestamp() {
@@ -236,7 +236,7 @@ describe("AksOrchestrationAdapter create flow", () => {
   });
 
   it("re-resolves account-current runtime env during create reconciliation so the generated Secret keeps user-managed keys", async () => {
-    loadRuntimeEnvForOrchestrationWithTelegramCompatMock.mockResolvedValue({
+    decryptRuntimeEnvForOrchestrationMock.mockResolvedValue({
       GH_TOKEN: "gh_token_value",
       HF_TOKEN: "hf_token_value",
     });
@@ -264,7 +264,7 @@ describe("AksOrchestrationAdapter create flow", () => {
 
     await adapter.getStatus(created.operationId);
 
-    expect(loadRuntimeEnvForOrchestrationWithTelegramCompatMock).toHaveBeenCalledWith("account-1");
+    expect(decryptRuntimeEnvForOrchestrationMock).toHaveBeenCalledWith("account-1");
     const secretCall = resourceClient.ensureSecret.mock.calls.at(-1) as unknown[];
     const secretManifest = secretCall[1] as { stringData: Record<string, string> };
     expect(secretManifest.stringData.GH_TOKEN).toBe("gh_token_value");

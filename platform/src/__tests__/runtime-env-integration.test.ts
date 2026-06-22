@@ -359,7 +359,7 @@ FAL_API_KEY=fal_import_secret
     expectNoPlaintextReturned(result, ["buf_saved_only_secret"]);
   });
 
-  test("legacy Telegram config fills missing Telegram runtime env keys before AKS update", async () => {
+  test("Telegram config from Bot Setup reaches the deployed Secret without ever touching runtime-env", async () => {
     seedDeployment();
     loadAgentConfigMock.mockResolvedValue({
       telegramBotToken: "telegram_old_token",
@@ -379,12 +379,17 @@ FAL_API_KEY=fal_import_secret
     const env = getLastPatchedStatefulSetEnv();
 
     expect(result.success).toBe(true);
-    expect(dispatchedInput.payload.runtimeEnv).toEqual(expect.objectContaining({
+    // Telegram identity is Bot Setup's job — saving an unrelated runtime-env
+    // field must never pull Telegram values into payload.runtimeEnv.
+    expect(dispatchedInput.payload.runtimeEnv).toEqual({
       BUFFER_API_KEY: "buf_with_telegram_secret",
-      TELEGRAM_BOT_TOKEN: "telegram_old_token",
-      TELEGRAM_HOME_CHANNEL: "@abra-old-home",
-      TELEGRAM_ALLOWED_USERS: "@abra-old-user",
-    }));
+    });
+    expect(dispatchedInput.payload.agentConfig).toEqual({
+      telegramBotToken: "telegram_old_token",
+      telegramHomeChannel: "@abra-old-home",
+      telegramAllowedUsers: "@abra-old-user",
+    });
+    // The deployed Secret still gets the right values, sourced from agentConfig.
     expect(secretPatch.stringData.env).toContain("TELEGRAM_BOT_TOKEN=telegram_old_token");
     expect(secretPatch.stringData.env).toContain("TELEGRAM_HOME_CHANNEL=@abra-old-home");
     expect(secretPatch.stringData.env).toContain("TELEGRAM_ALLOWED_USERS=@abra-old-user");

@@ -22,7 +22,7 @@ import {
   type ManifestInput,
 } from "@/lib/orchestration/manifest-generator";
 import { parseRuntimeEnvDotenv } from "@/lib/runtime-env/dotenv";
-import { SUPPORTED_RUNTIME_ENV_DEFINITIONS } from "@/lib/runtime-env/definitions";
+import { RUNTIME_INJECTABLE_DEFINITIONS } from "@/lib/runtime-env/definitions";
 import {
   getStatefulSetName,
   getServiceName,
@@ -105,7 +105,7 @@ const BASE_INPUT: ManifestInput = {
 function getExpectedDockerForwardEnvLines(): string[] {
   return [
     "  docker_forward_env:",
-    ...SUPPORTED_RUNTIME_ENV_DEFINITIONS
+    ...RUNTIME_INJECTABLE_DEFINITIONS
       .filter((definition) => definition.injectAsProcessEnv)
       .map((definition) => `    - ${definition.key}`),
   ];
@@ -128,7 +128,7 @@ function getDockerForwardEnvKeys(configYaml: string): string[] {
 function getExpectedEnvPassthroughLines(): string[] {
   return [
     "  env_passthrough:",
-    ...SUPPORTED_RUNTIME_ENV_DEFINITIONS
+    ...RUNTIME_INJECTABLE_DEFINITIONS
       .filter((definition) => definition.injectAsProcessEnv)
       .map((definition) => `    - ${definition.key}`),
   ];
@@ -863,7 +863,7 @@ describe("Runtime prerequisite manifests", () => {
     const forwardedKeys = getDockerForwardEnvKeys(manifests.configMap.data["config.yaml"]);
     const passthroughKeys = getEnvPassthroughKeys(manifests.configMap.data["config.yaml"]);
 
-    const expectedKeys = SUPPORTED_RUNTIME_ENV_DEFINITIONS
+    const expectedKeys = RUNTIME_INJECTABLE_DEFINITIONS
       .filter((definition) => definition.injectAsProcessEnv)
       .map((definition) => definition.key);
     expect(forwardedKeys).toEqual(expectedKeys);
@@ -936,7 +936,7 @@ describe("Runtime prerequisite manifests", () => {
     );
   });
 
-  test("runtimeEnv overrides Telegram agentConfig compatibility values", () => {
+  test("agentConfig Telegram values always win, even if runtimeEnv has stale Telegram keys", () => {
     const manifests = generateKubernetesManifests({
       ...BASE_INPUT,
       agentConfig: {
@@ -944,17 +944,19 @@ describe("Runtime prerequisite manifests", () => {
         telegramHomeChannel: "agent-home",
         telegramAllowedUsers: "agent-user",
       },
+      // Telegram identity is owned by agent-config now; a stale runtimeEnv
+      // value (e.g. orphaned from before the fix) must never shadow it.
       runtimeEnv: {
-        TELEGRAM_BOT_TOKEN: "runtime-token",
-        TELEGRAM_HOME_CHANNEL: "runtime-home",
+        TELEGRAM_BOT_TOKEN: "stale-runtime-token",
+        TELEGRAM_HOME_CHANNEL: "stale-runtime-home",
       },
     });
 
-    expect(manifests.secret.stringData.env).toContain("TELEGRAM_BOT_TOKEN=runtime-token");
-    expect(manifests.secret.stringData.env).toContain("TELEGRAM_HOME_CHANNEL=runtime-home");
+    expect(manifests.secret.stringData.env).toContain("TELEGRAM_BOT_TOKEN=agent-token");
+    expect(manifests.secret.stringData.env).toContain("TELEGRAM_HOME_CHANNEL=agent-home");
     expect(manifests.secret.stringData.env).toContain("TELEGRAM_ALLOWED_USERS=agent-user");
-    expect(manifests.secret.stringData.TELEGRAM_BOT_TOKEN).toBe("runtime-token");
-    expect(manifests.secret.stringData.TELEGRAM_HOME_CHANNEL).toBe("runtime-home");
+    expect(manifests.secret.stringData.TELEGRAM_BOT_TOKEN).toBe("agent-token");
+    expect(manifests.secret.stringData.TELEGRAM_HOME_CHANNEL).toBe("agent-home");
     expect(manifests.secret.stringData.TELEGRAM_ALLOWED_USERS).toBe("agent-user");
   });
 

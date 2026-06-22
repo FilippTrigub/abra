@@ -73,7 +73,6 @@ describe("parseRuntimeEnvDotenv", () => {
 # Supported values
 BUFFER_API_KEY=buf_123
 FAL_API_KEY="fal_456"
-TELEGRAM_ALLOWED_USERS='123,456'
 POSTHOG_HOST=https://app.posthog.com # local comment
 BRAVE_API_KEY=
 OBSIDIAN_VAULT_PATH=/vaults/abra
@@ -92,7 +91,6 @@ TELEGRAM_HOME_CHANNEL_THREAD_ID=42
     expect(result.warnings).toEqual([]);
     expect(result.persistableValues.BUFFER_API_KEY).toBe("buf_123");
     expect(result.persistableValues.FAL_API_KEY).toBe("fal_456");
-    expect(result.persistableValues.TELEGRAM_ALLOWED_USERS).toBe("123,456");
     expect(result.persistableValues.POSTHOG_HOST).toBe("https://app.posthog.com");
     expect(result.persistableValues.BRAVE_API_KEY).toBe("");
     expect(result.persistableValues.OBSIDIAN_VAULT_PATH).toBe("/vaults/abra");
@@ -108,7 +106,6 @@ TELEGRAM_HOME_CHANNEL_THREAD_ID=42
     expect(result.accepted.map((entry) => entry.key)).toEqual([
       "BUFFER_API_KEY",
       "FAL_API_KEY",
-      "TELEGRAM_ALLOWED_USERS",
       "POSTHOG_HOST",
       "BRAVE_API_KEY",
       "OBSIDIAN_VAULT_PATH",
@@ -160,6 +157,35 @@ BUFFER_API_KEY=buf_123
     ]);
     expect(JSON.stringify(result.errors)).not.toContain("do-not-import");
     expect(JSON.stringify(result.errors)).not.toContain("value");
+  });
+
+  test("rejects Telegram identity keys with a message pointing to Bot Setup, not the platform message", () => {
+    const result = parseRuntimeEnvDotenv(`
+TELEGRAM_BOT_TOKEN=do-not-import
+TELEGRAM_HOME_CHANNEL=do-not-import
+TELEGRAM_ALLOWED_USERS=do-not-import
+BUFFER_API_KEY=buf_123
+`);
+
+    expect(result.persistableValues).toEqual({ BUFFER_API_KEY: "buf_123" });
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        code: "reserved-key",
+        key: "TELEGRAM_BOT_TOKEN",
+        message: "This is managed in Settings → Telegram bot, not here.",
+      }),
+      expect.objectContaining({
+        code: "reserved-key",
+        key: "TELEGRAM_HOME_CHANNEL",
+        message: "This is managed in Settings → Telegram bot, not here.",
+      }),
+      expect.objectContaining({
+        code: "reserved-key",
+        key: "TELEGRAM_ALLOWED_USERS",
+        message: "This is managed in Settings → Telegram bot, not here.",
+      }),
+    ]);
+    expect(JSON.stringify(result.errors)).not.toContain("do-not-import");
   });
 
   test("reports non-assignment lines without leaking their plaintext", () => {

@@ -157,13 +157,13 @@ sk_live_malformed_secret
     const result = await saveRuntimeEnvImportAction(`
 BUFFER_API_KEY=buf_import_secret
 RANDOM_SECRET=random_plain_secret
-TELEGRAM_HOME_CHANNEL=@abra-home
+OBSIDIAN_VAULT_PATH=@abra-home
 `);
 
     expect(saveRuntimeEnvImportMock).toHaveBeenCalledWith("user-1", {
       values: {
         BUFFER_API_KEY: "buf_import_secret",
-        TELEGRAM_HOME_CHANNEL: "@abra-home",
+        OBSIDIAN_VAULT_PATH: "@abra-home",
       },
     });
     expect(updateCurrentDeploymentRuntimeEnvForUserMock).toHaveBeenCalledTimes(1);
@@ -173,7 +173,7 @@ TELEGRAM_HOME_CHANNEL=@abra-home
     expect(result.rejected).toEqual([
       expect.objectContaining({ code: "unknown-key", key: "RANDOM_SECRET", lineNumber: 3 }),
     ]);
-    expect(result.accepted.map((entry) => entry.key)).toEqual(["BUFFER_API_KEY", "TELEGRAM_HOME_CHANNEL"]);
+    expect(result.accepted.map((entry) => entry.key)).toEqual(["BUFFER_API_KEY", "OBSIDIAN_VAULT_PATH"]);
     expect(result).not.toHaveProperty("persistableValues");
     expect(JSON.stringify(result)).not.toContain("buf_import_secret");
     expect(JSON.stringify(result)).not.toContain("random_plain_secret");
@@ -186,7 +186,7 @@ TELEGRAM_HOME_CHANNEL=@abra-home
     const result = await saveRuntimeEnvImportAction(`
 BUFFER_API_KEY=buf_import_secret
 FAL_API_KEY=
-TELEGRAM_HOME_CHANNEL=   
+OBSIDIAN_VAULT_PATH=
 POSTHOG_HOST=https://app.posthog.com
 `);
 
@@ -200,7 +200,7 @@ POSTHOG_HOST=https://app.posthog.com
     expect(result.accepted.map((entry) => entry.key)).toEqual([
       "BUFFER_API_KEY",
       "FAL_API_KEY",
-      "TELEGRAM_HOME_CHANNEL",
+      "OBSIDIAN_VAULT_PATH",
       "POSTHOG_HOST",
     ]);
     expect(JSON.stringify(result)).not.toContain("buf_import_secret");

@@ -2,7 +2,7 @@ import { getAdminFirestore } from "@/lib/firebase/admin";
 import { getPlatformAccount } from "@/lib/platform-account";
 import { loadAgentConfig } from "@/lib/agent-config/service";
 import type { AgentConfig } from "@/lib/agent-config/types";
-import { loadRuntimeEnvForOrchestrationWithTelegramCompat } from "@/lib/runtime-env/telegram-compat";
+import { decryptRuntimeEnvForOrchestration } from "@/lib/runtime-env/service";
 import type { RuntimeEnvDecryptedMap } from "@/lib/runtime-env/types";
 import {
   dispatchOrchestrationAction,
@@ -894,7 +894,7 @@ export async function dispatchDeploymentRequest(deploymentId: string, authUserId
 
   try {
     const [runtimeEnv, agentConfig] = await Promise.all([
-      loadRuntimeEnvForOrchestrationWithTelegramCompat(authUserId),
+      decryptRuntimeEnvForOrchestration(authUserId),
       loadAgentConfig(authUserId),
     ]);
     if (!agentConfig) {
@@ -1016,7 +1016,7 @@ export async function updateCurrentDeploymentRuntimeEnvForUser(
 
   try {
     const [runtimeEnv, agentConfig] = await Promise.all([
-      loadRuntimeEnvForOrchestrationWithTelegramCompat(authUserId),
+      decryptRuntimeEnvForOrchestration(authUserId),
       loadAgentConfig(authUserId),
     ]);
     const operation = await dispatchOrchestrationAction(

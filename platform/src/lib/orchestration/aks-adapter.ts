@@ -205,10 +205,8 @@ async function resolveRuntimeEnvForOperation(
   }
 
   if (payload.runtimeEnvRef === "account-current") {
-    const { loadRuntimeEnvForOrchestrationWithTelegramCompat } = await import(
-      "@/lib/runtime-env/telegram-compat"
-    );
-    const storedRuntimeEnv = await loadRuntimeEnvForOrchestrationWithTelegramCompat(accountId);
+    const { decryptRuntimeEnvForOrchestration } = await import("@/lib/runtime-env/service");
+    const storedRuntimeEnv = await decryptRuntimeEnvForOrchestration(accountId);
     return storedRuntimeEnv ?? undefined;
   }
 

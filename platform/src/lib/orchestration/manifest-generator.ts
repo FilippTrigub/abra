@@ -20,6 +20,7 @@ import {
   getRuntimeNamespace,
 } from "./naming-helpers";
 import {
+  RUNTIME_INJECTABLE_DEFINITIONS,
   SUPPORTED_RUNTIME_ENV_DEFINITIONS,
   type RuntimeEnvDefinition,
 } from "../runtime-env/definitions";
@@ -726,7 +727,7 @@ function getRuntimeEnvDefinitionsForValues(
   predicate: (definition: RuntimeEnvDefinition) => boolean,
 ): RuntimeEnvDefinition[] {
   return Array.from(runtimeEnvValues.keys()).flatMap((key) => {
-    const definition = SUPPORTED_RUNTIME_ENV_DEFINITIONS.find((candidate) => candidate.key === key);
+    const definition = RUNTIME_INJECTABLE_DEFINITIONS.find((candidate) => candidate.key === key);
     return definition && predicate(definition) ? [definition] : [];
   });
 }
@@ -739,7 +740,7 @@ function getRuntimeEnvProcessSecretKeys(runtimeEnvValues: Map<string, string>): 
 }
 
 function getRuntimeEnvProcessForwardKeys(): string[] {
-  return SUPPORTED_RUNTIME_ENV_DEFINITIONS
+  return RUNTIME_INJECTABLE_DEFINITIONS
     .filter((definition) => definition.injectAsProcessEnv)
     .map((definition) => definition.key);
 }
