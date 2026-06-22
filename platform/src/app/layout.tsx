@@ -21,8 +21,8 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: {
-    default: "Claw Parade — Brand Management Platform",
-    template: "%s | Claw Parade",
+    default: "Abra — Brand Management Platform",
+    template: "%s | Abra",
   },
   description: "Hosted control plane for personal brand management. AI-powered, multi-channel content pipeline.",
 };
