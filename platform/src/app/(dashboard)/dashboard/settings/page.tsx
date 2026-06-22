@@ -1,8 +1,13 @@
+import dynamic from "next/dynamic";
 import { hasPlatformAzureFoundryDefault } from "@/lib/runtime-env/platform-defaults";
 import { BotSetupCard } from "./bot-setup-card";
 import { PublishingCard } from "./publishing-card";
 import { ModelProviderCard } from "./model-provider-card";
-import { OptionalIntegrationsCard } from "./optional-integrations-card";
+
+const OptionalIntegrationsCard = dynamic(
+  () => import("./optional-integrations-card").then((mod) => mod.OptionalIntegrationsCard),
+  { loading: () => <p className="text-body text-zinc-400">Loading skill integrations…</p> },
+);
 
 export default function SettingsPage() {
   const platformDefaultConfigured = hasPlatformAzureFoundryDefault();
