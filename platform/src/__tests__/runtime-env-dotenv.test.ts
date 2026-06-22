@@ -17,10 +17,12 @@ describe("runtime env registry", () => {
     expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("OBSIDIAN_VAULT_PATH");
     expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("BROWSERBASE_PROXIES");
     expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("LINKUP_API_KEY");
-    expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("TELEGRAM_HOME_CHANNEL_THREAD_ID");
     expect(SUPPORTED_RUNTIME_ENV_KEYS).not.toContain("KUBECONFIG_B64");
     // The model provider is platform-managed, not a user setting.
     expect(SUPPORTED_RUNTIME_ENV_KEYS).not.toContain("AZURE_FOUNDRY_API_KEY");
+    // Telegram thread/channel naming is configured within Telegram itself.
+    expect(SUPPORTED_RUNTIME_ENV_KEYS).not.toContain("TELEGRAM_HOME_CHANNEL_THREAD_ID");
+    expect(SUPPORTED_RUNTIME_ENV_KEYS).not.toContain("TELEGRAM_HOME_CHANNEL_NAME");
   });
 
   test("looks up supported, grouped, and reserved definitions", () => {
@@ -63,7 +65,7 @@ describe("runtime env registry", () => {
     expect(getRuntimeEnvDefinition("OBSIDIAN_VAULT_PATH")).toEqual(expect.objectContaining({ secret: false }));
     expect(getRuntimeEnvDefinition("BROWSERBASE_PROXIES")).toEqual(expect.objectContaining({ secret: true }));
     expect(getRuntimeEnvDefinition("CLOUDFLARE_ACCOUNT_ID")).toEqual(expect.objectContaining({ secret: false }));
-    expect(getRuntimeEnvDefinition("TELEGRAM_HOME_CHANNEL_THREAD_ID")).toEqual(expect.objectContaining({ group: "telegram", secret: false }));
+    expect(getRuntimeEnvDefinition("TELEGRAM_HOME_CHANNEL_THREAD_ID")).toEqual(expect.objectContaining({ group: "telegram", secret: false, reserved: true }));
     expect(getRuntimeEnvGroupLabel("contentMedia")).toBe("Content and media skills");
   });
 });
@@ -85,7 +87,6 @@ LINKUP_API_KEY=linkup_123
 TODOIST_API_KEY=todoist_123
 CLOUDFLARE_API_TOKEN=cf_token
 CLOUDFLARE_ACCOUNT_ID=cf_account
-TELEGRAM_HOME_CHANNEL_THREAD_ID=42
 `);
 
     expect(result.errors).toEqual([]);
@@ -103,7 +104,6 @@ TELEGRAM_HOME_CHANNEL_THREAD_ID=42
     expect(result.persistableValues.TODOIST_API_KEY).toBe("todoist_123");
     expect(result.persistableValues.CLOUDFLARE_API_TOKEN).toBe("cf_token");
     expect(result.persistableValues.CLOUDFLARE_ACCOUNT_ID).toBe("cf_account");
-    expect(result.persistableValues.TELEGRAM_HOME_CHANNEL_THREAD_ID).toBe("42");
     expect(result.accepted.map((entry) => entry.key)).toEqual([
       "BUFFER_API_KEY",
       "FAL_API_KEY",
@@ -118,7 +118,6 @@ TELEGRAM_HOME_CHANNEL_THREAD_ID=42
       "TODOIST_API_KEY",
       "CLOUDFLARE_API_TOKEN",
       "CLOUDFLARE_ACCOUNT_ID",
-      "TELEGRAM_HOME_CHANNEL_THREAD_ID",
     ]);
   });
 
@@ -184,6 +183,29 @@ BUFFER_API_KEY=buf_123
         code: "reserved-key",
         key: "TELEGRAM_ALLOWED_USERS",
         message: "This is managed in Settings → Telegram bot, not here.",
+      }),
+    ]);
+    expect(JSON.stringify(result.errors)).not.toContain("do-not-import");
+  });
+
+  test("rejects Telegram thread/name tuning keys with a message pointing to Telegram itself", () => {
+    const result = parseRuntimeEnvDotenv(`
+TELEGRAM_HOME_CHANNEL_THREAD_ID=do-not-import
+TELEGRAM_HOME_CHANNEL_NAME=do-not-import
+BUFFER_API_KEY=buf_123
+`);
+
+    expect(result.persistableValues).toEqual({ BUFFER_API_KEY: "buf_123" });
+    expect(result.errors).toEqual([
+      expect.objectContaining({
+        code: "reserved-key",
+        key: "TELEGRAM_HOME_CHANNEL_THREAD_ID",
+        message: "This is configured within Telegram itself, not here.",
+      }),
+      expect.objectContaining({
+        code: "reserved-key",
+        key: "TELEGRAM_HOME_CHANNEL_NAME",
+        message: "This is configured within Telegram itself, not here.",
       }),
     ]);
     expect(JSON.stringify(result.errors)).not.toContain("do-not-import");

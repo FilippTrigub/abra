@@ -120,7 +120,9 @@ export function parseRuntimeEnvDotenv(content: string): RuntimeEnvDotenvPreview 
     if (definition.reserved || !isSupportedRuntimeEnvKey(key)) {
       const message = definition.reservedReason === "dedicated-flow"
         ? "This is managed in Settings → Telegram bot, not here."
-        : "This environment variable is reserved for the platform and cannot be imported.";
+        : definition.reservedReason === "telegram-native"
+          ? "This is configured within Telegram itself, not here."
+          : "This environment variable is reserved for the platform and cannot be imported.";
       errors.push(createIssue("reserved-key", key, lineNumber, message));
       return;
     }

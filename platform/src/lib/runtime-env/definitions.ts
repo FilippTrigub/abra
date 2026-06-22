@@ -14,7 +14,6 @@ export const RUNTIME_ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export type RuntimeEnvGroup =
   | "llm"
-  | "observability"
   | "telegram"
   | "utilities"
   | "contentMedia"
@@ -31,7 +30,7 @@ export interface RuntimeEnvValidationMetadata {
   allowEmptyValue: boolean;
 }
 
-export type RuntimeEnvReservedReason = "platform" | "dedicated-flow";
+export type RuntimeEnvReservedReason = "platform" | "dedicated-flow" | "telegram-native";
 
 export interface RuntimeEnvDefinition {
   key: string;
@@ -99,8 +98,16 @@ const reservedInjectable = {
 // Telegram identity is owned by the dedicated Bot Setup flow (agent-config),
 // not this generic registry, so it's excluded from the UI/import/save surface
 // the same way platform secrets are.
+const reservedInjectableNonSecret = { ...reservedInjectable, secret: false };
 const reservedDedicatedFlow = { ...reservedInjectable, reservedReason: "dedicated-flow" as const };
 const reservedDedicatedFlowNonSecret = { ...reservedDedicatedFlow, secret: false };
+// Telegram's own UI is the right place to manage thread/channel naming —
+// Abra doesn't need to (and shouldn't) ask the user to duplicate it here.
+const reservedTelegramNative = {
+  ...reservedInjectable,
+  reservedReason: "telegram-native" as const,
+  secret: false,
+};
 const critical = { necessity: "critical" as const };
 
 export const RUNTIME_ENV_DEFINITIONS = [
@@ -110,15 +117,13 @@ export const RUNTIME_ENV_DEFINITIONS = [
   // but still needs to reach the deployed container, hence reservedInjectable.
   runtimeEnvDefinition("AZURE_FOUNDRY_API_KEY", "Azure Foundry API key", "llm", "Platform-managed model provider credential. Not user-configurable.", reservedInjectable),
 
-  runtimeEnvDefinition("LANGFUSE_HOST", "Langfuse host", "observability", "Langfuse instance base URL for LLM tracing.", nonSecret),
-  runtimeEnvDefinition("LANGFUSE_PUBLIC_KEY", "Langfuse public key", "observability", "Langfuse project public key.", nonSecret),
-  runtimeEnvDefinition("LANGFUSE_SECRET_KEY", "Langfuse secret key", "observability", "Langfuse project secret key."),
-
   runtimeEnvDefinition("TELEGRAM_BOT_TOKEN", "Telegram bot token", "telegram", "Bot token used by the Hermes Telegram gateway. Managed in Settings → Telegram bot, not here.", reservedDedicatedFlow),
   runtimeEnvDefinition("TELEGRAM_ALLOWED_USERS", "Telegram allowed users", "telegram", "Comma-separated allowlist of Telegram users permitted to access the bot. Managed in Settings → Telegram bot, not here.", reservedDedicatedFlowNonSecret),
   runtimeEnvDefinition("TELEGRAM_HOME_CHANNEL", "Telegram home channel", "telegram", "Default Telegram channel or chat identifier. Managed in Settings → Telegram bot, not here.", reservedDedicatedFlowNonSecret),
-  runtimeEnvDefinition("TELEGRAM_HOME_CHANNEL_THREAD_ID", "Telegram home channel thread ID", "telegram", "Optional Telegram forum topic/thread ID for the home channel.", nonSecret),
-  runtimeEnvDefinition("TELEGRAM_HOME_CHANNEL_NAME", "Telegram home channel name", "telegram", "Human-readable Telegram home channel name.", nonSecret),
+  // Thread/channel naming is configured by interacting with Telegram itself,
+  // not a setting Abra should ask the user to type in here.
+  runtimeEnvDefinition("TELEGRAM_HOME_CHANNEL_THREAD_ID", "Telegram home channel thread ID", "telegram", "Optional Telegram forum topic/thread ID for the home channel. Configured within Telegram itself, not here.", reservedTelegramNative),
+  runtimeEnvDefinition("TELEGRAM_HOME_CHANNEL_NAME", "Telegram home channel name", "telegram", "Human-readable Telegram home channel name. Configured within Telegram itself, not here.", reservedTelegramNative),
 
   runtimeEnvDefinition("BRAVE_API_KEY", "Brave API key", "utilities", "Brave Search API key used by research utilities."),
   runtimeEnvDefinition("GH_TOKEN", "GitHub token", "utilities", "GitHub token used by automation that needs repository access."),
@@ -144,17 +149,20 @@ export const RUNTIME_ENV_DEFINITIONS = [
   runtimeEnvDefinition("BACKBLAZE_B2_BUCKET_ID", "Backblaze B2 bucket ID", "contentMedia", "Backblaze B2 bucket identifier used by post scheduling video staging.", nonSecret),
   runtimeEnvDefinition("BACKBLAZE_B2_BUCKET_NAME", "Backblaze B2 bucket name", "contentMedia", "Backblaze B2 bucket name used by post scheduling video staging.", nonSecret),
 
-  runtimeEnvDefinition("RUNPOD_API_KEY", "RunPod API key", "runpod", "RunPod API key for GPU inference endpoints."),
-  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_VIDEO_EDITOR", "RunPod video editor endpoint", "runpod", "RunPod endpoint ID for video editing.", nonSecret),
-  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_VIDEO_MATTE", "RunPod video matte endpoint", "runpod", "RunPod endpoint ID for video matte processing.", nonSecret),
-  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR", "RunPod frame interpolator endpoint", "runpod", "RunPod endpoint ID for frame interpolation.", nonSecret),
-  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_BOKEH_EFFECT", "RunPod bokeh effect endpoint", "runpod", "RunPod endpoint ID for synthetic bokeh effects.", nonSecret),
-  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER", "RunPod background remover endpoint", "runpod", "RunPod endpoint ID for background removal.", nonSecret),
-  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER", "RunPod audio splitter endpoint", "runpod", "RunPod endpoint ID for audio splitting.", nonSecret),
-  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_PHOTO_PICKER", "RunPod photo picker endpoint", "runpod", "RunPod endpoint ID for photo scoring.", nonSecret),
-  runtimeEnvDefinition("BACKBLAZE_B2_RUNPOD_KEY_ID", "Backblaze B2 RunPod key ID", "runpod", "Backblaze B2 application key ID used by RunPod staging.", nonSecret),
-  runtimeEnvDefinition("BACKBLAZE_B2_RUNPOD_APPLICATION_KEY", "Backblaze B2 RunPod application key", "runpod", "Backblaze B2 application key used by RunPod staging."),
-  runtimeEnvDefinition("BACKBLAZE_B2_RUNPOD_BUCKET_NAME", "Backblaze B2 RunPod bucket name", "runpod", "Backblaze B2 bucket name used by RunPod staging.", nonSecret),
+  // GPU inference provisioning is an ops/system concern, not a user setting —
+  // reserved here pending platform-side wiring (no default-injection path
+  // exists yet, unlike AZURE_FOUNDRY_API_KEY's platform-defaults.ts).
+  runtimeEnvDefinition("RUNPOD_API_KEY", "RunPod API key", "runpod", "RunPod API key for GPU inference endpoints.", reservedInjectable),
+  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_VIDEO_EDITOR", "RunPod video editor endpoint", "runpod", "RunPod endpoint ID for video editing.", reservedInjectableNonSecret),
+  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_VIDEO_MATTE", "RunPod video matte endpoint", "runpod", "RunPod endpoint ID for video matte processing.", reservedInjectableNonSecret),
+  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR", "RunPod frame interpolator endpoint", "runpod", "RunPod endpoint ID for frame interpolation.", reservedInjectableNonSecret),
+  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_BOKEH_EFFECT", "RunPod bokeh effect endpoint", "runpod", "RunPod endpoint ID for synthetic bokeh effects.", reservedInjectableNonSecret),
+  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER", "RunPod background remover endpoint", "runpod", "RunPod endpoint ID for background removal.", reservedInjectableNonSecret),
+  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER", "RunPod audio splitter endpoint", "runpod", "RunPod endpoint ID for audio splitting.", reservedInjectableNonSecret),
+  runtimeEnvDefinition("RUNPOD_ENDPOINT_ID_PHOTO_PICKER", "RunPod photo picker endpoint", "runpod", "RunPod endpoint ID for photo scoring.", reservedInjectableNonSecret),
+  runtimeEnvDefinition("BACKBLAZE_B2_RUNPOD_KEY_ID", "Backblaze B2 RunPod key ID", "runpod", "Backblaze B2 application key ID used by RunPod staging.", reservedInjectableNonSecret),
+  runtimeEnvDefinition("BACKBLAZE_B2_RUNPOD_APPLICATION_KEY", "Backblaze B2 RunPod application key", "runpod", "Backblaze B2 application key used by RunPod staging.", reservedInjectable),
+  runtimeEnvDefinition("BACKBLAZE_B2_RUNPOD_BUCKET_NAME", "Backblaze B2 RunPod bucket name", "runpod", "Backblaze B2 bucket name used by RunPod staging.", reservedInjectableNonSecret),
 
   runtimeEnvDefinition("GA4_CLIENT_ID", "GA4 client ID", "analytics", "Google Analytics 4 OAuth client ID.", nonSecret),
   runtimeEnvDefinition("GA4_CLIENT_SECRET", "GA4 client secret", "analytics", "Google Analytics 4 OAuth client secret."),
@@ -241,7 +249,20 @@ export const RESERVED_RUNTIME_ENV_KEYS = [
   "TELEGRAM_BOT_TOKEN",
   "TELEGRAM_ALLOWED_USERS",
   "TELEGRAM_HOME_CHANNEL",
+  "TELEGRAM_HOME_CHANNEL_THREAD_ID",
+  "TELEGRAM_HOME_CHANNEL_NAME",
   "AZURE_FOUNDRY_API_KEY",
+  "RUNPOD_API_KEY",
+  "RUNPOD_ENDPOINT_ID_VIDEO_EDITOR",
+  "RUNPOD_ENDPOINT_ID_VIDEO_MATTE",
+  "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR",
+  "RUNPOD_ENDPOINT_ID_BOKEH_EFFECT",
+  "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER",
+  "RUNPOD_ENDPOINT_ID_AUDIO_SPLITTER",
+  "RUNPOD_ENDPOINT_ID_PHOTO_PICKER",
+  "BACKBLAZE_B2_RUNPOD_KEY_ID",
+  "BACKBLAZE_B2_RUNPOD_APPLICATION_KEY",
+  "BACKBLAZE_B2_RUNPOD_BUCKET_NAME",
 ] as const;
 
 export type ReservedRuntimeEnvKey = (typeof RESERVED_RUNTIME_ENV_KEYS)[number];
@@ -300,9 +321,7 @@ export function getRuntimeEnvDefinitionsByGroup(
 export function getRuntimeEnvGroupOrder(): RuntimeEnvGroup[] {
   return [
     "llm",
-    "observability",
     "telegram",
-    "utilities",
     "contentMedia",
     "runpod",
     "analytics",
@@ -310,6 +329,7 @@ export function getRuntimeEnvGroupOrder(): RuntimeEnvGroup[] {
     "seo",
     "productAnalytics",
     "crmRevenue",
+    "utilities",
     "reserved",
   ];
 }
@@ -317,7 +337,6 @@ export function getRuntimeEnvGroupOrder(): RuntimeEnvGroup[] {
 export function getRuntimeEnvGroupLabel(group: RuntimeEnvGroup): string {
   const labels: Record<RuntimeEnvGroup, string> = {
     llm: "LLM providers",
-    observability: "LLM observability",
     telegram: "Telegram",
     utilities: "Utilities",
     contentMedia: "Content and media skills",
@@ -337,7 +356,6 @@ export function getRuntimeEnvGroupLabel(group: RuntimeEnvGroup): string {
 export function getRuntimeEnvGroupSummary(group: RuntimeEnvGroup): string {
   const summaries: Record<RuntimeEnvGroup, string> = {
     llm: "Lets Abra call your own model provider account instead of the platform default.",
-    observability: "Sends LLM call traces to your own Langfuse project for debugging and cost tracking.",
     telegram: "Advanced, optional Telegram tuning. The bot token, home channel, and allowed users themselves are managed in Settings → Telegram bot, above.",
     utilities: "Research, browser automation, and productivity tools Abra's skills can call on.",
     contentMedia: "Stock media, audio, and hosted-model keys for image/video/audio generation skills.",

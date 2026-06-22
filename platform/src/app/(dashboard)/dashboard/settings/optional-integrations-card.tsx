@@ -28,10 +28,14 @@ type RuntimeEnvSaveStatus = "idle" | "loading" | "saving" | "applying" | "succes
 type RuntimeEnvDeployStatus = "saved" | "applying" | "live" | "saved-not-deployed";
 type RuntimeEnvFieldState = Partial<Record<RuntimeEnvKey, string>>;
 
-// Telegram identity and the model provider each have their own dedicated card —
-// this surface covers everything else, grouped by the skill/capability it unlocks.
+// Telegram identity and the model provider each have their own dedicated card
+// (and aren't user-configurable at all, in Telegram's and the model
+// provider's case). GPU inference provisioning (runpod) is also reserved —
+// it's an ops/system concern pending platform-side wiring, not a user
+// setting. This surface covers everything else, grouped by the
+// skill/capability it unlocks.
 const OPTIONAL_GROUPS = getRuntimeEnvGroupOrder().filter(
-  (group) => group !== "llm" && group !== "reserved",
+  (group) => group !== "llm" && group !== "telegram" && group !== "runpod" && group !== "reserved",
 );
 const PUBLISHING_KEY = "BUFFER_API_KEY" as const;
 
