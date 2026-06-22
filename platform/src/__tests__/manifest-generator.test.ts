@@ -840,7 +840,7 @@ describe("Runtime prerequisite manifests", () => {
     const manifests = generateKubernetesManifests(BASE_INPUT);
     expect(manifests.configMap.data["openclaw.json"]).toBeUndefined();
     expect(manifests.secret.stringData.env).toBe("");
-    expect(manifests.secret.stringData.ANTHROPIC_API_KEY).toBeUndefined();
+    expect(manifests.secret.stringData.FAL_API_KEY).toBeUndefined();
     expect(manifests.secret.stringData.OBSIDIAN_VAULT_PATH).toBeUndefined();
     expect(manifests.secret.stringData.BROWSERBASE_PROXIES).toBeUndefined();
     expect(manifests.secret.stringData.LINKUP_API_KEY).toBeUndefined();
@@ -851,7 +851,7 @@ describe("Runtime prerequisite manifests", () => {
     );
     expectDefined(hermesContainer, "hermes container should exist");
     const envNames = hermesContainer.env?.map((entry) => entry.name) ?? [];
-    expect(envNames).not.toContain("ANTHROPIC_API_KEY");
+    expect(envNames).not.toContain("FAL_API_KEY");
     expect(envNames).not.toContain("OBSIDIAN_VAULT_PATH");
     expect(envNames).not.toContain("BROWSERBASE_PROXIES");
     expect(envNames).not.toContain("LINKUP_API_KEY");
@@ -872,13 +872,16 @@ describe("Runtime prerequisite manifests", () => {
     expect(passthroughKeys).toEqual(expectedKeys);
     expect(forwardedKeys).toEqual(
       expect.arrayContaining([
-        "ANTHROPIC_API_KEY",
+        "FAL_API_KEY",
         "OBSIDIAN_VAULT_PATH",
         "BROWSERBASE_PROXIES",
         "LINKUP_API_KEY",
         "TELEGRAM_HOME_CHANNEL_THREAD_ID",
       ])
     );
+    // AZURE_FOUNDRY_API_KEY is platform-managed but still forwarded, since the
+    // dedicated agentConfig/alias-sourced value still needs to reach Hermes.
+    expect(forwardedKeys).toContain("AZURE_FOUNDRY_API_KEY");
     expect(forwardedKeys).not.toContain("HERMES_HOME");
     expect(forwardedKeys).not.toContain("KUBECONFIG_B64");
     expect(passthroughKeys).not.toContain("HERMES_HOME");
@@ -965,7 +968,7 @@ describe("Runtime prerequisite manifests", () => {
     const manifests = generateKubernetesManifests({
       ...BASE_INPUT,
       runtimeEnv: {
-        AZURE_FOUNDRY_API_KEY: "generic-azure-key",
+        FAL_API_KEY: "generic-fal-key",
         BUFFER_API_KEY: escapedValue,
         HERMES_HOME: "/should/not/be/user-managed",
       },
@@ -973,17 +976,17 @@ describe("Runtime prerequisite manifests", () => {
 
     expect(manifests.secret.stringData.env).toBe(
       [
-        "AZURE_FOUNDRY_API_KEY=generic-azure-key",
         `BUFFER_API_KEY=${JSON.stringify(escapedValue)}`,
+        "FAL_API_KEY=generic-fal-key",
       ].join("\n")
     );
     expect(parseRuntimeEnvDotenv(manifests.secret.stringData.env).persistableValues).toEqual(
       expect.objectContaining({
-        AZURE_FOUNDRY_API_KEY: "generic-azure-key",
+        FAL_API_KEY: "generic-fal-key",
         BUFFER_API_KEY: escapedValue,
       })
     );
-    expect(manifests.secret.stringData.AZURE_FOUNDRY_API_KEY).toBe("generic-azure-key");
+    expect(manifests.secret.stringData.FAL_API_KEY).toBe("generic-fal-key");
     expect(manifests.secret.stringData.BUFFER_API_KEY).toBe(escapedValue);
     expect(manifests.secret.stringData.HERMES_HOME).toBeUndefined();
     expect(manifests.secret.stringData.env).not.toContain("HERMES_HOME");
@@ -995,11 +998,11 @@ describe("Runtime prerequisite manifests", () => {
     expect(hermesContainer.env).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          name: "AZURE_FOUNDRY_API_KEY",
+          name: "FAL_API_KEY",
           valueFrom: {
             secretKeyRef: {
               name: "abra-user123-abra-main-secrets",
-              key: "AZURE_FOUNDRY_API_KEY",
+              key: "FAL_API_KEY",
             },
           },
         }),
@@ -1018,13 +1021,33 @@ describe("Runtime prerequisite manifests", () => {
       expect.arrayContaining([expect.objectContaining({ name: "HERMES_HOME", valueFrom: expect.anything() })])
     );
     expect(getDockerForwardEnvKeys(manifests.configMap.data["config.yaml"])).toEqual(
-      expect.arrayContaining(["AZURE_FOUNDRY_API_KEY", "BUFFER_API_KEY"])
+      expect.arrayContaining(["FAL_API_KEY", "BUFFER_API_KEY"])
     );
     expect(getDockerForwardEnvKeys(manifests.configMap.data["config.yaml"])).not.toContain("HERMES_HOME");
     expect(getEnvPassthroughKeys(manifests.configMap.data["config.yaml"])).toEqual(
-      expect.arrayContaining(["AZURE_FOUNDRY_API_KEY", "BUFFER_API_KEY"])
+      expect.arrayContaining(["FAL_API_KEY", "BUFFER_API_KEY"])
     );
     expect(getEnvPassthroughKeys(manifests.configMap.data["config.yaml"])).not.toContain("HERMES_HOME");
+  });
+
+  test("generic runtimeEnv.AZURE_FOUNDRY_API_KEY is ignored — only the platform alias path can set it", () => {
+    const manifests = generateKubernetesManifests({
+      ...BASE_INPUT,
+      runtimeEnv: {
+        // A user-supplied value under the plain key must never reach the
+        // deployed container; the model provider is platform-managed only.
+        AZURE_FOUNDRY_API_KEY: "user-supplied-key-should-be-ignored",
+      },
+    });
+
+    expect(manifests.secret.stringData.env).toBe("");
+    expect(manifests.secret.stringData.AZURE_FOUNDRY_API_KEY).toBeUndefined();
+
+    const hermesContainer = manifests.statefulset.spec.template.spec.containers.find(
+      (c) => c.name === "hermes"
+    );
+    expectDefined(hermesContainer, "hermes container should exist");
+    expect(hermesContainer.env?.map((entry) => entry.name)).not.toContain("AZURE_FOUNDRY_API_KEY");
   });
 
   test("with explicit Telegram allowed users: secret env uses the allowlist separately from the home channel", () => {

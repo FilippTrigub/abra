@@ -41,7 +41,9 @@ src/
                         via hasAgentConfig()
     runtime-env/        user-managed skill/API env vars (encrypted at rest).
                         Telegram identity keys are reserved here and rejected
-                        on save/import so they can't shadow agent-config
+                        on save/import so they can't shadow agent-config.
+                        AZURE_FOUNDRY_API_KEY is reserved too — the model
+                        provider is platform-managed, not a user setting
     orchestration/      deployment adapters (AKS in prod, mock in local dev)
     deployments.ts      deployment record CRUD + dispatch
     platform-account.ts account bootstrap, subscription info
@@ -82,8 +84,8 @@ stale relative to the client-driven console below it.
 `bot-setup-card.tsx` (Telegram, required to deploy, same shared `TelegramBotForm`
 as the dashboard), `publishing-card.tsx` (Buffer — the one optional key that's
 functionally critical, since it's what turns an approved draft into a
-scheduled post), `model-provider-card.tsx` (explains the Azure Foundry
-platform default and exposes an optional override), and
+scheduled post), `model-provider-card.tsx` (read-only status — the model
+provider is entirely platform-managed, no user override exists), and
 `optional-integrations-card.tsx` (every other provider group from the
 registry, collapsed `Disclosure`s with a one-line "what this unlocks"
 summary, plus the field-entry/`.env` paste-and-preview import modes,

@@ -86,25 +86,29 @@ const reserved = {
   injectAsProcessEnv: false,
 };
 const reservedNonSecret = { ...reserved, secret: false };
-// Telegram identity is owned by the dedicated Bot Setup flow (agent-config),
-// not this generic registry, so it's excluded from the UI/import/save surface
-// the same way platform secrets are. Unlike platform secrets, though, it still
-// needs to reach the running container — just sourced from agent-config, not
-// from a user-editable value here — so injectIntoDotenv/injectAsProcessEnv
-// stay true (overriding the `reserved` object's defaults).
-const reservedDedicatedFlow = {
+// Some reserved keys still need to reach the running container, just not
+// from a user-editable value in this registry — injectIntoDotenv/
+// injectAsProcessEnv stay true (overriding the `reserved` object's
+// defaults of false, which is correct for true platform secrets like
+// KUBECONFIG that should never reach the Hermes container at all).
+const reservedInjectable = {
   ...reserved,
-  reservedReason: "dedicated-flow" as const,
   injectIntoDotenv: true,
   injectAsProcessEnv: true,
 };
+// Telegram identity is owned by the dedicated Bot Setup flow (agent-config),
+// not this generic registry, so it's excluded from the UI/import/save surface
+// the same way platform secrets are.
+const reservedDedicatedFlow = { ...reservedInjectable, reservedReason: "dedicated-flow" as const };
 const reservedDedicatedFlowNonSecret = { ...reservedDedicatedFlow, secret: false };
 const critical = { necessity: "critical" as const };
 
 export const RUNTIME_ENV_DEFINITIONS = [
-  runtimeEnvDefinition("ANTHROPIC_API_KEY", "Anthropic API key", "llm", "Claude/Anthropic model provider key."),
-  runtimeEnvDefinition("OPENROUTER_API_KEY", "OpenRouter API key", "llm", "OpenRouter model routing provider key."),
-  runtimeEnvDefinition("AZURE_FOUNDRY_API_KEY", "Azure Foundry API key", "llm", "Overrides the platform's shared Azure Foundry credential with your own key."),
+  // The model provider is chosen and managed entirely by the platform — there
+  // is no user-facing override. AZURE_FOUNDRY_API_KEY stays reserved (sourced
+  // from the platform's own Vercel env, see lib/runtime-env/platform-defaults.ts)
+  // but still needs to reach the deployed container, hence reservedInjectable.
+  runtimeEnvDefinition("AZURE_FOUNDRY_API_KEY", "Azure Foundry API key", "llm", "Platform-managed model provider credential. Not user-configurable.", reservedInjectable),
 
   runtimeEnvDefinition("LANGFUSE_HOST", "Langfuse host", "observability", "Langfuse instance base URL for LLM tracing.", nonSecret),
   runtimeEnvDefinition("LANGFUSE_PUBLIC_KEY", "Langfuse public key", "observability", "Langfuse project public key.", nonSecret),
@@ -237,6 +241,7 @@ export const RESERVED_RUNTIME_ENV_KEYS = [
   "TELEGRAM_BOT_TOKEN",
   "TELEGRAM_ALLOWED_USERS",
   "TELEGRAM_HOME_CHANNEL",
+  "AZURE_FOUNDRY_API_KEY",
 ] as const;
 
 export type ReservedRuntimeEnvKey = (typeof RESERVED_RUNTIME_ENV_KEYS)[number];

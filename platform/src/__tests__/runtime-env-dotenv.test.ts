@@ -14,12 +14,13 @@ describe("runtime env registry", () => {
   test("exports allowlisted Hermes and compatibility runtime env keys", () => {
     expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("BUFFER_API_KEY");
     expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("FAL_API_KEY");
-    expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("AZURE_FOUNDRY_API_KEY");
     expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("OBSIDIAN_VAULT_PATH");
     expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("BROWSERBASE_PROXIES");
     expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("LINKUP_API_KEY");
     expect(SUPPORTED_RUNTIME_ENV_KEYS).toContain("TELEGRAM_HOME_CHANNEL_THREAD_ID");
     expect(SUPPORTED_RUNTIME_ENV_KEYS).not.toContain("KUBECONFIG_B64");
+    // The model provider is platform-managed, not a user setting.
+    expect(SUPPORTED_RUNTIME_ENV_KEYS).not.toContain("AZURE_FOUNDRY_API_KEY");
   });
 
   test("looks up supported, grouped, and reserved definitions", () => {
