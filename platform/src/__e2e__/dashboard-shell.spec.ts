@@ -132,7 +132,10 @@ test.describe("Authenticated dashboard shell", () => {
     // No Telegram config seeded for this test user, so Start is disabled
     // until Telegram is configured in Settings.
     await expect(page.getByRole("button", { name: "Start" })).toBeDisabled();
-    await expect(page.getByRole("link", { name: "Usage" }).first()).toBeVisible();
+
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await expect(page.getByRole("menuitem", { name: "Usage" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Sign out" })).toBeVisible();
   });
 
   test("should render dashboard settings controls on /dashboard/settings", async ({ page }) => {

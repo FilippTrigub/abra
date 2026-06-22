@@ -5,11 +5,11 @@ import {
   getUserDisplayName,
   getSubscriptionInfo,
 } from "@/lib/platform-account";
+import { AccountMenu } from "./account-menu";
 
 const DASHBOARD_NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/dashboard/settings", label: "Settings" },
-  { href: "/dashboard/deployments", label: "Usage" },
 ] as const;
 
 export default async function DashboardLayout({
@@ -37,15 +37,13 @@ export default async function DashboardLayout({
   const displayName = getUserDisplayName(user);
   const hasAccount = !!account;
   const subInfo = getSubscriptionInfo(account);
-  const shellBadgeClassName =
-    "rounded-sm border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-panel)] px-3 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--color-shell-text-strong)]";
   const navItemClassName =
     "min-h-10 rounded-sm px-4 py-2 text-[11px] sm:text-[12px]";
 
   return (
     <div className="min-h-screen bg-[var(--color-shell-canvas)] text-[var(--color-shell-text-strong)]">
       {/* ── Top bar ─────────────────────────────────────── */}
-      <header className="sticky top-0 z-sticky border-b border-[var(--color-shell-border-strong)] bg-[var(--color-shell-canvas)]">
+      <header className="sticky top-0 z-[var(--z-sticky)] border-b border-[var(--color-shell-border-strong)] bg-[var(--color-shell-canvas)]">
         <div className="mx-auto flex min-h-[4.5rem] max-w-screen-xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-3 text-[var(--color-shell-text-strong)]">
@@ -96,32 +94,7 @@ export default async function DashboardLayout({
                 Welcome aboard!
               </Badge>
             )}
-            {hasAccount && (
-              <Badge
-                variant={
-                  subInfo.status === "inactive"
-                    ? "warning"
-                    : subInfo.status === "missing"
-                      ? "danger"
-                      : "success"
-                }
-                className={shellBadgeClassName}
-              >
-                {subInfo.status === "inactive"
-                  ? `⚠ ${subInfo.plan}`
-                  : subInfo.status === "missing"
-                    ? "No account"
-                    : subInfo.plan}
-              </Badge>
-            )}
-            {!hasAccount && (
-              <Badge variant="default" className={shellBadgeClassName}>
-                Initializing…
-              </Badge>
-            )}
-            <span className="hidden font-mono text-[11px] uppercase tracking-[0.14em] text-white/54 lg:inline">
-              {displayName}
-            </span>
+            <AccountMenu displayName={displayName} />
           </div>
         </div>
       </header>
