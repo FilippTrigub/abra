@@ -6,6 +6,7 @@ export { Label, type LabelProps } from "./label";
 export { Card, type CardProps } from "./card";
 export { Panel, type PanelProps } from "./panel";
 export { Badge, type BadgeProps, type BadgeVariant } from "./badge";
+export { Disclosure, type DisclosureProps } from "./disclosure";
 export { NavItem, type NavItemProps } from "./nav-item";
 export { Surface, type SurfaceProps, type SurfaceVariant } from "./surface";
 export { Select, type SelectProps } from "./select";

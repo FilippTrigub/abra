@@ -141,6 +141,8 @@ test.describe("Authenticated dashboard shell", () => {
     await expect(page).toHaveURL(/(?:\/en)?\/dashboard\/settings$/);
     await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Telegram bot" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Runtime environment" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Buffer" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Azure Foundry (default)" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Skill integrations" })).toBeVisible();
   });
 });

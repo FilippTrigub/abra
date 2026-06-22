@@ -1,7 +1,12 @@
+import { hasPlatformAzureFoundryDefault } from "@/lib/runtime-env/platform-defaults";
 import { BotSetupCard } from "./bot-setup-card";
-import { RuntimeEnvCard } from "./runtime-env-card";
+import { PublishingCard } from "./publishing-card";
+import { ModelProviderCard } from "./model-provider-card";
+import { OptionalIntegrationsCard } from "./optional-integrations-card";
 
 export default function SettingsPage() {
+  const platformDefaultConfigured = hasPlatformAzureFoundryDefault();
+
   return (
     <div className="space-y-8">
       <section className="overflow-hidden rounded-sm border border-[var(--color-shell-border-strong)] bg-[var(--color-shell-canvas)] text-[var(--color-shell-text-strong)]">
@@ -13,13 +18,16 @@ export default function SettingsPage() {
             Settings
           </h1>
           <p className="mt-5 max-w-2xl text-[1.05rem] leading-7 text-zinc-300 md:text-[1.15rem]">
-            Manage your Telegram bot connection and the runtime keys Abra uses for skills.
+            Required to deploy, what already works out of the box, and what&apos;s optional —
+            in that order.
           </p>
         </div>
       </section>
 
       <BotSetupCard />
-      <RuntimeEnvCard />
+      <PublishingCard />
+      <ModelProviderCard platformDefaultConfigured={platformDefaultConfigured} />
+      <OptionalIntegrationsCard />
 
       <div className="h-px bg-[color-mix(in_srgb,var(--color-shell-border-strong)_82%,transparent)]" />
       <div className="flex items-center justify-between text-caption text-zinc-500">

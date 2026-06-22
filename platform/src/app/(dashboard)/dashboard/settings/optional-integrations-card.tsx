@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Badge, Button, Card, Input, Label, Panel, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Disclosure, Input, Label, Panel, Textarea } from "@/components/ui";
 import {
   applyRuntimeEnvAction,
   loadRuntimeEnvSummaryAction,
@@ -13,9 +13,10 @@ import {
   type RuntimeEnvDotenvPreviewResult,
 } from "@/lib/runtime-env/actions";
 import {
+  getRuntimeEnvDefinitionsByGroup,
   getRuntimeEnvGroupLabel,
   getRuntimeEnvGroupOrder,
-  SUPPORTED_RUNTIME_ENV_DEFINITIONS,
+  getRuntimeEnvGroupSummary,
   type RuntimeEnvDefinition,
   type RuntimeEnvGroup,
   type RuntimeEnvKey,
@@ -27,8 +28,14 @@ type RuntimeEnvSaveStatus = "idle" | "loading" | "saving" | "applying" | "succes
 type RuntimeEnvDeployStatus = "saved" | "applying" | "live" | "saved-not-deployed";
 type RuntimeEnvFieldState = Partial<Record<RuntimeEnvKey, string>>;
 
-const shellLabelClassName =
-  "font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500";
+// Telegram identity and the model provider each have their own dedicated card —
+// this surface covers everything else, grouped by the skill/capability it unlocks.
+const OPTIONAL_GROUPS = getRuntimeEnvGroupOrder().filter(
+  (group) => group !== "llm" && group !== "reserved",
+);
+const PUBLISHING_KEY = "BUFFER_API_KEY" as const;
+
+const shellLabelClassName = "font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500";
 
 const sourceLabels: Record<RuntimeEnvKeySummary["source"], string> = {
   manual: "Manual entry",
@@ -66,21 +73,12 @@ function formatFingerprint(value: string) {
 }
 
 function groupDefinitions() {
-  const supported = new Map<RuntimeEnvGroup, RuntimeEnvDefinition[]>();
-  for (const group of getRuntimeEnvGroupOrder()) {
-    if (group !== "reserved") {
-      supported.set(group, []);
-    }
-  }
-
-  for (const definition of SUPPORTED_RUNTIME_ENV_DEFINITIONS) {
-    const group = supported.get(definition.group);
-    if (group) {
-      group.push(definition);
-    }
-  }
-
-  return Array.from(supported.entries()).filter(([, definitions]) => definitions.length > 0);
+  return OPTIONAL_GROUPS.map((group) => {
+    const definitions = getRuntimeEnvDefinitionsByGroup(group).filter(
+      (definition) => definition.key !== PUBLISHING_KEY,
+    );
+    return [group, definitions] as const;
+  }).filter(([, definitions]) => definitions.length > 0);
 }
 
 function summaryByKey(summary: RuntimeEnvSummary | null) {
@@ -152,7 +150,7 @@ function AcceptedPreviewList({ accepted }: { accepted: RuntimeEnvDotenvAcceptedP
   );
 }
 
-export function RuntimeEnvCard() {
+export function OptionalIntegrationsCard() {
   const groupedDefinitions = useMemo(() => groupDefinitions(), []);
   const [mode, setMode] = useState<RuntimeEnvMode>("fields");
   const [summary, setSummary] = useState<RuntimeEnvSummary | null>(null);
@@ -163,6 +161,7 @@ export function RuntimeEnvCard() {
   const [deployStatus, setDeployStatus] = useState<RuntimeEnvDeployStatus>("saved");
   const [message, setMessage] = useState("");
   const [revealedKeys, setRevealedKeys] = useState<Partial<Record<RuntimeEnvKey, boolean>>>({});
+  const [openGroups, setOpenGroups] = useState<Partial<Record<RuntimeEnvGroup, boolean>>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -281,15 +280,19 @@ export function RuntimeEnvCard() {
   }
 
   return (
-    <Card id="runtime-env">
+    <Card id="optional-integrations">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-[var(--color-shell-border-strong)] pb-5">
         <div>
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--color-shell-signal)]">
-            Runtime
+            Optional
           </p>
           <h2 className="mt-3 text-h5 font-display font-bold text-white">
-            Runtime environment
+            Skill integrations
           </h2>
+          <p className="mt-3 max-w-2xl text-body leading-7 text-zinc-300">
+            Nothing here is required to deploy. Each group only matters if you want the specific
+            capability it unlocks — expand a group to see what it&apos;s for before adding a key.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant={deployStatusVariants[deployStatus]}>{deployStatusLabels[deployStatus]}</Badge>
@@ -352,80 +355,85 @@ export function RuntimeEnvCard() {
       </div>
 
       {mode === "fields" ? (
-        <form onSubmit={handleFieldSave} className="space-y-5">
-          {groupedDefinitions.map(([group, definitions]) => (
-            <Panel key={group} bordered muted className="rounded-sm">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className={shellLabelClassName}>{getRuntimeEnvGroupLabel(group)}</p>
-                  <p className="mt-2 text-caption text-zinc-500">
-                    {definitions.length} supported key{definitions.length > 1 ? "s" : ""}
-                  </p>
-                </div>
-              </div>
+        <form onSubmit={handleFieldSave} className="space-y-3">
+          {groupedDefinitions.map(([group, definitions]: readonly [RuntimeEnvGroup, RuntimeEnvDefinition[]]) => {
+            const open = Boolean(openGroups[group]);
 
-              <div className="space-y-3">
-                {definitions.map((definition) => {
-                  const key = definition.key as RuntimeEnvKey;
-                  const configured = configuredByKey.get(key);
-                  const inputId = `runtime-env-${key}`;
-                  const revealed = Boolean(revealedKeys[key]);
+            return (
+              <Disclosure
+                key={group}
+                open={open}
+                onOpenChange={(next) => setOpenGroups((prev) => ({ ...prev, [group]: next }))}
+                summary={
+                  <div>
+                    <p className="text-body font-semibold text-white">{getRuntimeEnvGroupLabel(group)}</p>
+                    <p className="mt-1 text-caption text-zinc-500">{getRuntimeEnvGroupSummary(group)}</p>
+                  </div>
+                }
+              >
+                <div className="space-y-3">
+                  {definitions.map((definition) => {
+                    const key = definition.key as RuntimeEnvKey;
+                    const configured = configuredByKey.get(key);
+                    const inputId = `runtime-env-${key}`;
+                    const revealed = Boolean(revealedKeys[key]);
 
-                  return (
-                    <div key={key} className="rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 px-4 py-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <Label htmlFor={inputId} className="mb-0">
-                            {definition.label}
-                          </Label>
-                          <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-500">{key}</p>
+                    return (
+                      <div key={key} className="rounded-sm border border-[var(--color-shell-border-strong)] bg-black/20 px-4 py-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <Label htmlFor={inputId} className="mb-0">
+                              {definition.label}
+                            </Label>
+                            <p className="mt-1 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-500">{key}</p>
+                          </div>
+                          {configured?.configured ? (
+                            <Badge variant="success">Saved</Badge>
+                          ) : (
+                            <Badge variant="warning">Not set</Badge>
+                          )}
                         </div>
-                        {configured?.configured ? (
-                          <Badge variant="success">Saved</Badge>
-                        ) : (
-                          <Badge variant="warning">Not set</Badge>
+
+                        {configured?.configured && (
+                          <div className="mt-3 grid gap-2 text-caption text-zinc-400 md:grid-cols-3">
+                            <span>Stored: {formatFingerprint(configured.fingerprint)}</span>
+                            <span>Source: {sourceLabels[configured.source]}</span>
+                            <span>Updated: {formatTimestamp(configured.updatedAt)}</span>
+                          </div>
                         )}
-                      </div>
 
-                      {configured?.configured && (
-                        <div className="mt-3 grid gap-2 text-caption text-zinc-400 md:grid-cols-3">
-                          <span>Stored: {formatFingerprint(configured.fingerprint)}</span>
-                          <span>Source: {sourceLabels[configured.source]}</span>
-                          <span>Updated: {formatTimestamp(configured.updatedAt)}</span>
-                        </div>
-                      )}
-
-                      <div className="mt-4 flex gap-2">
-                        <Input
-                          id={inputId}
-                          type={definition.secret && !revealed ? "password" : "text"}
-                          value={fieldValues[key] ?? ""}
-                          onChange={(e) => setFieldValues((prev) => ({ ...prev, [key]: e.target.value }))}
-                          placeholder={configured?.configured ? "Enter replacement value" : "Enter value"}
-                          disabled={busy}
-                          autoComplete="off"
-                        />
-                        {definition.secret && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={() => setRevealedKeys((prev) => ({ ...prev, [key]: !prev[key] }))}
-                            aria-label={`${revealed ? "Hide" : "Show"} ${definition.label}`}
+                        <div className="mt-4 flex gap-2">
+                          <Input
+                            id={inputId}
+                            type={definition.secret && !revealed ? "password" : "text"}
+                            value={fieldValues[key] ?? ""}
+                            onChange={(e) => setFieldValues((prev) => ({ ...prev, [key]: e.target.value }))}
+                            placeholder={configured?.configured ? "Enter replacement value" : "Enter value"}
                             disabled={busy}
-                          >
-                            {revealed ? "Hide" : "Show"}
-                          </Button>
-                        )}
+                            autoComplete="off"
+                          />
+                          {definition.secret && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              onClick={() => setRevealedKeys((prev) => ({ ...prev, [key]: !prev[key] }))}
+                              aria-label={`${revealed ? "Hide" : "Show"} ${definition.label}`}
+                              disabled={busy}
+                            >
+                              {revealed ? "Hide" : "Show"}
+                            </Button>
+                          )}
+                        </div>
+                        <p className="mt-2 text-caption text-zinc-500">{definition.description}</p>
                       </div>
-                      <p className="mt-2 text-caption text-zinc-500">{definition.description}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </Panel>
-          ))}
+                    );
+                  })}
+                </div>
+              </Disclosure>
+            );
+          })}
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
             <p className="text-caption text-zinc-500">
               {changedFieldCount > 0
                 ? `${changedFieldCount} changed value${changedFieldCount > 1 ? "s" : ""} ready to save.`
