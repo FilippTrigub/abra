@@ -15,29 +15,29 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "border border-brand-300/50 bg-brand-500 text-white hover:border-brand-200/70 hover:bg-brand-600 active:scale-[0.98] focus-ring-brand",
+    "border border-brand-400/40 bg-brand-500 text-white hover:bg-brand-600 active:scale-[0.97] focus-ring-brand",
   secondary:
-    "border border-secondary-300/50 bg-secondary-600 text-white hover:border-secondary-200/70 hover:bg-secondary-700 active:scale-[0.98] focus-ring-secondary",
+    "border border-secondary-400/40 bg-secondary-600 text-white hover:bg-secondary-700 active:scale-[0.97] focus-ring-secondary",
   ghost:
-    "border border-white/12 bg-white/[0.025] text-zinc-100 hover:border-white/25 hover:bg-white/[0.055] hover:text-white active:scale-[0.98] focus-ring-brand",
+    "border border-white/12 bg-transparent font-mono text-[12px] uppercase tracking-[0.14em] text-zinc-100 hover:border-white/25 hover:bg-white/[0.04] hover:text-white active:scale-[0.97] focus-ring-brand",
   danger:
-    "border border-danger-300/50 bg-danger-500 text-white hover:border-danger-200/70 hover:bg-danger-600 active:scale-[0.98] focus-ring-danger",
+    "border border-danger-400/40 bg-danger-500 text-white hover:bg-danger-600 active:scale-[0.97] focus-ring-danger",
   success:
-    "border border-success-300/50 bg-success-500 text-white hover:border-success-200/70 hover:bg-success-600 active:scale-[0.98] focus-ring-success",
+    "border border-success-400/40 bg-success-500 text-white hover:bg-success-600 active:scale-[0.97] focus-ring-success",
   warning:
-    "border border-warning-300/50 bg-warning-500 text-white hover:border-warning-200/70 hover:bg-warning-600 active:scale-[0.98] focus-ring-brand",
+    "border border-warning-400/40 bg-warning-500 text-white hover:bg-warning-600 active:scale-[0.97] focus-ring-brand",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "min-h-9 px-3 py-1.5 text-[11px] gap-1.5",
-  md: "min-h-10 px-4 py-2 text-[12px] gap-2",
-  lg: "min-h-11 px-5 py-2.5 text-[12px] sm:px-6 sm:text-[13px] gap-2",
+  sm: "min-h-9 px-3 py-1.5 text-caption gap-1.5",
+  md: "min-h-11 px-4 py-2 text-body gap-2",
+  lg: "min-h-12 px-6 py-3 text-h6 gap-2",
 };
 
 const sizeRadius: Record<ButtonSize, string> = {
-  sm: "rounded-lg",
-  md: "rounded-xl",
-  lg: "rounded-xl",
+  sm: "rounded-sm",
+  md: "rounded-sm",
+  lg: "rounded-sm",
 };
 
 const sizeShadow: Record<ButtonSize, string> = {
@@ -49,8 +49,8 @@ const sizeShadow: Record<ButtonSize, string> = {
 export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, ButtonProps>(
   ({ className, variant = "primary", size = "md", disabled, href, children, ...rest }, ref) => {
     const baseClasses = cn(
-      "inline-flex items-center justify-center whitespace-nowrap font-mono font-semibold uppercase tracking-[0.13em]",
-      "transition-[background-color,border-color,box-shadow,color,transform] duration-200 ease-snappy motion-reduce:transition-none motion-reduce:transform-none",
+      "inline-flex items-center justify-center font-semibold",
+      "transition-all duration-200 ease-smooth",
       variantClasses[variant],
       sizeClasses[size],
       sizeRadius[size],
