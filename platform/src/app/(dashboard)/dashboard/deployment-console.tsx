@@ -167,8 +167,6 @@ export function DeploymentConsole({
 
   return (
     <Card id="deployment-request" className="relative overflow-hidden">
-      <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-brand-500/10 blur-3xl" />
-
       <div className="relative flex flex-wrap items-start justify-between gap-5 border-b border-white/10 pb-7">
         <div className="min-w-0">
           <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--color-shell-signal)]">Abra instance</p>

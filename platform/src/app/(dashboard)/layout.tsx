@@ -47,7 +47,7 @@ export default async function DashboardLayout({
         <div className="mx-auto flex min-h-[4.5rem] max-w-screen-xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-4 sm:gap-6">
             <div className="flex items-center gap-3 text-[var(--color-shell-text-strong)]">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/12 bg-white/[0.035] text-[var(--color-shell-signal)] shadow-[0_16px_40px_-32px_var(--color-shell-signal)]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/12 bg-white/[0.035] text-[var(--color-shell-signal)]">
                 <svg
                   className="h-4 w-4"
                   viewBox="0 0 16 16"

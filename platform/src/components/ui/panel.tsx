@@ -18,7 +18,7 @@ export const Panel = forwardRef<HTMLDivElement, PanelProps>(
           "transition-[background-color,border-color,box-shadow] duration-150 ease-smooth motion-reduce:transition-none",
           bordered && "border border-[var(--color-shell-border-strong)]",
           muted && "bg-black/20",
-          !muted && !bordered && "border border-white/10 bg-white/[0.025] shadow-[0_14px_44px_-38px_var(--color-brand-300)]",
+          !muted && !bordered && "border border-white/10 bg-white/[0.025]",
           className
         )}
         {...props}

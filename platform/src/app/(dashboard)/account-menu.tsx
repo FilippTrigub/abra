@@ -76,7 +76,7 @@ export function AccountMenu({ displayName }: AccountMenuProps) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-[calc(100%+var(--s-2))] z-[var(--z-dropdown)] w-48 rounded-2xl border border-white/12 bg-[color-mix(in_srgb,var(--color-shell-panel)_88%,black)] py-2 shadow-[0_22px_70px_-48px_var(--color-brand-300)]"
+          className="absolute right-0 top-[calc(100%+var(--s-2))] z-[var(--z-dropdown)] w-48 rounded-2xl border border-white/12 bg-[color-mix(in_srgb,var(--color-shell-panel)_88%,black)] py-2"
         >
           <a
             href="/dashboard/deployments"

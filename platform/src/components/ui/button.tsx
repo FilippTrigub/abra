@@ -15,17 +15,17 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "border border-brand-300/50 bg-brand-500 text-white shadow-[0_10px_28px_-18px_var(--color-brand-300)] hover:border-brand-200/70 hover:bg-brand-600 hover:shadow-[0_14px_34px_-18px_var(--color-brand-300)] active:scale-[0.98] focus-ring-brand",
+    "border border-brand-300/50 bg-brand-500 text-white hover:border-brand-200/70 hover:bg-brand-600 active:scale-[0.98] focus-ring-brand",
   secondary:
-    "border border-secondary-300/50 bg-secondary-600 text-white shadow-[0_10px_28px_-18px_var(--color-secondary-300)] hover:border-secondary-200/70 hover:bg-secondary-700 hover:shadow-[0_14px_34px_-18px_var(--color-secondary-300)] active:scale-[0.98] focus-ring-secondary",
+    "border border-secondary-300/50 bg-secondary-600 text-white hover:border-secondary-200/70 hover:bg-secondary-700 active:scale-[0.98] focus-ring-secondary",
   ghost:
     "border border-white/12 bg-white/[0.025] text-zinc-100 hover:border-white/25 hover:bg-white/[0.055] hover:text-white active:scale-[0.98] focus-ring-brand",
   danger:
-    "border border-danger-300/50 bg-danger-500 text-white shadow-[0_10px_28px_-18px_var(--color-danger-300)] hover:border-danger-200/70 hover:bg-danger-600 active:scale-[0.98] focus-ring-danger",
+    "border border-danger-300/50 bg-danger-500 text-white hover:border-danger-200/70 hover:bg-danger-600 active:scale-[0.98] focus-ring-danger",
   success:
-    "border border-success-300/50 bg-success-500 text-white shadow-[0_10px_28px_-18px_var(--color-success-300)] hover:border-success-200/70 hover:bg-success-600 active:scale-[0.98] focus-ring-success",
+    "border border-success-300/50 bg-success-500 text-white hover:border-success-200/70 hover:bg-success-600 active:scale-[0.98] focus-ring-success",
   warning:
-    "border border-warning-300/50 bg-warning-500 text-white shadow-[0_10px_28px_-18px_var(--color-warning-300)] hover:border-warning-200/70 hover:bg-warning-600 active:scale-[0.98] focus-ring-brand",
+    "border border-warning-300/50 bg-warning-500 text-white hover:border-warning-200/70 hover:bg-warning-600 active:scale-[0.98] focus-ring-brand",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
