@@ -78,12 +78,13 @@ server session cookie (`__session`) via `api/auth/session`. `requireAuth()`
 (`lib/auth`) gates the `(dashboard)` route group.
 
 **Start/stop** — `dashboard/deployment-console.tsx` is the single source of
-truth for instance control: one panel with a status badge, created/updated
-metadata, and a Start/Stop button that toggles by state (disabled with a
-pending label while queued/running/deleting). Start is disabled until
-`hasAgentConfig()` reports a saved Telegram bot config, with a hint pointing
-to Settings — the dashboard no longer renders the Telegram form inline.
-Stop requires an explicit two-stage confirm, shown inline in the same panel.
+truth for runtime control: a lean status section with a compact action strip
+that promotes Start/Stop and Settings together. The Start/Stop button toggles
+by state and is disabled with a pending label while queued/running/deleting.
+Start is disabled until `hasAgentConfig()` reports a saved Telegram bot config,
+with a hint pointing to Settings — the dashboard no longer renders the Telegram
+form inline. Stop requires an explicit two-stage confirm, shown inline in the
+same action strip.
 
 **Settings** — four sections, ordered by necessity (`(dashboard)/dashboard/settings/`):
 `bot-setup-card.tsx` (Telegram, required to start — the only place the
