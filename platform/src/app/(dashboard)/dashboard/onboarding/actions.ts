@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireApiAuth } from "@/lib/auth";
 import { loadAgentConfig, saveAgentConfig } from "@/lib/agent-config/service";
-import { saveRuntimeEnvFieldsAction } from "@/lib/runtime-env/actions";
+import { updateCurrentDeploymentRuntimeEnvForUser } from "@/lib/deployments";
 import { saveBrandProfile } from "@/lib/brand-profile/service";
+import { saveRuntimeEnvFields } from "@/lib/runtime-env/service";
 
 export type OnboardingFormStatus = "idle" | "error" | "success";
 
@@ -39,7 +40,12 @@ export async function completeOnboarding(
 ): Promise<OnboardingFormState> {
   void previousState;
 
-  const authResult = await requireApiAuth();
+  let authResult: Awaited<ReturnType<typeof requireApiAuth>>;
+  try {
+    authResult = await requireApiAuth();
+  } catch {
+    return errorState("Abra could not verify your session. Try signing in again.");
+  }
   if ("error" in authResult) {
     return errorState("Your session expired. Sign in again to finish onboarding.");
   }
@@ -50,7 +56,12 @@ export async function completeOnboarding(
   const telegramAllowedUsers = formText(formData, "telegramAllowedUsers") || telegramHomeChannel;
   const bufferApiKey = formText(formData, "bufferApiKey");
 
-  const existingAgentConfig = await loadAgentConfig(authResult.user.id);
+  let existingAgentConfig: Awaited<ReturnType<typeof loadAgentConfig>>;
+  try {
+    existingAgentConfig = await loadAgentConfig(authResult.user.id);
+  } catch {
+    return errorState("Abra could not load your existing Telegram setup. Try again in a moment.");
+  }
   const effectiveTelegramBotToken = telegramBotToken || existingAgentConfig?.telegramBotToken || "";
   const effectiveTelegramHomeChannel = telegramHomeChannel || existingAgentConfig?.telegramHomeChannel || "";
   const effectiveTelegramAllowedUsers = telegramAllowedUsers || existingAgentConfig?.telegramAllowedUsers || effectiveTelegramHomeChannel;
@@ -76,12 +87,19 @@ export async function completeOnboarding(
     });
 
     if (bufferApiKey) {
-      const bufferResult = await saveRuntimeEnvFieldsAction({ values: { BUFFER_API_KEY: bufferApiKey } });
+      const bufferResult = await saveRuntimeEnvFields(authResult.user.id, { values: { BUFFER_API_KEY: bufferApiKey } });
       if (!bufferResult.success) {
         return errorState(
-          bufferResult.error?.message ?? bufferResult.errors[0] ?? "Could not save Buffer API key.",
+          bufferResult.errors[0] ?? "Could not save Buffer API key.",
           { buffer: "Buffer could not be saved. Check the key and try again." },
         );
+      }
+
+      try {
+        await updateCurrentDeploymentRuntimeEnvForUser(authResult.user.id, bufferResult.versionId ?? undefined);
+      } catch {
+        // Saving the encrypted key succeeded. Runtime rollout failures should not
+        // block onboarding; Settings can apply the saved key again if needed.
       }
     }
   } catch {

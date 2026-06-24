@@ -8,6 +8,7 @@ interface OnboardingWizardProps {
   initialBrandProfile: BrandProfile | null;
   initialTelegramConfigured: boolean;
   initialTelegramHomeChannel: string;
+  initialBufferConfigured: boolean;
 }
 
 interface WizardValues {
@@ -45,18 +46,28 @@ function SecretField({
   value,
   placeholder,
   onChange,
+  configured = false,
 }: {
   id: keyof WizardValues;
   label: string;
   value: string;
   placeholder: string;
   onChange: (value: string) => void;
+  configured?: boolean;
 }) {
   const [revealed, setRevealed] = useState(false);
+  const showReveal = value.length > 0;
   return (
     <label htmlFor={id} className="block">
-      <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
-        {label}
+      <span className="flex items-center justify-between gap-3">
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
+          {label}
+        </span>
+        {configured && !value && (
+          <span className="rounded-full bg-emerald-400/10 px-3 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-100 ring-1 ring-emerald-300/20">
+            Saved
+          </span>
+        )}
       </span>
       <div className="mt-2 flex gap-2">
         <input
@@ -68,14 +79,21 @@ function SecretField({
           autoComplete="off"
           className="min-h-12 flex-1 rounded-[1.1rem] bg-[#0d0d0f]/90 px-4 text-[14px] text-white outline-none ring-1 ring-white/10 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] placeholder:text-zinc-600 focus:ring-[var(--color-shell-signal)]/55 motion-reduce:transition-none"
         />
-        <button
-          type="button"
-          onClick={() => setRevealed((current) => !current)}
-          className="rounded-full bg-white/[0.05] px-4 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-300 ring-1 ring-white/10 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-white/[0.08] motion-reduce:transition-none"
-        >
-          {revealed ? "Hide" : "Show"}
-        </button>
+        {showReveal && (
+          <button
+            type="button"
+            onClick={() => setRevealed((current) => !current)}
+            className="rounded-full bg-white/[0.05] px-4 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-300 ring-1 ring-white/10 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-white/[0.08] motion-reduce:transition-none"
+          >
+            {revealed ? "Hide" : "Show"}
+          </button>
+        )}
       </div>
+      {configured && !value && (
+        <p className="mt-2 text-caption leading-6 text-zinc-500">
+          Saved secrets cannot be revealed. Leave blank to keep the current value, or type a replacement.
+        </p>
+      )}
     </label>
   );
 }
@@ -150,6 +168,7 @@ export function OnboardingWizard({
   initialBrandProfile,
   initialTelegramConfigured,
   initialTelegramHomeChannel,
+  initialBufferConfigured,
 }: OnboardingWizardProps) {
   const [step, setStep] = useState(0);
   const [formState, formAction, pending] = useActionState(
@@ -253,7 +272,7 @@ export function OnboardingWizard({
                         Telegram is already configured. Add replacement values only if you want to rotate the runtime connection.
                       </div>
                     )}
-                    <SecretField id="telegramBotToken" label="Telegram bot token" value={values.telegramBotToken} onChange={(value) => setValue("telegramBotToken", value)} placeholder={initialTelegramConfigured ? "Already saved — leave blank to keep current" : "123456:ABC-DEF…"} />
+                    <SecretField id="telegramBotToken" label="Telegram bot token" value={values.telegramBotToken} onChange={(value) => setValue("telegramBotToken", value)} placeholder={initialTelegramConfigured ? "Leave blank to keep current" : "123456:ABC-DEF…"} configured={initialTelegramConfigured} />
                     <TextField id="telegramHomeChannel" label="Home channel or chat ID" value={values.telegramHomeChannel} onChange={(value) => { setValue("telegramHomeChannel", value); if (!values.telegramAllowedUsers) setValue("telegramAllowedUsers", value); }} placeholder="388259993" />
                     <TextField id="telegramAllowedUsers" label="Allowed users" value={values.telegramAllowedUsers} onChange={(value) => setValue("telegramAllowedUsers", value)} placeholder="Comma-separated IDs; defaults to home channel" />
                   </div>
@@ -264,7 +283,7 @@ export function OnboardingWizard({
                     <div className="rounded-[1.35rem] bg-white/[0.035] p-4 text-sm leading-7 text-zinc-300 ring-1 ring-white/10">
                       Buffer is optional. Save it now to schedule approved posts, or leave it blank and add it later in Settings.
                     </div>
-                    <SecretField id="bufferApiKey" label="Buffer API key" value={values.bufferApiKey} onChange={(value) => setValue("bufferApiKey", value)} placeholder="Paste Buffer token" />
+                    <SecretField id="bufferApiKey" label="Buffer API key" value={values.bufferApiKey} onChange={(value) => setValue("bufferApiKey", value)} placeholder={initialBufferConfigured ? "Leave blank to keep current" : "Paste Buffer token"} configured={initialBufferConfigured} />
                   </div>
                 )}
               </div>

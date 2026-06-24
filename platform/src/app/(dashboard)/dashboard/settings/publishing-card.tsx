@@ -67,13 +67,20 @@ export function PublishingCard() {
         )}
 
         <div>
-          <Label htmlFor="publishing-buffer-key" className="mb-0">
-            {definition.label}
-          </Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="publishing-buffer-key" className="mb-0">
+              {definition.label}
+            </Label>
+            {configured?.configured && !hasValue && (
+              <Badge variant="success" className="px-2 py-0.5 text-[10px]">
+                Saved
+              </Badge>
+            )}
+          </div>
           <div className="mt-2 flex gap-2">
             <Input
               id="publishing-buffer-key"
-              type={revealed ? "text" : "password"}
+              type={hasValue && revealed ? "text" : "password"}
               value={fieldValues[BUFFER_KEY] ?? ""}
               onChange={(event) =>
                 setFieldValues((prev) => ({ ...prev, [BUFFER_KEY]: event.target.value }))
@@ -82,11 +89,17 @@ export function PublishingCard() {
               disabled={busy}
               autoComplete="off"
             />
-            <Button type="button" variant="ghost" onClick={() => setRevealed((prev) => !prev)} disabled={busy}>
-              {revealed ? "Hide" : "Show"}
-            </Button>
+            {hasValue && (
+              <Button type="button" variant="ghost" onClick={() => setRevealed((prev) => !prev)} disabled={busy}>
+                {revealed ? "Hide" : "Show"}
+              </Button>
+            )}
           </div>
-          <p className="mt-2 text-caption text-zinc-500">{definition.description}</p>
+          <p className="mt-2 text-caption text-zinc-500">
+            {configured?.configured && !hasValue
+              ? "Saved secrets cannot be revealed. Leave blank to keep the current key, or enter a replacement value."
+              : definition.description}
+          </p>
         </div>
 
         <div className="flex items-center justify-end">
