@@ -59,8 +59,11 @@ describe("onboarding actions", () => {
   });
 
   it("rejects incomplete brand and Telegram setup before saving", async () => {
-    const { completeOnboarding, initialOnboardingFormState } = await import(
+    const { completeOnboarding } = await import(
       "@/app/(dashboard)/dashboard/onboarding/actions"
+    );
+    const { initialOnboardingFormState } = await import(
+      "@/app/(dashboard)/dashboard/onboarding/form-state"
     );
 
     const result = await completeOnboarding(initialOnboardingFormState, buildFormData({}));
@@ -73,8 +76,11 @@ describe("onboarding actions", () => {
   });
 
   it("saves brand, Telegram, and Buffer values before redirecting to dashboard", async () => {
-    const { completeOnboarding, initialOnboardingFormState } = await import(
+    const { completeOnboarding } = await import(
       "@/app/(dashboard)/dashboard/onboarding/actions"
+    );
+    const { initialOnboardingFormState } = await import(
+      "@/app/(dashboard)/dashboard/onboarding/form-state"
     );
 
     await expect(
@@ -109,8 +115,11 @@ describe("onboarding actions", () => {
 
   it("returns a form error when existing Telegram setup cannot be loaded", async () => {
     loadAgentConfig.mockRejectedValue(new Error("firestore unavailable"));
-    const { completeOnboarding, initialOnboardingFormState } = await import(
+    const { completeOnboarding } = await import(
       "@/app/(dashboard)/dashboard/onboarding/actions"
+    );
+    const { initialOnboardingFormState } = await import(
+      "@/app/(dashboard)/dashboard/onboarding/form-state"
     );
 
     const result = await completeOnboarding(
@@ -138,8 +147,11 @@ describe("onboarding actions", () => {
       versionId: null,
       errors: ["Runtime environment encryption is not configured."],
     });
-    const { completeOnboarding, initialOnboardingFormState } = await import(
+    const { completeOnboarding } = await import(
       "@/app/(dashboard)/dashboard/onboarding/actions"
+    );
+    const { initialOnboardingFormState } = await import(
+      "@/app/(dashboard)/dashboard/onboarding/form-state"
     );
 
     const result = await completeOnboarding(

@@ -2,7 +2,8 @@
 
 import { useActionState, useMemo, useState } from "react";
 import type { BrandProfile } from "@/lib/brand-profile/types";
-import { completeOnboarding, initialOnboardingFormState } from "./actions";
+import { completeOnboarding } from "./actions";
+import { initialOnboardingFormState } from "./form-state";
 
 interface OnboardingWizardProps {
   initialBrandProfile: BrandProfile | null;
