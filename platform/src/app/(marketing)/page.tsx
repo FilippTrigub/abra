@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const triggers = [
   "A client call gives you a line worth posting",
@@ -179,6 +180,20 @@ export default function MarketingPage() {
           </div>
         </div>
       </section>
+
+      <footer className="border-t border-white/10 px-4 py-8">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm text-zinc-400 sm:flex-row sm:items-center sm:justify-between">
+          <p>© 2026 Trigub Technologies OÜ · Abra</p>
+          <nav aria-label="Legal links" className="flex flex-wrap gap-4">
+            <Link className="hover:text-white" href="/privacy">
+              Privacy note
+            </Link>
+            <Link className="hover:text-white" href="/legal">
+              Legal statement
+            </Link>
+          </nav>
+        </div>
+      </footer>
     </div>
   );
 }

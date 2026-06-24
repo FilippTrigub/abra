@@ -7,6 +7,7 @@ Local web dashboard for the Abra brand management system. This is a Next.js 16 a
 | Surface | Status |
 |---------|--------|
 | Marketing landing page (`/`) | Live — static content, no backend connections |
+| Legal/privacy (`/legal`, `/privacy`) | Live — public operator details and Abra-specific privacy note. |
 | Authentication (`/sign-in`) | Firebase Auth (Google, GitHub) with server-side session cookies. |
 | Dashboard (`/dashboard`) | Live — deployment console, stats cards, quick-access nav. Requires Firebase-backed auth. |
 | Settings (`/dashboard/settings`) | Live — client-side form backed by server actions. Persisted to Firestore or memory fallback. |
@@ -66,7 +67,7 @@ pnpm test        # Runs both typecheck and lint together
 
 - `(auth)` — Authentication routes. Holds the sign-in screen, Firebase session bootstrap flow, and the legacy unsupported OAuth callback handler.
 - `(dashboard)` — Authenticated dashboard layout with sidebar navigation, subscription gate, and user header.
-- `(marketing)` — Public marketing landing page for Abra.
+- `(marketing)` — Public marketing landing page for Abra, plus legal/privacy pages.
 
 ### Key libraries
 
@@ -166,7 +167,9 @@ platform/
 │   │   ├── (marketing)/
 │   │   │   ├── layout.tsx                    # Navbar wrapper
 │   │   │   ├── page.tsx                      # Abra landing page
-│   │   │   └── components/navbar.tsx         # Marketing navbar
+│   │   │   ├── legal/page.tsx                # Legal statement
+│   │   │   ├── privacy/page.tsx              # Privacy note
+│   │   │   └── components/                   # Marketing navbar and legal renderer
 │   │   ├── api/
 │   │   │   ├── dashboard/
 │   │   │   │   ├── account-info/route.ts      # Account info endpoint

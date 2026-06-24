@@ -20,7 +20,7 @@ flows, and local development.
 
 ## Route groups
 
-- `(marketing)` — public landing page, no auth
+- `(marketing)` — public landing page plus `/privacy` and `/legal`, no auth
 - `(auth)` — sign-in page and OAuth callback
 - `(dashboard)` — authenticated app: `/dashboard`, `/dashboard/settings`,
   `/dashboard/onboarding`, `/dashboard/deployments` (deployment history/logs)
@@ -32,6 +32,8 @@ flows, and local development.
 ```
 src/
   app/                  routes (see route groups above)
+    (marketing)/privacy  privacy note adapted for Abra
+    (marketing)/legal    legal statement / operator contact details
   components/ui/        hand-rolled primitives (Button, Card, Badge, Input, ...)
   lib/
     auth/               session + Firebase auth helpers
