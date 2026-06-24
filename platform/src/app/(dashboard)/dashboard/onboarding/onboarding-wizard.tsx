@@ -176,6 +176,7 @@ export function OnboardingWizard({
     completeOnboarding,
     initialOnboardingFormState,
   );
+  const [confirmed, setConfirmed] = useState(false);
   const [values, setValues] = useState<WizardValues>({
     brandDescription: initialBrandProfile?.brandDescription ?? "",
     telegramBotToken: "",
@@ -189,6 +190,11 @@ export function OnboardingWizard({
 
   function setValue(key: keyof WizardValues, value: string) {
     setValues((previous) => ({ ...previous, [key]: value }));
+  }
+
+  function goToStep(nextStep: number) {
+    setConfirmed(false);
+    setStep(nextStep);
   }
 
   const brandReady = values.brandDescription.trim().length >= 24;
@@ -205,6 +211,7 @@ export function OnboardingWizard({
         {Object.entries(values).map(([key, value]) => (
           <input key={key} type="hidden" name={key} value={value} />
         ))}
+        <input type="hidden" name="confirmOnboarding" value={confirmed ? "yes" : "no"} />
 
         <aside className="space-y-5 md:pr-6">
           <div className="inline-flex rounded-full bg-white/[0.04] p-1.5 ring-1 ring-white/10">
@@ -236,7 +243,7 @@ export function OnboardingWizard({
                 <button
                   key={item.label}
                   type="button"
-                  onClick={() => setStep(index)}
+                  onClick={() => goToStep(index)}
                   className={`transition-colors duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none ${index <= step ? "text-zinc-100" : "text-zinc-600"}`}
                 >
                   {item.label}
@@ -299,17 +306,30 @@ export function OnboardingWizard({
                   </div>
                 )}
                 <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <PillButton variant="ghost" disabled={step === 0 || pending} onClick={() => setStep((current) => Math.max(0, current - 1))}>
+                  <PillButton variant="ghost" disabled={step === 0 || pending} onClick={() => goToStep(Math.max(0, step - 1))}>
                     Back
                   </PillButton>
                   {step < steps.length - 1 ? (
-                    <PillButton disabled={!canAdvance || pending} onClick={() => setStep((current) => Math.min(steps.length - 1, current + 1))}>
+                    <PillButton disabled={!canAdvance || pending} onClick={() => goToStep(Math.min(steps.length - 1, step + 1))}>
                       Continue
                     </PillButton>
                   ) : (
-                    <PillButton type="submit" disabled={pending || !brandReady || !telegramReady}>
-                      {pending ? "Saving" : "Finish setup"}
-                    </PillButton>
+                    <div className="flex flex-col gap-3 sm:items-end">
+                      <label className="flex max-w-md items-start gap-3 rounded-[1.1rem] bg-white/[0.035] p-3 text-sm leading-6 text-zinc-300 ring-1 ring-white/10">
+                        <input
+                          type="checkbox"
+                          checked={confirmed}
+                          onChange={(event) => setConfirmed(event.target.checked)}
+                          className="mt-1 h-4 w-4 rounded border-white/20 bg-black accent-[var(--color-shell-signal)]"
+                        />
+                        <span>
+                          Confirm this setup. Saved keys stay hidden; blank secret fields keep the current values.
+                        </span>
+                      </label>
+                      <PillButton type="submit" disabled={pending || !brandReady || !telegramReady || !confirmed}>
+                        {pending ? "Saving" : "Confirm setup"}
+                      </PillButton>
+                    </div>
                   )}
                 </div>
               </div>

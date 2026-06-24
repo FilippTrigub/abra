@@ -42,6 +42,7 @@ export async function completeOnboarding(
   const telegramHomeChannel = formText(formData, "telegramHomeChannel");
   const telegramAllowedUsers = formText(formData, "telegramAllowedUsers") || telegramHomeChannel;
   const bufferApiKey = formText(formData, "bufferApiKey");
+  const confirmed = formText(formData, "confirmOnboarding") === "yes";
 
   let existingAgentConfig: Awaited<ReturnType<typeof loadAgentConfig>>;
   try {
@@ -59,6 +60,9 @@ export async function completeOnboarding(
   }
   if (!effectiveTelegramBotToken || !effectiveTelegramHomeChannel) {
     fieldErrors.telegram = "Add a Telegram bot token and home channel/chat ID before deploying Abra.";
+  }
+  if (!confirmed) {
+    fieldErrors.buffer = "Confirm this setup before finishing onboarding.";
   }
   if (Object.keys(fieldErrors).length > 0) {
     return errorState("Finish the required onboarding fields.", fieldErrors);

@@ -93,6 +93,7 @@ describe("onboarding actions", () => {
           telegramHomeChannel: "388259993",
           telegramAllowedUsers: "388259993,123456",
           bufferApiKey: "buffer-token",
+          confirmOnboarding: "yes",
         }),
       ),
     ).rejects.toThrow("REDIRECT:/dashboard");
@@ -113,6 +114,33 @@ describe("onboarding actions", () => {
     expect(redirect).toHaveBeenCalledWith("/dashboard");
   });
 
+  it("does not complete when the final setup confirmation is missing", async () => {
+    const { completeOnboarding } = await import(
+      "@/app/(dashboard)/dashboard/onboarding/actions"
+    );
+    const { initialOnboardingFormState } = await import(
+      "@/app/(dashboard)/dashboard/onboarding/form-state"
+    );
+
+    const result = await completeOnboarding(
+      initialOnboardingFormState,
+      buildFormData({
+        brandDescription:
+          "North Star Advisory helps independent experts turn field notes into credible content with a calm, specific voice.",
+        telegramBotToken: "token-123",
+        telegramHomeChannel: "388259993",
+        bufferApiKey: "buffer-token",
+      }),
+    );
+
+    expect(result.status).toBe("error");
+    expect(result.fieldErrors.buffer).toBe("Confirm this setup before finishing onboarding.");
+    expect(saveBrandProfile).not.toHaveBeenCalled();
+    expect(saveAgentConfig).not.toHaveBeenCalled();
+    expect(saveRuntimeEnvFields).not.toHaveBeenCalled();
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
   it("returns a form error when existing Telegram setup cannot be loaded", async () => {
     loadAgentConfig.mockRejectedValue(new Error("firestore unavailable"));
     const { completeOnboarding } = await import(
@@ -129,6 +157,7 @@ describe("onboarding actions", () => {
           "North Star Advisory helps experts turn field notes into credible content with a calm, specific voice.",
         telegramBotToken: "token-123",
         telegramHomeChannel: "388259993",
+        confirmOnboarding: "yes",
       }),
     );
 
@@ -162,6 +191,7 @@ describe("onboarding actions", () => {
         telegramBotToken: "token-123",
         telegramHomeChannel: "388259993",
         bufferApiKey: "buffer-token",
+        confirmOnboarding: "yes",
       }),
     );
 
