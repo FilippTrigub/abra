@@ -6,9 +6,9 @@ test.describe("Sign-in page", () => {
 
     await expect(page).toHaveURL(/(?:\/en)?\/$/);
     await expect(
-      page.getByRole("heading", { name: "Stay visible without finding time to post." }),
+      page.getByRole("heading", { name: "Turn real conversations into posts that still sound like you." }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: "Create my draft" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Start with one note" })).toBeVisible();
   });
 
   test("should show Google and GitHub provider buttons", async ({ page }) => {
