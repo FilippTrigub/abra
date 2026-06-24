@@ -1,36 +1,27 @@
 import { Button } from "@/components/ui/button";
+import Image from "next/image";
 import Link from "next/link";
 
-const triggers = [
-  "A client call gives you a line worth posting",
-  "A voice note catches a point worth sharing",
-  "A workshop moment explains your point of view",
-];
-
 const proofPoints = [
-  "Starts from real work",
-  "Keeps review in your hands",
-  "Protects your voice before volume",
+  "Real work in",
+  "Drafts back",
+  "You approve",
 ];
 
-const sourceMoments = [
+const humanMoments = [
   {
-    role: "Consultant",
-    source: "Client call",
-    line: "The line your buyer repeated back to you.",
-    tone: "bg-brand-500",
+    title: "Founder notes",
+    caption: "A sharp take between meetings.",
+    src: "/marketing/abra-founder-work-moment-1.png",
+    alt: "A founder reviewing notes on a laptop in a dark workspace",
+    className: "rotate-[-2deg]",
   },
   {
-    role: "Founder",
-    source: "Voice note",
-    line: "A sharp take captured between meetings.",
-    tone: "bg-secondary-500",
-  },
-  {
-    role: "Coach",
-    source: "Workshop",
-    line: "A teaching moment worth turning into a post.",
-    tone: "bg-accent-500",
+    title: "Expert review",
+    caption: "The draft waits for judgment.",
+    src: "/marketing/abra-woman-expert-review-1.png",
+    alt: "A professional expert reviewing notes in a warm dark office",
+    className: "rotate-[2deg] lg:mt-14",
   },
 ];
 
@@ -67,8 +58,8 @@ export default function MarketingPage() {
           }}
         />
 
-        <div className="relative mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.03fr_0.97fr] lg:items-stretch">
-          <div className="flex flex-col justify-center border border-shell-border-strong bg-shell-panel px-6 py-7 sm:px-8 sm:py-8 lg:min-h-[30rem] lg:px-10 lg:py-10">
+        <div className="relative mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-stretch">
+          <div className="marketing-reveal flex flex-col justify-center border border-shell-border-strong bg-shell-panel px-6 py-7 sm:px-8 sm:py-8 lg:min-h-[31rem] lg:px-10 lg:py-10">
             <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-shell-signal sm:text-[13px]">
               For trust-selling experts
             </p>
@@ -78,8 +69,7 @@ export default function MarketingPage() {
             </h1>
 
             <p className="mt-6 max-w-xl text-[1.25rem] leading-[1.35] text-zinc-200 sm:text-[1.45rem] lg:text-[1.55rem]">
-              Send Abra a call, voice note, or rough idea. It pulls out the useful line, drafts the post,
-              and waits for your review.
+              Send a call, note, or rough idea. Abra turns it into a reviewable draft.
             </p>
 
             <div className="mt-8 grid gap-3 sm:max-w-[30rem] sm:grid-cols-2">
@@ -102,7 +92,7 @@ export default function MarketingPage() {
               {proofPoints.map((item) => (
                 <span
                   key={item}
-                  className="flex min-h-[4.5rem] items-center border border-shell-border-strong bg-black/20 px-4 py-3 text-[0.95rem] leading-6 text-zinc-100 sm:text-base"
+                  className="flex min-h-[4.25rem] items-center border border-shell-border-strong bg-black/20 px-4 py-3 text-[0.95rem] leading-6 text-zinc-100 sm:text-base"
                 >
                   {item}
                 </span>
@@ -110,96 +100,77 @@ export default function MarketingPage() {
             </div>
           </div>
 
-          <div className="relative flex flex-col justify-between overflow-hidden border border-shell-border-strong bg-[color-mix(in_srgb,var(--color-shell-panel)_82%,black)] p-6 sm:p-8 lg:min-h-[30rem] lg:p-10">
+          <div className="marketing-reveal marketing-reveal-delay-1 relative min-h-[31rem] overflow-hidden border border-shell-border-strong bg-[color-mix(in_srgb,var(--color-shell-panel)_82%,black)]">
             <div
               aria-hidden
-              className="absolute right-0 top-0 h-40 w-40 translate-x-1/3 -translate-y-1/3 rounded-full bg-brand-500/20 blur-3xl"
+              className="absolute right-0 top-0 z-10 h-40 w-40 translate-x-1/3 -translate-y-1/3 rounded-full bg-brand-500/25 blur-3xl"
             />
-            <div className="relative flex items-center justify-between border-b border-shell-border-strong pb-5">
-              <div>
-                <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-zinc-400 sm:text-[13px]">
-                  Real source moments
-                </p>
-                <p className="mt-3 max-w-md text-[1.75rem] leading-[1.08] font-display font-bold tracking-[-0.04em] text-white sm:text-[2rem] lg:text-[2.25rem]">
-                  Friendly capture. Serious review.
-                </p>
-              </div>
+            <Image
+              src="/marketing/abra-workshop-experts-1.png"
+              alt="Experts reviewing workshop notes together in a dark professional room"
+              fill
+              priority
+              sizes="(max-width: 1024px) 100vw, 52vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-[linear-gradient(90deg,rgb(5_7_11_/_0.08),rgb(5_7_11_/_0.18)_42%,rgb(5_7_11_/_0.62))]" />
+            <div className="absolute inset-x-0 bottom-0 z-10 border-t border-white/15 bg-[linear-gradient(180deg,transparent,rgb(5_7_11_/_0.92))] p-5 sm:p-7">
+              <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.2em] text-shell-signal">
+                Human review stays visible
+              </p>
+              <p className="mt-3 max-w-md text-[1.55rem] leading-[1.08] font-display font-bold tracking-[-0.04em] text-white sm:text-[2rem]">
+                Expertise first. Automation second.
+              </p>
             </div>
-
-            <div className="relative mt-6 grid gap-3">
-              {sourceMoments.map((moment, index) => (
-                <div
-                  key={moment.role}
-                  className="grid gap-4 border border-shell-border-strong bg-black/20 px-4 py-4 sm:grid-cols-[4rem_minmax(0,1fr)] sm:items-center sm:px-5 sm:py-5"
-                >
-                  <span
-                    aria-hidden
-                    className={`${moment.tone} relative flex size-14 items-center justify-center overflow-hidden rounded-full border border-white/25 shadow-[0_0_24px_rgb(255_255_255_/_0.08)]`}
-                  >
-                    <span className="absolute top-3 size-4 rounded-full bg-white/85" />
-                    <span className="absolute bottom-1 h-6 w-9 rounded-t-full bg-white/70" />
-                    <span className="relative mt-1 font-mono text-[11px] font-bold text-black/70">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                  </span>
-                  <span>
-                    <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <span className="font-mono text-[12px] uppercase tracking-[0.14em] text-shell-signal sm:text-[13px]">
-                        {moment.role}
-                      </span>
-                      <span className="text-sm text-zinc-400">{moment.source}</span>
-                    </span>
-                    <span className="mt-2 block text-[1.05rem] leading-7 text-zinc-100 sm:text-[1.15rem] lg:text-[1.2rem]">
-                      {moment.line}
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <p className="relative mt-6 border-l border-shell-signal pl-4 text-[1.05rem] leading-7 text-zinc-200">
-              Abra feels more like a calm operator sitting beside the expert than a machine publishing over
-              their shoulder.
-            </p>
           </div>
         </div>
       </section>
 
-      <section className="border-b border-shell-border-strong px-4 py-20 sm:py-24">
-        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-2 lg:items-stretch">
-          <div className="flex flex-col justify-center border border-shell-border-strong bg-shell-panel px-6 py-8 sm:px-10 sm:py-10">
+      <section className="border-b border-shell-border-strong px-4 py-16 sm:py-20">
+        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.84fr_1.16fr] lg:items-stretch">
+          <div className="marketing-reveal flex flex-col justify-center border border-shell-border-strong bg-shell-panel px-6 py-8 sm:px-10 sm:py-10">
             <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-shell-signal sm:text-[13px]">
-              The pain
+              The shift
             </p>
             <h2 className="mt-5 max-w-xl text-[2.75rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.4rem]">
-              The idea is already there. The post is the extra job.
+              The idea is already there.
             </h2>
-            <p className="mt-6 max-w-lg text-[1.35rem] leading-[1.4] text-zinc-200 sm:text-[1.55rem]">
-              Abra lowers the activation energy: no blank prompt, no generic rewrite, no leap from
-              private expertise to public post without a review step.
+            <p className="mt-5 max-w-md text-[1.2rem] leading-[1.4] text-zinc-200 sm:text-[1.35rem]">
+              Calls, notes, and workshops become drafts. Nothing publishes until you say so.
             </p>
           </div>
 
-          <div className="border border-shell-border-strong bg-black/20 px-6 py-8 sm:px-10 sm:py-10">
-            <ul className="grid gap-5">
-              {triggers.map((trigger) => (
-                <li key={trigger} className="grid gap-2 border-b border-shell-border-strong pb-5 last:border-b-0 last:pb-0">
-                  <span className="font-mono text-[12px] uppercase tracking-[0.16em] text-zinc-400">
-                    Trigger
-                  </span>
-                  <span className="text-[1.3rem] leading-[1.4] text-zinc-100 sm:text-[1.5rem]">
-                    {trigger}
-                  </span>
-                </li>
-              ))}
-            </ul>
+          <div className="grid gap-5 sm:grid-cols-2">
+            {humanMoments.map((moment, index) => (
+              <figure
+                key={moment.title}
+                className={`marketing-reveal ${index === 1 ? "marketing-reveal-delay-2" : "marketing-reveal-delay-1"} ${moment.className} group relative min-h-[26rem] overflow-hidden border border-shell-border-strong bg-black/20 shadow-[0_24px_80px_rgb(0_0_0_/_0.24)] transition duration-500 hover:-translate-y-1 hover:border-white/20`}
+              >
+                <Image
+                  src={moment.src}
+                  alt={moment.alt}
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 32vw"
+                  className="object-cover transition duration-700 group-hover:scale-[1.03]"
+                />
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgb(5_7_11_/_0.88))]" />
+                <figcaption className="absolute inset-x-0 bottom-0 p-5">
+                  <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.18em] text-shell-signal">
+                    {moment.title}
+                  </p>
+                  <p className="mt-2 text-[1.25rem] leading-tight font-display font-bold tracking-[-0.03em] text-white">
+                    {moment.caption}
+                  </p>
+                </figcaption>
+              </figure>
+            ))}
           </div>
         </div>
       </section>
 
-      <section id="how-it-works" className="px-4 py-20 sm:py-24">
+      <section id="how-it-works" className="px-4 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
-          <div className="mx-auto max-w-3xl text-center">
+          <div className="marketing-reveal mx-auto max-w-3xl text-center">
             <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-shell-signal sm:text-[13px]">
               How it works
             </p>
@@ -208,11 +179,11 @@ export default function MarketingPage() {
             </h2>
           </div>
 
-          <div className="mt-12 grid gap-5 md:grid-cols-3">
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
             {steps.map((step) => (
               <div
                 key={step.title}
-                className="border border-shell-border-strong bg-shell-panel p-6 sm:p-8"
+                className="marketing-reveal border border-shell-border-strong bg-shell-panel p-6 sm:p-8"
               >
                 <p className="font-mono text-[12px] uppercase tracking-[0.16em] text-shell-signal sm:text-[13px]">
                   {step.label}

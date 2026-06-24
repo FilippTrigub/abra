@@ -13,3 +13,34 @@ body {
   color: var(--color-strong);
   font-family: var(--font-body);
 }
+
+@keyframes marketing-reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.marketing-reveal {
+  animation: marketing-reveal-up 700ms var(--ease-smooth, ease-out) both;
+}
+
+.marketing-reveal-delay-1 {
+  animation-delay: 120ms;
+}
+
+.marketing-reveal-delay-2 {
+  animation-delay: 220ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-reveal,
+  .marketing-reveal-delay-1,
+  .marketing-reveal-delay-2 {
+    animation: none;
+  }
+}
