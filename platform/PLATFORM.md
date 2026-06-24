@@ -93,12 +93,19 @@ form inline. Stop requires an explicit two-stage confirm, shown inline in the
 same action strip.
 
 **Onboarding** — `/dashboard/onboarding` is the first-run setup surface. It is a
-full-screen step-by-step client wizard backed by server actions. It captures one
-brand description, required Telegram bot values, and optional Buffer API key. Brand
-profile text is stored at `accounts/{authUserId}/brand-profile/current`; Telegram
-continues to use `agent-config/current`; Buffer continues to use encrypted
-`runtime-env/current`. The dashboard landing redirects to onboarding until both
-brand profile and Telegram setup exist.
+full-screen step-by-step client wizard; `dashboard-shell.tsx` hides the normal
+dashboard header/nav on this route so the flow stays on one screen. It captures
+one brand description, required Telegram bot values, and an optional Buffer API
+key. Brand profile text is stored at
+`accounts/{authUserId}/brand-profile/current`; Telegram continues to use
+`agent-config/current`; Buffer continues to use encrypted `runtime-env/current`.
+Saved secrets are never revealed back to the browser — saved Telegram/Buffer
+values show as replacement-only fields. The final Buffer step blocks native form
+submit paths (`Enter`, browser autofill, `requestSubmit`) and only dispatches the
+server action when the user explicitly activates **Confirm setup**. The dashboard
+landing redirects to onboarding until both brand profile and Telegram setup
+exist. The account menu links to `/dashboard/onboarding?restart=1` to rerun the
+flow non-destructively with existing values preserved.
 
 **Settings** — four sections, ordered by necessity (`(dashboard)/dashboard/settings/`):
 `bot-setup-card.tsx` (Telegram, required to start — the only place the
