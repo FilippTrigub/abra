@@ -55,6 +55,7 @@ function rewriteHydrationScriptForTest(script: string) {
 
   writeFileSync(join(configDir, "config.yaml"), "model:\n  default: gpt-5.5\n");
   writeFileSync(join(configDir, "auth.json"), '{"version":1}\n');
+  writeFileSync(join(configDir, "BRAND.md"), "# Test Brand\n\nClear, credible, quietly capable.\n");
   writeFileSync(join(secretsDir, "env"), "AZURE_FOUNDRY_API_KEY=test-key\n");
   // Stub locale file so the init script cp + Python patch can run in the test sandbox
   writeFileSync(
@@ -82,6 +83,8 @@ function rewriteHydrationScriptForTest(script: string) {
       .replaceAll("'/gateway-override/slash_commands.py'", `'${gatewayOverrideDir}/slash_commands.py'`),
     hydratedHermesConfigPath: join(hermesData, "profiles", "abra", "config.yaml"),
     hydratedHermesAuthPath: join(hermesData, "profiles", "abra", "auth.json"),
+    hydratedBrandPath: join(hermesData, "profiles", "abra", "BRAND.md"),
+    hydratedWorkspaceBrandPath: join(hermesData, "profiles", "abra", "workspace", "BRAND.md"),
     hydratedEnvPath: join(hermesData, "profiles", "abra", ".env"),
     localeOverrideDir,
     gatewayOverrideDir,
@@ -474,6 +477,8 @@ describe("StatefulSet manifest", () => {
     expect(command[2]).toContain("cp /config/config.yaml /opt/data/profiles/abra/config.yaml");
     expect(command[2]).toContain("cp /config/auth.json /opt/data/profiles/abra/auth.json");
     expect(command[2]).toContain("cp /secrets/env /opt/data/profiles/abra/.env");
+    expect(command[2]).toContain("cp /config/BRAND.md /opt/data/profiles/abra/BRAND.md");
+    expect(command[2]).toContain("cp /config/BRAND.md /opt/data/profiles/abra/workspace/BRAND.md");
   });
 
   test("generates an init-hydration script that executes successfully", () => {
@@ -493,6 +498,8 @@ describe("StatefulSet manifest", () => {
       executableScript,
       hydratedHermesConfigPath,
       hydratedHermesAuthPath,
+      hydratedBrandPath,
+      hydratedWorkspaceBrandPath,
       hydratedEnvPath,
       localeOverrideDir,
       gatewayOverrideDir,
@@ -505,9 +512,13 @@ describe("StatefulSet manifest", () => {
 
     expect(existsSync(hydratedHermesConfigPath)).toBe(true);
     expect(existsSync(hydratedHermesAuthPath)).toBe(true);
+    expect(existsSync(hydratedBrandPath)).toBe(true);
+    expect(existsSync(hydratedWorkspaceBrandPath)).toBe(true);
     expect(existsSync(hydratedEnvPath)).toBe(true);
     expect(readFileSync(hydratedHermesConfigPath, "utf8")).toBe("model:\n  default: gpt-5.5\n");
     expect(readFileSync(hydratedHermesAuthPath, "utf8")).toBe('{"version":1}\n');
+    expect(readFileSync(hydratedBrandPath, "utf8")).toBe("# Test Brand\n\nClear, credible, quietly capable.\n");
+    expect(readFileSync(hydratedWorkspaceBrandPath, "utf8")).toBe("# Test Brand\n\nClear, credible, quietly capable.\n");
     expect(readFileSync(hydratedEnvPath, "utf8")).toBe("AZURE_FOUNDRY_API_KEY=test-key\n");
 
     // Verify locale patch: en.yaml should have Abra welcome message and no tip
@@ -734,6 +745,20 @@ describe("Runtime prerequisite manifests", () => {
       })
     );
     expect(manifests.configMap.data["openclaw.json"]).toBeUndefined();
+  });
+
+  test("includes onboarding brand profile as non-secret ConfigMap data", () => {
+    const manifests = generateKubernetesManifests({
+      ...BASE_INPUT,
+      brandProfile: {
+        markdown: "# North Star Advisory\n\nClear, credible, quietly capable.",
+      },
+    });
+
+    expect(manifests.configMap.data["BRAND.md"]).toBe(
+      "# North Star Advisory\n\nClear, credible, quietly capable.\n",
+    );
+    expect(manifests.secret.stringData.env).not.toContain("North Star Advisory");
   });
 
   test("generates Hermes config.yaml with Azure Foundry model defaults", () => {

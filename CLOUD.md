@@ -61,6 +61,7 @@ payload.image  →  AKS_RUNTIME_IMAGE  →  ABRA_RUNTIME_IMAGE  →  error
 
 ```
 accounts/{userId}/
+  brand-profile/current      # Generated onboarding brand profile, hydrated into BRAND.md
   agent-config/current        # AgentConfig: telegramBotToken, telegramHomeChannel
   runtime-env/current         # Active encrypted user-managed skill/API env values
     versions/{versionId}      # Immutable encrypted snapshots for rollback and desired/applied version tracking
@@ -71,6 +72,8 @@ accounts/{userId}/
 The active runtime env document path is `accounts/{authUserId}/runtime-env/current`. Version and audit records intentionally live in subcollections below that document: `accounts/{authUserId}/runtime-env/current/versions/{versionId}` and `accounts/{authUserId}/runtime-env/current/audit/{eventId}`. This keeps every Firestore document reference valid.
 
 Runtime env values are saved from Settings for user-managed skill/API keys such as Buffer, GIPHY, Freesound, Pixabay, and Telegram. Plaintext is accepted only on server actions, encrypted before Firestore writes, and never returned to the browser after save or import. Browser responses contain redacted summaries with key names, source, version metadata, timestamps, and fingerprints only.
+
+Onboarding saves the user's brand profile at `accounts/{authUserId}/brand-profile/current`. This document contains short structured brand fields plus generated Markdown. It is not part of the encrypted runtime-env store because it is non-secret runtime context, not an API key. During deploy/update, the platform reads the current brand profile and writes it into the generated ConfigMap as `BRAND.md`.
 
 `RUNTIME_ENV_ENCRYPTION_KEY` is required server-only configuration for the platform process. It must not be exposed through `NEXT_PUBLIC_*`, checked into docs as key material, or sent to the runtime container.
 
@@ -113,6 +116,7 @@ The init container (same Abra image, s6-overlay ENTRYPOINT overridden by `comman
 - copies Secret-backed `.env` to `/opt/data/profiles/abra/.env`
 - copies `/opt/abra/SOUL.md` to `/opt/data/profiles/abra/SOUL.md` (Abra persona)
 - copies `/opt/abra/WORKFLOW.md` and `/opt/abra/AGENTS.md` to `…/profiles/abra/workspace/`
+- copies ConfigMap-backed `BRAND.md`, when present, to both `…/profiles/abra/BRAND.md` and `…/profiles/abra/workspace/BRAND.md` so brand-manager and workspace-level workflows can read the user's onboarding profile
 - copies `/opt/abra/skills/` to `…/profiles/abra/skills/abra/` (all 33 Abra skills)
 
 `/opt/abra/` is baked into the image at build time via `Dockerfile.hermes` (`COPY SOUL.md`, `COPY skills/`, etc.). No network access is required at pod start.

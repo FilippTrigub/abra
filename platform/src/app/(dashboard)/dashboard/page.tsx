@@ -1,7 +1,9 @@
+import { redirect } from "next/navigation";
 import { Panel } from "@/components/ui";
 import { getUser } from "@/lib/auth/firebase-auth";
 import { getDeploymentFeed } from "@/lib/deployments";
 import { hasAgentConfig } from "@/lib/agent-config/service";
+import { hasCompletedBrandProfile } from "@/lib/brand-profile/service";
 import { DeploymentConsole } from "./deployment-console";
 
 function AuthErrorBanner({ message }: { message: string }) {
@@ -41,6 +43,15 @@ export default async function DashboardPage() {
     );
   }
 
+  const [telegramConfigured, brandProfileComplete] = await Promise.all([
+    hasAgentConfig(user.id),
+    hasCompletedBrandProfile(user.id),
+  ]);
+
+  if (!telegramConfigured || !brandProfileComplete) {
+    redirect("/dashboard/onboarding");
+  }
+
   let feedWarning: string | null = null;
   let feedLoadError: string | null = null;
   let currentDeployment: Awaited<ReturnType<typeof getDeploymentFeed>>["currentDeployment"] = null;
@@ -52,8 +63,6 @@ export default async function DashboardPage() {
   } catch (err) {
     feedLoadError = err instanceof Error ? err.message : "Could not load deployment feed.";
   }
-
-  const telegramConfigured = await hasAgentConfig(user.id);
 
   return (
     <div className="space-y-10">

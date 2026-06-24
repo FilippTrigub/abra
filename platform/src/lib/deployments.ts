@@ -2,6 +2,8 @@ import { getAdminFirestore } from "@/lib/firebase/admin";
 import { getPlatformAccount } from "@/lib/platform-account";
 import { loadAgentConfig } from "@/lib/agent-config/service";
 import type { AgentConfig } from "@/lib/agent-config/types";
+import { loadBrandProfile } from "@/lib/brand-profile/service";
+import type { BrandProfile } from "@/lib/brand-profile/types";
 import { decryptRuntimeEnvForOrchestration } from "@/lib/runtime-env/service";
 import type { RuntimeEnvDecryptedMap } from "@/lib/runtime-env/types";
 import {
@@ -521,9 +523,11 @@ function buildDeploymentOperationInput(
   agentConfig: AgentConfig | null,
   overrides: {
     runtimeEnv?: RuntimeEnvDecryptedMap;
+    brandProfile?: BrandProfile | null;
     configRevision?: number;
   } = {},
 ) {
+  const brandMarkdown = overrides.brandProfile?.markdown.trim();
   return {
     requestId: deployment.orchestration?.requestId ?? crypto.randomUUID(),
     target: {
@@ -540,6 +544,7 @@ function buildDeploymentOperationInput(
       ...(overrides.configRevision ? { configRevision: overrides.configRevision } : {}),
       ...(overrides.runtimeEnv ? { runtimeEnv: overrides.runtimeEnv } : {}),
       ...(agentConfig ? { agentConfig } : {}),
+      ...(brandMarkdown ? { brandProfile: { markdown: brandMarkdown } } : {}),
     },
   };
 }
@@ -893,9 +898,10 @@ export async function dispatchDeploymentRequest(deploymentId: string, authUserId
   }
 
   try {
-    const [runtimeEnv, agentConfig] = await Promise.all([
+    const [runtimeEnv, agentConfig, brandProfile] = await Promise.all([
       decryptRuntimeEnvForOrchestration(authUserId),
       loadAgentConfig(authUserId),
+      loadBrandProfile(authUserId),
     ]);
     if (!agentConfig) {
       throw new Error(
@@ -905,7 +911,7 @@ export async function dispatchDeploymentRequest(deploymentId: string, authUserId
 
     const operation = await dispatchOrchestrationAction(
       "create",
-      buildDeploymentOperationInput(deployment, agentConfig, { runtimeEnv }),
+      buildDeploymentOperationInput(deployment, agentConfig, { runtimeEnv, brandProfile }),
     );
 
     return await persistDeployment(mergeOperationIntoDeployment(deployment, operation), deployment.accountScope);
@@ -1015,14 +1021,16 @@ export async function updateCurrentDeploymentRuntimeEnvForUser(
   }
 
   try {
-    const [runtimeEnv, agentConfig] = await Promise.all([
+    const [runtimeEnv, agentConfig, brandProfile] = await Promise.all([
       decryptRuntimeEnvForOrchestration(authUserId),
       loadAgentConfig(authUserId),
+      loadBrandProfile(authUserId),
     ]);
     const operation = await dispatchOrchestrationAction(
       "update",
       buildDeploymentOperationInput(deployment, agentConfig, {
         runtimeEnv,
+        brandProfile,
         configRevision: aksNames.configRevision ?? 1,
       }),
     );

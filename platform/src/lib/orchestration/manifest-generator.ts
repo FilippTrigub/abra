@@ -69,6 +69,10 @@ export interface ManifestInput {
     /** Compatibility alias for older AKS adapter callers. Prefer AZURE_FOUNDRY_API_KEY. */
     azureFoundryApiKey?: string;
   });
+  /** User-level brand profile injected as non-secret runtime context. */
+  brandProfile?: {
+    markdown: string;
+  };
 }
 
 export interface ManifestNameOverrides {
@@ -386,6 +390,11 @@ function buildHydrationInitScript(): string {
     "if [ -f /opt/abra/AGENTS.md ]; then",
     `  cp /opt/abra/AGENTS.md ${HERMES_PROFILE_DIR}/workspace/AGENTS.md`,
     "  echo 'Abra AGENTS.md hydrated'",
+    "fi",
+    "if [ -f /config/BRAND.md ]; then",
+    `  cp /config/BRAND.md ${HERMES_PROFILE_DIR}/BRAND.md`,
+    `  cp /config/BRAND.md ${HERMES_PROFILE_DIR}/workspace/BRAND.md`,
+    "  echo 'Abra BRAND.md hydrated from platform onboarding'",
     "fi",
     "if [ -d /opt/abra/skills ]; then",
     `  cp -r /opt/abra/skills/. ${HERMES_PROFILE_DIR}/skills/abra/`,
@@ -893,6 +902,7 @@ function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Rec
   const { accountId, deploymentId } = input;
   const namespace = input.nameOverrides?.namespace ?? getRuntimeNamespace();
   const runtimeLabels = buildRuntimeLabels(accountId, deploymentId);
+  const brandMarkdown = input.brandProfile?.markdown.trim();
 
   return {
     apiVersion: "v1",
@@ -905,6 +915,7 @@ function generateConfigMap(input: ManifestInput): KubernetesObject & { data: Rec
     data: {
       "config.yaml": buildHermesProfileConfig() + "\n",
       "auth.json": buildHermesAuthConfig(input) + "\n",
+      ...(brandMarkdown ? { "BRAND.md": `${brandMarkdown}\n` } : {}),
     },
   };
 }

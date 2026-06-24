@@ -23,7 +23,7 @@ flows, and local development.
 - `(marketing)` — public landing page, no auth
 - `(auth)` — sign-in page and OAuth callback
 - `(dashboard)` — authenticated app: `/dashboard`, `/dashboard/settings`,
-  `/dashboard/deployments` (deployment history/logs)
+  `/dashboard/onboarding`, `/dashboard/deployments` (deployment history/logs)
 - `api/auth`, `api/dashboard`, `api/orchestration` — route handlers backing
   session management and deployment status polling
 
@@ -39,6 +39,10 @@ src/
     agent-config/       Telegram bot identity (token/home channel/allowed
                         users) — the sole source for Telegram; gates deploy
                         via hasAgentConfig()
+    brand-profile/      User-level onboarding brand context. Saves structured
+                        brand fields and generated Markdown at
+                        accounts/{userId}/brand-profile/current; orchestration
+                        hydrates it into runtime BRAND.md for brand-manager.
     runtime-env/        user-managed skill/API env vars (encrypted at rest).
                         Telegram identity keys are reserved here and rejected
                         on save/import so they can't shadow agent-config.
@@ -85,6 +89,14 @@ Start is disabled until `hasAgentConfig()` reports a saved Telegram bot config,
 with a hint pointing to Settings — the dashboard no longer renders the Telegram
 form inline. Stop requires an explicit two-stage confirm, shown inline in the
 same action strip.
+
+**Onboarding** — `/dashboard/onboarding` is the first-run setup surface. It is a
+full-screen step-by-step client wizard backed by server actions. It captures the
+brand profile, required Telegram bot values, and optional Buffer API key. Brand
+profile text is stored at `accounts/{authUserId}/brand-profile/current`; Telegram
+continues to use `agent-config/current`; Buffer continues to use encrypted
+`runtime-env/current`. The dashboard landing redirects to onboarding until both
+brand profile and Telegram setup exist.
 
 **Settings** — four sections, ordered by necessity (`(dashboard)/dashboard/settings/`):
 `bot-setup-card.tsx` (Telegram, required to start — the only place the

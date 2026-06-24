@@ -131,16 +131,25 @@ function readRuntimeEnv(payload: Record<string, unknown>): ManifestInput["runtim
   return Object.keys(runtimeEnv).length > 0 ? runtimeEnv : undefined;
 }
 
-function sanitizePayloadForPersistence(payload: Record<string, unknown>): Record<string, unknown> {
-  if (!isRecord(payload.agentConfig) && !isRecord(payload.runtimeEnv)) return payload;
+function readBrandProfile(payload: Record<string, unknown>): ManifestInput["brandProfile"] | undefined {
+  const raw = payload.brandProfile;
+  if (!isRecord(raw)) return undefined;
+  const markdown = readOptionalString(raw.markdown);
+  return markdown ? { markdown } : undefined;
+}
 
-  const { agentConfig: _agentConfig, runtimeEnv: _runtimeEnv, ...safePayload } = payload;
+function sanitizePayloadForPersistence(payload: Record<string, unknown>): Record<string, unknown> {
+  if (!isRecord(payload.agentConfig) && !isRecord(payload.runtimeEnv) && !isRecord(payload.brandProfile)) return payload;
+
+  const { agentConfig: _agentConfig, runtimeEnv: _runtimeEnv, brandProfile: _brandProfile, ...safePayload } = payload;
   void _agentConfig;
   void _runtimeEnv;
+  void _brandProfile;
   return {
     ...safePayload,
     ...(isRecord(payload.agentConfig) ? { agentConfigRef: "account-current" } : {}),
     ...(isRecord(payload.runtimeEnv) ? { runtimeEnvRef: "account-current" } : {}),
+    ...(isRecord(payload.brandProfile) ? { brandProfileRef: "account-current" } : {}),
   };
 }
 
@@ -153,12 +162,14 @@ function buildManifestInput(input: {
   nameOverrides?: ManifestNameOverrides;
   agentConfig?: ManifestInput["agentConfig"];
   runtimeEnv?: ManifestInput["runtimeEnv"];
+  brandProfile?: ManifestInput["brandProfile"];
 }): ManifestInput {
   const serviceAccountName = readOptionalString(input.payload.serviceAccountName) ?? undefined;
   const useServiceAccount = readOptionalBoolean(input.payload.useServiceAccount);
   const agentConfig = input.agentConfig ?? readAgentConfig(input.payload);
   const azureFoundryApiKey = readOptionalString(process.env.AZURE_FOUNDRY_API_KEY);
   const payloadRuntimeEnv = input.runtimeEnv ?? readRuntimeEnv(input.payload);
+  const brandProfile = input.brandProfile ?? readBrandProfile(input.payload);
   const runtimeEnv = {
     ...(azureFoundryApiKey ? { azureFoundryApiKey } : {}),
     ...(payloadRuntimeEnv ?? {}),
@@ -174,6 +185,7 @@ function buildManifestInput(input: {
     ...(useServiceAccount !== undefined ? { useServiceAccount } : {}),
     ...(agentConfig ? { agentConfig } : {}),
     ...(Object.keys(runtimeEnv).length > 0 ? { runtimeEnv } : {}),
+    ...(brandProfile ? { brandProfile } : {}),
   };
 }
 
@@ -208,6 +220,24 @@ async function resolveRuntimeEnvForOperation(
     const { decryptRuntimeEnvForOrchestration } = await import("@/lib/runtime-env/service");
     const storedRuntimeEnv = await decryptRuntimeEnvForOrchestration(accountId);
     return storedRuntimeEnv ?? undefined;
+  }
+
+  return undefined;
+}
+
+async function resolveBrandProfileForOperation(
+  accountId: string,
+  payload: Record<string, unknown>,
+): Promise<ManifestInput["brandProfile"] | undefined> {
+  const payloadBrandProfile = readBrandProfile(payload);
+  if (payloadBrandProfile) {
+    return payloadBrandProfile;
+  }
+
+  if (payload.brandProfileRef === "account-current") {
+    const { loadBrandProfile } = await import("@/lib/brand-profile/service");
+    const storedBrandProfile = await loadBrandProfile(accountId);
+    return storedBrandProfile?.markdown.trim() ? { markdown: storedBrandProfile.markdown } : undefined;
   }
 
   return undefined;
@@ -811,6 +841,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
     const payload = isRecord(input.payload) ? { ...input.payload } : {};
     const image = resolveRuntimeImage(payload);
     const agentConfig = readAgentConfig(payload);
+    const brandProfile = readBrandProfile(payload);
     const manifests = generateKubernetesManifests(buildManifestInput({
       accountId,
       deploymentId,
@@ -819,6 +850,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       configRevision: DEFAULT_CONFIG_REVISION,
       nameOverrides: readPersistedAksNames(payload),
       agentConfig,
+      brandProfile,
     }));
     const now = this.dependencies.now();
     const resourceHandle = buildResourceHandle(manifests.names);
@@ -901,6 +933,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
     const image = resolveRuntimeImage(payload);
     const nextRevision = resolveConfigRevision(payload) + 1;
     const agentConfig = readAgentConfig(payload);
+    const brandProfile = readBrandProfile(payload);
     const manifests = generateKubernetesManifests(buildManifestInput({
       accountId,
       deploymentId,
@@ -909,6 +942,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       configRevision: nextRevision,
       nameOverrides: readPersistedAksNames(payload),
       agentConfig,
+      brandProfile,
     }));
     const operation = await this.createActionOperation({
       input,
@@ -1211,6 +1245,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
       const deploymentId = readRequiredString(operation.target.deploymentId, "target.deploymentId");
       const agentConfig = await resolveAgentConfigForOperation(operation.target.accountId, payload);
       const runtimeEnv = await resolveRuntimeEnvForOperation(operation.target.accountId, payload);
+      const brandProfile = await resolveBrandProfileForOperation(operation.target.accountId, payload);
       const manifests = generateKubernetesManifests(buildManifestInput({
         accountId: operation.target.accountId,
         deploymentId,
@@ -1220,6 +1255,7 @@ export class AksOrchestrationAdapter implements OrchestrationAdapter {
         nameOverrides: getNameOverridesFromMetadata(operation.runtimeMetadata?.aks),
         agentConfig,
         runtimeEnv,
+        brandProfile,
       }));
       client = this.dependencies.createResourceClient(
         await this.dependencies.loadKubernetesClient()
