@@ -106,7 +106,7 @@ export default function MarketingPage() {
               className="absolute right-0 top-0 z-10 h-40 w-40 translate-x-1/3 -translate-y-1/3 rounded-full bg-brand-500/25 blur-3xl"
             />
             <Image
-              src="/marketing/abra-workshop-experts-1.png"
+              src="/marketing/abra-workshop-experts-upscaled-2x.png"
               alt="Experts reviewing workshop notes together in a dark professional room"
               fill
               priority
