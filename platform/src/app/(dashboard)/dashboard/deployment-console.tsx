@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Badge, Button, Card, Panel } from "@/components/ui";
+import { Badge, Button, Panel } from "@/components/ui";
 import type { DashboardDeployment } from "@/lib/deployments";
 import { deleteAbraInstance, submitDeploymentRequest } from "./actions";
 import { canDeploy } from "./deployment-rules";
@@ -44,6 +44,29 @@ function formatTimestamp(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function getStatusCopy(deployment: DashboardDeployment | null, telegramConfigured: boolean) {
+  if (!deployment) {
+    return telegramConfigured
+      ? "Start Abra when you are ready to process source material."
+      : "Add Telegram settings first, then start the runtime.";
+  }
+
+  switch (deployment.status) {
+    case "queued":
+      return "Abra is queued and will begin deploying shortly.";
+    case "running":
+      return "Abra is deploying. Controls unlock when the runtime is ready.";
+    case "succeeded":
+      return "Abra is ready. Stop it when you no longer need the runtime.";
+    case "failed":
+      return "Deployment failed. Review the detail below, then start again.";
+    case "deleting":
+      return "Abra is stopping. This can take a moment.";
+    case "deleted":
+      return "The previous runtime was stopped. Start Abra to bring it back.";
+  }
 }
 
 export function DeploymentConsole({
@@ -164,17 +187,51 @@ export function DeploymentConsole({
   }
 
   return (
-    <Card className="animate-fade-up" id="deployment-request">
-      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[var(--color-shell-border-strong)] pb-6">
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-500">Abra instance</p>
-          <h2 className="mt-4 text-h4 font-display font-bold text-white">
-            {deployment ? deployment.request.name : "No instance deployed"}
-          </h2>
+    <section
+      className="animate-fade-up border-y border-[var(--color-shell-border-strong)] py-6"
+      id="deployment-request"
+      aria-labelledby="deployment-request-heading"
+    >
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 id="deployment-request-heading" className="text-h4 font-display font-bold text-white">
+              {deployment ? deployment.request.name : "Runtime is off"}
+            </h2>
+            <Badge variant={badge.variant} className={transitioning ? "animate-pulse-slow" : ""}>
+              {badge.label}
+            </Badge>
+          </div>
+          <p className="mt-3 max-w-2xl text-body leading-7 text-zinc-300">
+            {getStatusCopy(deployment, telegramConfigured)}
+          </p>
+          {deployment && (
+            <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-500">
+              Created {formatTimestamp(deployment.createdAt)} · Updated {formatTimestamp(deployment.updatedAt)}
+            </p>
+          )}
         </div>
-        <Badge variant={badge.variant} className={transitioning ? "animate-pulse-slow" : ""}>
-          {badge.label}
-        </Badge>
+
+        <div className="flex flex-col gap-3 rounded-sm border border-[var(--color-shell-border-strong)] bg-white/[0.03] p-3 sm:min-w-72">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+            <div className="flex flex-1 flex-col gap-2 sm:flex-row [&_button]:w-full [&_form]:w-full [&_a]:w-full">
+              {actionRow}
+            </div>
+            <Button variant="ghost" size="lg" href="/dashboard/settings" className="sm:min-w-32">
+              Settings
+            </Button>
+          </div>
+
+          {shouldShowStart && !telegramConfigured && (
+            <p className="text-caption leading-6 text-zinc-500">
+              Set up Telegram in{" "}
+              <a href="/dashboard/settings#bot-setup" className="underline hover:text-zinc-300">
+                Settings
+              </a>{" "}
+              to enable Start.
+            </p>
+          )}
+        </div>
       </div>
 
       {deployment?.errorMessage && (
@@ -205,29 +262,6 @@ export function DeploymentConsole({
           </p>
         </Panel>
       )}
-
-      <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        {actionRow}
-        <Button variant="ghost" href="/dashboard/settings">
-          Settings
-        </Button>
-      </div>
-
-      {shouldShowStart && !telegramConfigured && (
-        <p className="mt-3 text-center text-caption text-zinc-500">
-          Set up Telegram in{" "}
-          <a href="/dashboard/settings#bot-setup" className="underline hover:text-zinc-300">
-            Settings
-          </a>{" "}
-          to enable Start.
-        </p>
-      )}
-
-      {deployment && (
-        <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.14em] text-zinc-500">
-          Created {formatTimestamp(deployment.createdAt)} · Updated {formatTimestamp(deployment.updatedAt)}
-        </p>
-      )}
-    </Card>
+    </section>
   );
 }

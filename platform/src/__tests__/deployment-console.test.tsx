@@ -30,6 +30,8 @@ describe("DeploymentConsole", () => {
     const startButton = await screen.findByRole("button", { name: "Start" });
     expect(startButton).toBeTruthy();
     expect(startButton.getAttribute("disabled")).toBeNull();
+    expect(screen.getByRole("link", { name: "Settings" })).toBeTruthy();
+    expect(screen.queryByText("Abra instance")).toBeNull();
   });
 
   it("disables Start and shows a setup hint when Telegram isn't configured", async () => {
