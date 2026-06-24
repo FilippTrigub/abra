@@ -134,12 +134,16 @@ function PillButton({
   disabled,
   type = "button",
   onClick,
+  name,
+  value,
   variant = "primary",
 }: {
   children: React.ReactNode;
   disabled?: boolean;
   type?: "button" | "submit";
   onClick?: () => void;
+  name?: string;
+  value?: string;
   variant?: "primary" | "ghost";
 }) {
   const primary = variant === "primary";
@@ -148,6 +152,8 @@ function PillButton({
       type={type}
       disabled={disabled}
       onClick={onClick}
+      name={name}
+      value={value}
       className={`group inline-flex min-h-11 items-center gap-3 rounded-full px-4 py-2 pl-5 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-45 motion-reduce:transition-none ${
         primary ? "bg-white text-black" : "bg-white/[0.04] text-zinc-200 ring-1 ring-white/10 hover:bg-white/[0.07]"
       }`}
@@ -176,7 +182,6 @@ export function OnboardingWizard({
     completeOnboarding,
     initialOnboardingFormState,
   );
-  const [confirmed, setConfirmed] = useState(false);
   const [values, setValues] = useState<WizardValues>({
     brandDescription: initialBrandProfile?.brandDescription ?? "",
     telegramBotToken: "",
@@ -193,7 +198,6 @@ export function OnboardingWizard({
   }
 
   function goToStep(nextStep: number) {
-    setConfirmed(false);
     setStep(nextStep);
   }
 
@@ -211,8 +215,6 @@ export function OnboardingWizard({
         {Object.entries(values).map(([key, value]) => (
           <input key={key} type="hidden" name={key} value={value} />
         ))}
-        <input type="hidden" name="confirmOnboarding" value={confirmed ? "yes" : "no"} />
-
         <aside className="space-y-5 md:pr-6">
           <div className="inline-flex rounded-full bg-white/[0.04] p-1.5 ring-1 ring-white/10">
             <div className="rounded-full bg-[#0f1113] px-4 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--color-shell-signal)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.12)]">
@@ -314,22 +316,14 @@ export function OnboardingWizard({
                       Continue
                     </PillButton>
                   ) : (
-                    <div className="flex flex-col gap-3 sm:items-end">
-                      <label className="flex max-w-md items-start gap-3 rounded-[1.1rem] bg-white/[0.035] p-3 text-sm leading-6 text-zinc-300 ring-1 ring-white/10">
-                        <input
-                          type="checkbox"
-                          checked={confirmed}
-                          onChange={(event) => setConfirmed(event.target.checked)}
-                          className="mt-1 h-4 w-4 rounded border-white/20 bg-black accent-[var(--color-shell-signal)]"
-                        />
-                        <span>
-                          Confirm this setup. Saved keys stay hidden; blank secret fields keep the current values.
-                        </span>
-                      </label>
-                      <PillButton type="submit" disabled={pending || !brandReady || !telegramReady || !confirmed}>
-                        {pending ? "Saving" : "Confirm setup"}
-                      </PillButton>
-                    </div>
+                    <PillButton
+                      type="submit"
+                      name="confirmOnboarding"
+                      value="yes"
+                      disabled={pending || !brandReady || !telegramReady}
+                    >
+                      {pending ? "Saving" : "Confirm setup"}
+                    </PillButton>
                   )}
                 </div>
               </div>
