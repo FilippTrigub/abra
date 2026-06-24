@@ -75,12 +75,8 @@ describe("onboarding actions", () => {
       completeOnboarding(
         initialOnboardingFormState,
         buildFormData({
-          brandName: "North Star Advisory",
-          audience: "Independent experts who sell through trust",
-          offer: "Turns field notes into credible content",
-          voice: "Calm, specific, quietly capable",
-          differentiators: "Operator experience and original frameworks",
-          sourceNotes: "Avoid hype.",
+          brandDescription:
+            "North Star Advisory helps independent experts turn field notes into credible content with a calm, specific voice.",
           telegramBotToken: "token-123",
           telegramHomeChannel: "388259993",
           telegramAllowedUsers: "388259993,123456",
@@ -90,12 +86,8 @@ describe("onboarding actions", () => {
     ).rejects.toThrow("REDIRECT:/dashboard");
 
     expect(saveBrandProfile).toHaveBeenCalledWith("user-1", {
-      brandName: "North Star Advisory",
-      audience: "Independent experts who sell through trust",
-      offer: "Turns field notes into credible content",
-      voice: "Calm, specific, quietly capable",
-      differentiators: "Operator experience and original frameworks",
-      sourceNotes: "Avoid hype.",
+      brandDescription:
+        "North Star Advisory helps independent experts turn field notes into credible content with a calm, specific voice.",
     });
     expect(saveAgentConfig).toHaveBeenCalledWith("user-1", {
       telegramBotToken: "token-123",

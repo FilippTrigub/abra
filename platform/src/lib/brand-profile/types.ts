@@ -1,10 +1,5 @@
 export interface BrandProfileInput {
-  brandName: string;
-  audience: string;
-  offer: string;
-  voice: string;
-  differentiators: string;
-  sourceNotes: string;
+  brandDescription: string;
 }
 
 export interface BrandProfile extends BrandProfileInput {

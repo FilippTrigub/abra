@@ -21,32 +21,15 @@ function toIsoString(value: unknown): string | null {
 }
 
 export function buildBrandMarkdown(profile: BrandProfileInput): string {
-  const brandName = normalizeText(profile.brandName) || "Unnamed brand";
-  const audience = normalizeText(profile.audience);
-  const offer = normalizeText(profile.offer);
-  const voice = normalizeText(profile.voice);
-  const differentiators = normalizeText(profile.differentiators);
-  const sourceNotes = normalizeText(profile.sourceNotes);
+  const brandDescription = normalizeText(profile.brandDescription);
 
   return [
-    `# ${brandName} Brand Profile`,
+    "# Brand Profile",
     "",
     "This file is generated from the user's Abra onboarding profile and should guide brand-manager decisions before drafting, adapting, scheduling, or creating assets.",
     "",
-    "## Audience",
-    audience || "Not specified yet.",
-    "",
-    "## Core Offer",
-    offer || "Not specified yet.",
-    "",
-    "## Voice and Tone",
-    voice || "Clear, credible, quietly capable.",
-    "",
-    "## Differentiators",
-    differentiators || "Not specified yet.",
-    "",
-    "## Source Notes",
-    sourceNotes || "Not specified yet.",
+    "## User Description",
+    brandDescription || "Not specified yet.",
     "",
     "## Operating Principle",
     "Abra prepares drafts and assets; the expert reviews, edits, approves, and remains accountable.",
@@ -55,23 +38,22 @@ export function buildBrandMarkdown(profile: BrandProfileInput): string {
 
 function toBrandProfile(data: DocumentData | undefined): BrandProfile | null {
   if (!data) return null;
-  const brandName = typeof data.brandName === "string" ? data.brandName : "";
-  const audience = typeof data.audience === "string" ? data.audience : "";
-  const offer = typeof data.offer === "string" ? data.offer : "";
-  const voice = typeof data.voice === "string" ? data.voice : "";
-  const differentiators = typeof data.differentiators === "string" ? data.differentiators : "";
-  const sourceNotes = typeof data.sourceNotes === "string" ? data.sourceNotes : "";
-  const markdown = typeof data.markdown === "string"
-    ? data.markdown
-    : buildBrandMarkdown({ brandName, audience, offer, voice, differentiators, sourceNotes });
+  const legacyDescription = [
+    typeof data.brandName === "string" ? data.brandName : "",
+    typeof data.audience === "string" ? data.audience : "",
+    typeof data.offer === "string" ? data.offer : "",
+    typeof data.voice === "string" ? data.voice : "",
+    typeof data.differentiators === "string" ? data.differentiators : "",
+    typeof data.sourceNotes === "string" ? data.sourceNotes : "",
+  ].filter(Boolean).join("\n\n");
+  const existingMarkdown = typeof data.markdown === "string" ? data.markdown : "";
+  const brandDescription = typeof data.brandDescription === "string" && data.brandDescription.trim()
+    ? data.brandDescription
+    : legacyDescription || existingMarkdown;
+  const markdown = existingMarkdown || buildBrandMarkdown({ brandDescription });
 
   return {
-    brandName,
-    audience,
-    offer,
-    voice,
-    differentiators,
-    sourceNotes,
+    brandDescription,
     markdown,
     completedAt: toIsoString(data.completedAt),
     updatedAt: toIsoString(data.updatedAt),
@@ -92,12 +74,7 @@ export async function hasCompletedBrandProfile(authUserId: string): Promise<bool
 
 export async function saveBrandProfile(authUserId: string, input: BrandProfileInput): Promise<BrandProfile> {
   const normalized: BrandProfileInput = {
-    brandName: normalizeText(input.brandName),
-    audience: normalizeText(input.audience),
-    offer: normalizeText(input.offer),
-    voice: normalizeText(input.voice),
-    differentiators: normalizeText(input.differentiators),
-    sourceNotes: normalizeText(input.sourceNotes),
+    brandDescription: normalizeText(input.brandDescription),
   };
   const markdown = buildBrandMarkdown(normalized);
   const firestore = getAdminFirestore();

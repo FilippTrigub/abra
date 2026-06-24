@@ -73,7 +73,7 @@ The active runtime env document path is `accounts/{authUserId}/runtime-env/curre
 
 Runtime env values are saved from Settings for user-managed skill/API keys such as Buffer, GIPHY, Freesound, Pixabay, and Telegram. Plaintext is accepted only on server actions, encrypted before Firestore writes, and never returned to the browser after save or import. Browser responses contain redacted summaries with key names, source, version metadata, timestamps, and fingerprints only.
 
-Onboarding saves the user's brand profile at `accounts/{authUserId}/brand-profile/current`. This document contains short structured brand fields plus generated Markdown. It is not part of the encrypted runtime-env store because it is non-secret runtime context, not an API key. During deploy/update, the platform reads the current brand profile and writes it into the generated ConfigMap as `BRAND.md`.
+Onboarding saves the user's brand profile at `accounts/{authUserId}/brand-profile/current`. This document contains the user's concise brand description plus generated Markdown. It is not part of the encrypted runtime-env store because it is non-secret runtime context, not an API key. During deploy/update, the platform reads the current brand profile and writes it into the generated ConfigMap as `BRAND.md`.
 
 `RUNTIME_ENV_ENCRYPTION_KEY` is required server-only configuration for the platform process. It must not be exposed through `NEXT_PUBLIC_*`, checked into docs as key material, or sent to the runtime container.
 

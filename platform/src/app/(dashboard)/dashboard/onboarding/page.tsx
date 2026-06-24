@@ -4,15 +4,21 @@ import { hasCompletedBrandProfile, loadBrandProfile } from "@/lib/brand-profile/
 import { loadAgentConfig } from "@/lib/agent-config/service";
 import { OnboardingWizard } from "./onboarding-wizard";
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ restart?: string }>;
+}) {
   const user = await requireAuth();
+  const params = await searchParams;
+  const restart = params?.restart === "1";
   const [brandProfile, brandComplete, agentConfig] = await Promise.all([
     loadBrandProfile(user.id),
     hasCompletedBrandProfile(user.id),
     loadAgentConfig(user.id),
   ]);
 
-  if (brandComplete && agentConfig) {
+  if (brandComplete && agentConfig && !restart) {
     redirect("/dashboard");
   }
 

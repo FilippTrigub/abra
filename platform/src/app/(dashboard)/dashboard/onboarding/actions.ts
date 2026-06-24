@@ -44,12 +44,7 @@ export async function completeOnboarding(
     return errorState("Your session expired. Sign in again to finish onboarding.");
   }
 
-  const brandName = formText(formData, "brandName");
-  const audience = formText(formData, "audience");
-  const offer = formText(formData, "offer");
-  const voice = formText(formData, "voice");
-  const differentiators = formText(formData, "differentiators");
-  const sourceNotes = formText(formData, "sourceNotes");
+  const brandDescription = formText(formData, "brandDescription");
   const telegramBotToken = formText(formData, "telegramBotToken");
   const telegramHomeChannel = formText(formData, "telegramHomeChannel");
   const telegramAllowedUsers = formText(formData, "telegramAllowedUsers") || telegramHomeChannel;
@@ -61,8 +56,8 @@ export async function completeOnboarding(
   const effectiveTelegramAllowedUsers = telegramAllowedUsers || existingAgentConfig?.telegramAllowedUsers || effectiveTelegramHomeChannel;
 
   const fieldErrors: OnboardingFormState["fieldErrors"] = {};
-  if (!brandName || !audience || !offer || !voice) {
-    fieldErrors.brand = "Add the brand name, audience, offer, and voice so Abra can draft in-context.";
+  if (brandDescription.length < 24) {
+    fieldErrors.brand = "Describe your brand, audience, offer, and voice in a few sentences.";
   }
   if (!effectiveTelegramBotToken || !effectiveTelegramHomeChannel) {
     fieldErrors.telegram = "Add a Telegram bot token and home channel/chat ID before deploying Abra.";
@@ -72,14 +67,7 @@ export async function completeOnboarding(
   }
 
   try {
-    await saveBrandProfile(authResult.user.id, {
-      brandName,
-      audience,
-      offer,
-      voice,
-      differentiators,
-      sourceNotes,
-    });
+    await saveBrandProfile(authResult.user.id, { brandDescription });
 
     await saveAgentConfig(authResult.user.id, {
       telegramBotToken: effectiveTelegramBotToken,

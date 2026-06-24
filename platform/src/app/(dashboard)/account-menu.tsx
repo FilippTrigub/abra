@@ -86,6 +86,14 @@ export function AccountMenu({ displayName }: AccountMenuProps) {
           >
             Usage
           </a>
+          <a
+            href="/dashboard/onboarding?restart=1"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className={menuItemClassName}
+          >
+            Restart onboarding
+          </a>
           <div className="my-1 border-t border-[var(--color-shell-border-strong)]" />
           <form action={signOut}>
             <button

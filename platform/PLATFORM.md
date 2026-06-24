@@ -41,8 +41,8 @@ src/
     agent-config/       Telegram bot identity (token/home channel/allowed
                         users) — the sole source for Telegram; gates deploy
                         via hasAgentConfig()
-    brand-profile/      User-level onboarding brand context. Saves structured
-                        brand fields and generated Markdown at
+    brand-profile/      User-level onboarding brand context. Saves the user's
+                        concise brand description and generated Markdown at
                         accounts/{userId}/brand-profile/current; orchestration
                         hydrates it into runtime BRAND.md for brand-manager.
     runtime-env/        user-managed skill/API env vars (encrypted at rest).
@@ -93,8 +93,8 @@ form inline. Stop requires an explicit two-stage confirm, shown inline in the
 same action strip.
 
 **Onboarding** — `/dashboard/onboarding` is the first-run setup surface. It is a
-full-screen step-by-step client wizard backed by server actions. It captures the
-brand profile, required Telegram bot values, and optional Buffer API key. Brand
+full-screen step-by-step client wizard backed by server actions. It captures one
+brand description, required Telegram bot values, and optional Buffer API key. Brand
 profile text is stored at `accounts/{authUserId}/brand-profile/current`; Telegram
 continues to use `agent-config/current`; Buffer continues to use encrypted
 `runtime-env/current`. The dashboard landing redirects to onboarding until both

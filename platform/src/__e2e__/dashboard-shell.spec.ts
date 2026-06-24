@@ -7,6 +7,7 @@ import { expect, test } from "@playwright/test";
 const TEST_USER_ID = "e2e-dashboard-shell-user";
 const SESSION_DURATION_MS = 5 * 24 * 60 * 60 * 1000;
 let sessionCookieValue = "";
+let seededAdminApp: admin.app.App | null = null;
 
 function readFirebaseEnv(
   name:
@@ -45,6 +46,7 @@ function readFirebaseEnv(
 
 function getTestAdminAuth(): admin.auth.Auth {
   if (admin.apps.length > 0) {
+    seededAdminApp = admin.app();
     return admin.auth();
   }
 
@@ -52,7 +54,7 @@ function getTestAdminAuth(): admin.auth.Auth {
   const clientEmail = readFirebaseEnv("FIREBASE_CLIENT_EMAIL");
   const privateKey = readFirebaseEnv("FIREBASE_PRIVATE_KEY");
 
-  admin.initializeApp({
+  seededAdminApp = admin.initializeApp({
     credential: admin.credential.cert({
       projectId,
       clientEmail,
@@ -65,6 +67,10 @@ function getTestAdminAuth(): admin.auth.Auth {
 
 test.beforeAll(async () => {
   const auth = getTestAdminAuth();
+  if (!seededAdminApp) {
+    throw new Error("Firebase Admin app was not initialized for E2E seeding.");
+  }
+  const firestore = seededAdminApp.firestore();
   const email = `${TEST_USER_ID}@example.test`;
 
   try {
@@ -106,6 +112,39 @@ test.beforeAll(async () => {
     signInData.idToken,
     { expiresIn: SESSION_DURATION_MS },
   );
+
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  await firestore.doc(`accounts/${TEST_USER_ID}`).set(
+    {
+      authUserId: TEST_USER_ID,
+      subscriptionPlan: "free",
+      subscriptionStatus: "active",
+      subscriptionCancellationReason: null,
+      updatedAt: now,
+      createdAt: now,
+    },
+    { merge: true },
+  );
+  await firestore.doc(`accounts/${TEST_USER_ID}/brand-profile/current`).set(
+    {
+      brandDescription:
+        "E2E Dashboard Shell helps test authenticated Abra setup with a concise, credible operator voice.",
+      markdown:
+        "# Brand Profile\n\n## User Description\nE2E Dashboard Shell helps test authenticated Abra setup with a concise, credible operator voice.\n",
+      completedAt: now,
+      updatedAt: now,
+    },
+    { merge: true },
+  );
+  await firestore.doc(`accounts/${TEST_USER_ID}/agent-config/current`).set(
+    {
+      telegramBotToken: "e2e-token",
+      telegramHomeChannel: "388259993",
+      telegramAllowedUsers: "388259993",
+      updatedAt: now,
+    },
+    { merge: true },
+  );
 });
 
 test.beforeEach(async ({ context }) => {
@@ -129,9 +168,7 @@ test.describe("Authenticated dashboard shell", () => {
     await expect(
       page.getByRole("heading", { name: "Dashboard", exact: true }),
     ).toBeVisible();
-    // No Telegram config seeded for this test user, so Start is disabled
-    // until Telegram is configured in Settings.
-    await expect(page.getByRole("button", { name: "Start" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Start" })).toBeEnabled();
 
     await page.getByRole("button", { name: "Account menu" }).click();
     await expect(page.getByRole("menuitem", { name: "Usage" })).toBeVisible();
@@ -147,5 +184,19 @@ test.describe("Authenticated dashboard shell", () => {
     await expect(page.getByRole("heading", { name: "Buffer" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Azure Foundry (default)" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Skill integrations" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await expect(page.getByRole("menuitem", { name: "Restart onboarding" })).toBeVisible();
+  });
+
+  test("should hide dashboard chrome on onboarding restart", async ({ page }) => {
+    await page.goto("/dashboard/onboarding?restart=1");
+
+    await expect(page).toHaveURL(/(?:\/en)?\/dashboard\/onboarding\?restart=1$/);
+    await expect(page.getByText("Abra setup")).toBeVisible();
+    await expect(page.getByLabel("Brand description")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Account menu" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Dashboard" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Settings" })).toHaveCount(0);
   });
 });
