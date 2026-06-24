@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { startTransition, useActionState, useMemo, useRef, useState } from "react";
 import type { BrandProfile } from "@/lib/brand-profile/types";
 import { completeOnboarding } from "./actions";
 import { initialOnboardingFormState } from "./form-state";
@@ -182,6 +182,7 @@ export function OnboardingWizard({
     completeOnboarding,
     initialOnboardingFormState,
   );
+  const formRef = useRef<HTMLFormElement>(null);
   const [values, setValues] = useState<WizardValues>({
     brandDescription: initialBrandProfile?.brandDescription ?? "",
     telegramBotToken: "",
@@ -201,6 +202,19 @@ export function OnboardingWizard({
     setStep(nextStep);
   }
 
+  function handleConfirmSetup() {
+    if (pending || !brandReady || !telegramReady || !formRef.current) {
+      return;
+    }
+
+    const formData = new FormData(formRef.current);
+    formData.set("confirmOnboarding", "yes");
+
+    startTransition(() => {
+      formAction(formData);
+    });
+  }
+
   const brandReady = values.brandDescription.trim().length >= 24;
   const telegramReady = initialTelegramConfigured || (values.telegramBotToken.trim() && values.telegramHomeChannel.trim());
   const canAdvance = step === 0 ? brandReady : step === 1 ? Boolean(telegramReady) : true;
@@ -211,7 +225,11 @@ export function OnboardingWizard({
       <div className="pointer-events-none absolute -left-28 top-8 h-72 w-72 rounded-full bg-emerald-400/14 blur-[94px]" />
       <div className="pointer-events-none absolute right-0 top-1/3 h-80 w-80 rounded-full bg-brand-500/14 blur-[108px]" />
 
-      <form action={formAction} className="relative mx-auto grid min-h-[calc(100dvh-2rem)] max-w-6xl grid-cols-1 items-center gap-5 md:grid-cols-[0.8fr_1.2fr]">
+      <form
+        ref={formRef}
+        onSubmit={(event) => event.preventDefault()}
+        className="relative mx-auto grid min-h-[calc(100dvh-2rem)] max-w-6xl grid-cols-1 items-center gap-5 md:grid-cols-[0.8fr_1.2fr]"
+      >
         {Object.entries(values).map(([key, value]) => (
           <input key={key} type="hidden" name={key} value={value} />
         ))}
@@ -317,9 +335,8 @@ export function OnboardingWizard({
                     </PillButton>
                   ) : (
                     <PillButton
-                      type="submit"
-                      name="confirmOnboarding"
-                      value="yes"
+                      type="button"
+                      onClick={handleConfirmSetup}
                       disabled={pending || !brandReady || !telegramReady}
                     >
                       {pending ? "Saving" : "Confirm setup"}
