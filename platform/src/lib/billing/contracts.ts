@@ -353,6 +353,10 @@ export function decideAdmission(input: AdmissionInput): AdmissionOutput {
 export type ProviderUsageSource = "provider_reported" | "estimated" | "langfuse_inferred";
 
 export interface ProviderUsageEnvelope {
+  /** Admission ledger event id that this usage belongs to, when known. */
+  usageEventId: string | null;
+  /** Alias for the admission reservation/event id for provider payloads that use reservation terminology. */
+  reservationId: string | null;
   provider: string;
   model: string | null;
   source: ProviderUsageSource;
@@ -363,14 +367,20 @@ export interface ProviderUsageEnvelope {
   capturedAt: string;
   /** Informational only. Quota/admission authority lives in Abra's ledger. */
   authoritativeForQuota: false;
+  /** Provider-returned values can be preferred for analytics; estimates/Langfuse cannot. */
+  authoritativeForUsageAnalytics: boolean;
 }
 
 export function createProviderUsageEnvelope(
-  input: Omit<ProviderUsageEnvelope, "authoritativeForQuota">,
+  input: Omit<ProviderUsageEnvelope, "authoritativeForQuota" | "authoritativeForUsageAnalytics" | "usageEventId" | "reservationId">
+    & Partial<Pick<ProviderUsageEnvelope, "usageEventId" | "reservationId">>,
 ): ProviderUsageEnvelope {
   return {
+    usageEventId: input.usageEventId ?? null,
+    reservationId: input.reservationId ?? null,
     ...input,
     authoritativeForQuota: false,
+    authoritativeForUsageAnalytics: input.source === "provider_reported",
   };
 }
 

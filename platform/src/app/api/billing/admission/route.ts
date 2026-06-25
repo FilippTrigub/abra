@@ -7,6 +7,9 @@ interface AdmissionRequestBody {
   deploymentId?: unknown;
   requestId?: unknown;
   channelMessageId?: unknown;
+  abraInstanceId?: unknown;
+  runId?: unknown;
+  environment?: unknown;
 }
 
 function readRequiredString(value: unknown, fieldName: string) {
@@ -50,6 +53,9 @@ export async function POST(request: Request) {
       deploymentId: readRequiredString(body.deploymentId, "deploymentId"),
       requestId: readRequiredString(body.requestId, "requestId"),
       channelMessageId: readOptionalString(body.channelMessageId),
+      abraInstanceId: readOptionalString(body.abraInstanceId),
+      runId: readOptionalString(body.runId),
+      environment: readOptionalString(body.environment),
     });
 
     return NextResponse.json(

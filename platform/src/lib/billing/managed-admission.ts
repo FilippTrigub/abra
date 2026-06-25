@@ -16,6 +16,7 @@ import {
   createManagedRuntimeCredential,
   getManagedAdmissionCredentialSecret,
 } from "./managed-admission-runtime";
+import { emitAdmissionTelemetrySafely, type BillingAdmissionTelemetryHook } from "./billing-telemetry";
 import { decideManualBlockGate } from "./manual-block-gate";
 import { readManualBlockState } from "./manual-block-service";
 
@@ -24,6 +25,9 @@ export interface ManagedRuntimeAdmissionRequest {
   deploymentId: string;
   requestId: string;
   channelMessageId?: string | null;
+  abraInstanceId?: string | null;
+  runId?: string | null;
+  environment?: string | null;
   credential: string;
   now?: Date | string | number;
 }
@@ -101,7 +105,10 @@ function deny(input: {
 export class ManagedRuntimeAdmissionService {
   private readonly admission: BillingAdmissionService;
 
-  constructor(private readonly firestore: Firestore = getAdminFirestore()) {
+  constructor(
+    private readonly firestore: Firestore = getAdminFirestore(),
+    private readonly telemetry: BillingAdmissionTelemetryHook | null = null,
+  ) {
     this.admission = new BillingAdmissionService(firestore);
   }
 
@@ -160,6 +167,23 @@ export class ManagedRuntimeAdmissionService {
           reservation,
         });
       }
+
+      await emitAdmissionTelemetrySafely({
+        hook: this.telemetry,
+        reservation,
+        metadata: {
+          billingAccountId: input.accountId,
+          abraInstanceId: normalizeString(input.abraInstanceId) ?? input.deploymentId,
+          deploymentId: input.deploymentId,
+          runId: normalizeString(input.runId) ?? input.requestId,
+          usageEventId: reservation.eventId,
+          tier,
+          environment: normalizeString(input.environment)
+            ?? normalizeString(process.env.VERCEL_ENV)
+            ?? normalizeString(process.env.NODE_ENV)
+            ?? "unknown",
+        },
+      });
 
       return {
         allow: true,

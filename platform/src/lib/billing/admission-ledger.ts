@@ -13,10 +13,12 @@ import {
   QUOTA_UNIT_V1,
   type AdmissionRejectReason,
   type ManagedBillingTier,
+  type ProviderUsageEnvelope,
   type QuotaLedgerState,
   type QuotaUnitV1,
   type QuotaWindowRef,
 } from "./contracts";
+import { buildProviderUsageEnvelope, type ProviderUsageEnvelopeInput } from "./provider-usage-envelope";
 
 type AdmissionLedgerClock = Date | string | number;
 
@@ -49,6 +51,10 @@ export interface BillingAdmissionReleaseInput extends BillingAdmissionTransition
    * decrements the quota count only when it is released before commit.
    */
   billable?: boolean;
+}
+
+export interface BillingAdmissionProviderUsageInput extends BillingAdmissionTransitionInput {
+  usage: ProviderUsageEnvelopeInput | ProviderUsageEnvelopeInput[];
 }
 
 export interface BillingAdmissionDenyInput extends AdmissionIdempotencyInput {
@@ -88,6 +94,8 @@ export interface AdmissionLedgerEventDocument {
   committedAt: string | null;
   releasedAt: string | null;
   deniedAt: string | null;
+  providerUsageEnvelopes: ProviderUsageEnvelope[];
+  providerUsageUpdatedAt: string | null;
 }
 
 export interface BillingAdmissionResult {
@@ -192,7 +200,13 @@ function eventFromSnapshot(snapshot: DocumentSnapshot): AdmissionLedgerEventDocu
     return null;
   }
 
-  return data as AdmissionLedgerEventDocument;
+  return {
+    ...(data as AdmissionLedgerEventDocument),
+    providerUsageEnvelopes: Array.isArray(data.providerUsageEnvelopes)
+      ? data.providerUsageEnvelopes as ProviderUsageEnvelope[]
+      : [],
+    providerUsageUpdatedAt: typeof data.providerUsageUpdatedAt === "string" ? data.providerUsageUpdatedAt : null,
+  };
 }
 
 function quotaWindowDocument(input: {
@@ -274,6 +288,8 @@ export class BillingAdmissionService {
         committedAt: null,
         releasedAt: null,
         deniedAt: admitted ? null : now,
+        providerUsageEnvelopes: [],
+        providerUsageUpdatedAt: null,
       };
 
       transaction.set(eventRef, event, { merge: false });
@@ -305,6 +321,29 @@ export class BillingAdmissionService {
         billable: true,
         updatedAt: now,
         committedAt: now,
+      };
+    });
+  }
+
+  async recordProviderUsage(input: BillingAdmissionProviderUsageInput): Promise<BillingAdmissionResult> {
+    const usageInputs = Array.isArray(input.usage) ? input.usage : [input.usage];
+
+    return this.transitionExisting(input, (event, now) => {
+      const usageEnvelopes = usageInputs.map((usage) => buildProviderUsageEnvelope({
+        ...usage,
+        usageEventId: usage.usageEventId ?? event.eventId,
+        reservationId: usage.reservationId ?? event.eventId,
+        capturedAt: usage.capturedAt ?? now,
+      }));
+
+      return {
+        ...event,
+        providerUsageEnvelopes: [
+          ...event.providerUsageEnvelopes,
+          ...usageEnvelopes,
+        ],
+        providerUsageUpdatedAt: now,
+        updatedAt: now,
       };
     });
   }
@@ -372,6 +411,8 @@ export class BillingAdmissionService {
         committedAt: null,
         releasedAt: null,
         deniedAt: now,
+        providerUsageEnvelopes: [],
+        providerUsageUpdatedAt: null,
       };
 
       transaction.set(eventRef, event, { merge: false });
