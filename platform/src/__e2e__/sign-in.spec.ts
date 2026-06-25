@@ -8,7 +8,7 @@ test.describe("Sign-in page", () => {
 
     await expect(page).toHaveURL(/(?:\/en)?\/$/);
     await expect(
-      page.getByRole("heading", { name: "Turn real conversations into posts, on your own stack or ours." }),
+      page.getByRole("heading", { name: "Turn conversations into posts." }),
     ).toBeVisible();
 
     const repoCta = page.getByRole("link", { name: "View the repo" }).first();
@@ -23,13 +23,13 @@ test.describe("Sign-in page", () => {
     await expect(repoNavLink).toBeVisible();
     await expect(repoNavLink).toHaveAttribute("href", repoUrl);
 
-    const selfHostNavLink = page.getByRole("link", { name: "Self-host", exact: true });
-    await expect(selfHostNavLink).toBeVisible();
-    await expect(selfHostNavLink).toHaveAttribute("href", "#self-host");
+    const workflowNavLink = page.getByRole("link", { name: "Workflow", exact: true });
+    await expect(workflowNavLink).toBeVisible();
+    await expect(workflowNavLink).toHaveAttribute("href", "#workflow");
 
-    const pricingNavLink = page.getByRole("link", { name: "Pricing", exact: true });
-    await expect(pricingNavLink).toBeVisible();
-    await expect(pricingNavLink).toHaveAttribute("href", "#pricing");
+    const runModeNavLink = page.getByRole("link", { name: "Run mode", exact: true });
+    await expect(runModeNavLink).toBeVisible();
+    await expect(runModeNavLink).toHaveAttribute("href", "#run-mode");
 
     const signInNavLink = page.getByRole("link", { name: "Sign in", exact: true });
     await expect(signInNavLink).toBeVisible();

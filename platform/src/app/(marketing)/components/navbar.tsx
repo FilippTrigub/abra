@@ -40,16 +40,16 @@ export function Navbar() {
             Repo
           </Link>
           <Link
-            href="#self-host"
+            href="#workflow"
             className="hidden text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-colors duration-150 hover:text-white focus-ring-brand sm:inline-flex"
           >
-            Self-host
+            Workflow
           </Link>
           <Link
-            href="#pricing"
+            href="#run-mode"
             className="hidden text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-colors duration-150 hover:text-white focus-ring-brand sm:inline-flex"
           >
-            Pricing
+            Run mode
           </Link>
           <Link
             href="/sign-in"

@@ -4,36 +4,22 @@ import Link from "next/link";
 
 const repoUrl = "https://github.com/FilippTrigub/abra";
 
-const sourceInputs = [
-  "Client calls",
-  "Workshop notes",
-  "Voice memos",
-  "Draft ideas",
-];
-
 const workflowStages = [
   {
     label: "Capture",
-    title: "Bring the work in",
-    body: "Start with a call, note, objection, or framework.",
+    title: "Add real work",
+    body: "Calls, notes, or workshops go in.",
   },
   {
     label: "Draft",
-    title: "Shape it into posts",
-    body: "Abra turns the source into drafts you can review.",
+    title: "Get drafts",
+    body: "Abra turns the source into reviewable posts.",
   },
   {
     label: "Approve",
-    title: "Keep the final call",
-    body: "You edit, reject, or approve before anything goes out.",
+    title: "Make the call",
+    body: "The expert approves before anything goes out.",
   },
-];
-
-const selfHostReasons = [
-  "Inspect the repo first.",
-  "Run the pipeline on your stack.",
-  "Choose your providers.",
-  "Adapt it to your brand assets.",
 ];
 
 const runModes = [
@@ -41,55 +27,16 @@ const runModes = [
     id: "self-host",
     label: "Self-host",
     title: "Run Abra yourself",
-    body: "Use the repo when control matters.",
+    body: "Inspect the source, run it on your stack, and keep control of providers and storage.",
     cta: "View the repo",
     href: repoUrl,
-    details: ["Source access", "Your infrastructure", "Config you can inspect"],
   },
   {
     id: "managed",
     label: "Managed",
     title: "Use managed hosting",
-    body: "Use the hosted path when you do not want to run the platform.",
+    body: "Use the hosted path when you want Abra operated for you.",
     cta: "Try managed hosting",
-    href: "/sign-in",
-    details: ["Hosted operation", "Updates handled", "Storage and monitoring"],
-  },
-];
-
-const expertPatterns = [
-  {
-    title: "Independent consultants",
-    body: "Turn client-call takeaways into posts.",
-  },
-  {
-    title: "Founder-led agencies",
-    body: "Publish a point of view without adding a content role.",
-  },
-  {
-    title: "Coaches and operators",
-    body: "Reuse workshop language without flattening the voice.",
-  },
-];
-
-const runLog = [
-  "input: workshop-notes.md",
-  "transcript: reviewed",
-  "voice: matched to brand memory",
-  "drafts: waiting for approval",
-];
-
-const pricingModes = [
-  {
-    title: "Self-host the repo",
-    body: "You own the runtime, provider keys, storage, and maintenance.",
-    link: "Inspect source access",
-    href: repoUrl,
-  },
-  {
-    title: "Use managed hosting",
-    body: "We run the hosted path for you.",
-    link: "Start the managed path",
     href: "/sign-in",
   },
 ];
@@ -126,7 +73,7 @@ export default function MarketingPage() {
             </h1>
 
             <p className="mt-6 max-w-xl text-[1.2rem] leading-[1.38] text-zinc-200 sm:text-[1.35rem] lg:text-[1.45rem]">
-              Use your calls, notes, and workshops. Review drafts. Run it yourself or use managed hosting.
+              Calls, notes, and workshops become reviewable drafts. The expert approves. Self-host or use managed hosting.
             </p>
 
             <div className="mt-8 grid gap-3 sm:max-w-[34rem] sm:grid-cols-2">
@@ -145,17 +92,6 @@ export default function MarketingPage() {
               >
                 Try managed hosting
               </Button>
-            </div>
-
-            <div className="mt-8 grid gap-3 sm:grid-cols-2">
-              {sourceInputs.map((item) => (
-                <span
-                  key={item}
-                  className="flex min-h-[3.75rem] items-center border border-shell-border-strong bg-black/20 px-4 py-3 text-[0.95rem] leading-6 text-zinc-100 sm:text-base"
-                >
-                  {item}
-                </span>
-              ))}
             </div>
           </div>
 
@@ -183,15 +119,15 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section className="border-b border-shell-border-strong px-4 py-16 sm:py-20">
+      <section id="workflow" className="border-b border-shell-border-strong px-4 py-16 sm:py-20">
         <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.82fr_1.18fr] lg:items-stretch">
           <div className="marketing-reveal flex flex-col justify-center border border-shell-border-strong bg-shell-panel px-6 py-8 sm:px-10 sm:py-10">
             <SectionLabel>What it does</SectionLabel>
             <h2 className="mt-5 max-w-xl text-[2.65rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.35rem]">
-              Start from real work.
+              Three steps. No content factory.
             </h2>
             <p className="mt-5 max-w-md text-[1.16rem] leading-[1.45] text-zinc-200 sm:text-[1.3rem]">
-              Abra turns client work into drafts you can judge fast.
+              Abra keeps the expert in the loop from source to approval.
             </p>
           </div>
 
@@ -216,56 +152,14 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="self-host" className="border-b border-shell-border-strong px-4 py-16 sm:py-20">
-        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
-          <div className="marketing-reveal relative min-h-[30rem] overflow-hidden border border-shell-border-strong bg-black/20">
-            <Image
-              src="/marketing/abra-founder-work-moment-1.png"
-              alt="A founder reviewing notes on a laptop in a dark workspace"
-              fill
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(5_7_11_/_0.08),rgb(5_7_11_/_0.9))]" />
-            <div className="absolute inset-x-0 bottom-0 border-t border-white/15 p-5 sm:p-7">
-              <SectionLabel>Source access</SectionLabel>
-              <p className="mt-3 max-w-xl text-[1.45rem] leading-[1.15] font-display font-bold tracking-[-0.03em] text-white sm:text-[2rem]">
-                If it carries your name, you should see how it works.
-              </p>
-            </div>
-          </div>
-
-          <div className="marketing-reveal marketing-reveal-delay-1 border border-shell-border-strong bg-shell-panel px-6 py-8 sm:px-8 sm:py-10">
-            <SectionLabel>Why self-host</SectionLabel>
-            <h2 className="mt-5 text-[2.45rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.15rem]">
-              Trust the system you can inspect.
-            </h2>
-            <p className="mt-5 text-[1.1rem] leading-8 text-zinc-200">
-              Source access lets you evaluate, adapt, and run Abra on your terms.
-            </p>
-            <div className="mt-8 grid gap-3">
-              {selfHostReasons.map((reason) => (
-                <div
-                  key={reason}
-                  className="border border-shell-border-strong bg-black/20 px-4 py-3 text-[1rem] leading-7 text-zinc-100"
-                >
-                  {reason}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b border-shell-border-strong px-4 py-16 sm:py-20">
+      <section id="run-mode" className="border-b border-shell-border-strong px-4 py-16 sm:py-20">
         <div className="mx-auto max-w-6xl">
           <div className="marketing-reveal max-w-3xl">
             <SectionLabel>Run mode</SectionLabel>
             <h2 className="mt-5 text-[2.65rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.45rem]">
-              Choose control or convenience.
+              One choice: control or convenience.
             </h2>
           </div>
-          <div id="managed" className="scroll-mt-24" aria-hidden="true" />
 
           <div className="mt-10 grid gap-5 lg:grid-cols-2">
             {runModes.map((mode, index) => (
@@ -282,16 +176,6 @@ export default function MarketingPage() {
                 <p className="mt-5 max-w-xl text-[1.08rem] leading-8 text-zinc-200">
                   {mode.body}
                 </p>
-                <div className="mt-7 grid gap-3 sm:grid-cols-3">
-                  {mode.details.map((detail) => (
-                    <span
-                      key={detail}
-                      className="border border-shell-border-strong bg-black/20 px-3 py-3 text-[0.92rem] leading-6 text-zinc-200"
-                    >
-                      {detail}
-                    </span>
-                  ))}
-                </div>
                 <Link
                   href={mode.href}
                   className="mt-8 inline-flex min-h-11 items-center justify-center rounded-sm border border-white/12 bg-white/[0.04] px-5 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-100 transition-colors duration-150 hover:border-white/25 hover:bg-white/[0.08] hover:text-white focus-ring-brand sm:text-[13px]"
@@ -304,76 +188,20 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section className="border-b border-shell-border-strong px-4 py-16 sm:py-20">
-        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.78fr_1.22fr] lg:items-start">
-          <div className="marketing-reveal border border-shell-border-strong bg-shell-panel px-6 py-8 sm:px-8 sm:py-10">
-            <SectionLabel>Who it fits</SectionLabel>
-            <h2 className="mt-5 text-[2.45rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.15rem]">
-              Built for expert-led work.
-            </h2>
-            <p className="mt-5 text-[1.1rem] leading-8 text-zinc-200">
-              Abra fits people whose content must sound specific, accountable, and earned.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            {expertPatterns.map((pattern, index) => (
-              <article
-                key={pattern.title}
-                className={`marketing-reveal ${index === 1 ? "marketing-reveal-delay-1" : ""} ${index === 2 ? "marketing-reveal-delay-2" : ""} border border-shell-border-strong bg-black/20 p-6 sm:p-7`}
-              >
-                <h3 className="text-[1.45rem] leading-[1.12] font-display font-bold tracking-[-0.03em] text-white sm:text-[1.7rem]">
-                  {pattern.title}
-                </h3>
-                <p className="mt-5 text-[1.02rem] leading-7 text-zinc-200">
-                  {pattern.body}
-                </p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="border-b border-shell-border-strong px-4 py-16 sm:py-20">
+      <section id="review" className="border-b border-shell-border-strong px-4 py-16 sm:py-20">
         <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
           <div className="marketing-reveal flex flex-col justify-center border border-shell-border-strong bg-shell-panel px-6 py-8 sm:px-8 sm:py-10">
             <SectionLabel>Console preview</SectionLabel>
             <h2 className="mt-5 text-[2.45rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.15rem]">
-              See pipeline, config, and review state.
+              Review state stays visible.
             </h2>
             <p className="mt-5 text-[1.1rem] leading-8 text-zinc-200">
-              You can see what Abra did and what still needs approval.
+              Drafts wait for approval instead of slipping straight into the calendar.
             </p>
           </div>
 
           <div className="marketing-reveal marketing-reveal-delay-1 border border-shell-border-strong bg-[color-mix(in_srgb,var(--color-shell-panel)_78%,black)] p-4 sm:p-6">
-            <div className="grid gap-4 md:grid-cols-[0.92fr_1.08fr]">
-              <div className="border border-shell-border-strong bg-black/20 p-4">
-                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-shell-signal">
-                  Repo and config
-                </p>
-                <div className="mt-5 space-y-3 font-mono text-[12px] leading-6 text-zinc-300">
-                  <p className="border border-shell-border-strong bg-shell-panel px-3 py-2">abra/workflows/audio-to-post.yaml</p>
-                  <p className="border border-shell-border-strong bg-shell-panel px-3 py-2">brand-assets/voice-memory.json</p>
-                  <p className="border border-shell-border-strong bg-shell-panel px-3 py-2">providers/storage.env</p>
-                </div>
-              </div>
-
-              <div className="border border-shell-border-strong bg-black/20 p-4">
-                <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-shell-signal">
-                  Pipeline run log
-                </p>
-                <div className="mt-5 space-y-3 font-mono text-[12px] leading-6 text-zinc-300">
-                  {runLog.map((item) => (
-                    <p key={item} className="border-l border-shell-signal bg-shell-panel px-3 py-2">
-                      {item}
-                    </p>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 border border-shell-border-strong bg-black/20 p-4">
+            <div className="border border-shell-border-strong bg-black/20 p-4">
               <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-shell-signal">
                 Review queue
               </p>
@@ -400,42 +228,6 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="pricing" className="border-b border-shell-border-strong px-4 py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl">
-          <div className="marketing-reveal max-w-3xl">
-            <SectionLabel>Pricing</SectionLabel>
-            <h2 className="mt-5 text-[2.65rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.45rem]">
-              Pay for the run mode you need.
-            </h2>
-            <p className="mt-5 max-w-2xl text-[1.1rem] leading-8 text-zinc-200">
-              Self-host when you want control. Use managed hosting when you want us to run it.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-5 lg:grid-cols-2">
-            {pricingModes.map((mode, index) => (
-              <article
-                key={mode.title}
-                className={`marketing-reveal ${index === 1 ? "marketing-reveal-delay-1" : ""} border border-shell-border-strong bg-shell-panel p-6 sm:p-8`}
-              >
-                <h3 className="text-[2rem] leading-[1.05] font-display font-bold tracking-[-0.04em] text-white sm:text-[2.45rem]">
-                  {mode.title}
-                </h3>
-                <p className="mt-5 text-[1.08rem] leading-8 text-zinc-200">
-                  {mode.body}
-                </p>
-                <Link
-                  href={mode.href}
-                  className="mt-8 inline-flex min-h-11 items-center justify-center rounded-sm border border-white/12 bg-white/[0.04] px-5 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-100 transition-colors duration-150 hover:border-white/25 hover:bg-white/[0.08] hover:text-white focus-ring-brand sm:text-[13px]"
-                >
-                  {mode.link}
-                </Link>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="px-4 py-16 sm:py-20">
         <div className="marketing-reveal mx-auto grid max-w-6xl gap-6 border border-shell-border-strong bg-[color-mix(in_srgb,var(--color-shell-panel)_82%,black)] px-6 py-8 sm:px-10 sm:py-10 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
@@ -443,9 +235,6 @@ export default function MarketingPage() {
             <h2 className="mt-5 max-w-3xl text-[2.65rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.45rem]">
               Start with work you already have.
             </h2>
-            <p className="mt-5 max-w-2xl text-[1.1rem] leading-8 text-zinc-200">
-              Inspect the repo, or use managed hosting.
-            </p>
           </div>
           <div className="grid gap-3 sm:min-w-[18rem]">
             <Button href={repoUrl} size="lg" className="w-full px-7 text-center">
