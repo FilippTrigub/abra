@@ -161,16 +161,26 @@ export function projectStripeEntitlement(input: StripeEntitlementProjectionInput
   };
 }
 
-export type ManualBlockReason =
-  | "terms_violation"
-  | "abuse"
-  | "chargeback_review"
-  | "operator_hold";
+export const MANUAL_BLOCK_REASONS = [
+  "terms_violation",
+  "abuse",
+  "chargeback_review",
+  "operator_hold",
+] as const;
+
+export type ManualBlockReason = (typeof MANUAL_BLOCK_REASONS)[number];
+
+const MANUAL_BLOCK_REASON_SET = new Set<string>(MANUAL_BLOCK_REASONS);
+
+export function isManualBlockReason(value: unknown): value is ManualBlockReason {
+  return typeof value === "string" && MANUAL_BLOCK_REASON_SET.has(value);
+}
 
 export interface ManualBlockState {
   blocked: boolean;
   reason: ManualBlockReason | null;
   message: string | null;
+  operatorNote?: string | null;
   updatedAt: unknown;
   updatedBy: string | null;
 }
