@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import { Navbar } from "./components/navbar";
 
 export const metadata: Metadata = {
-  title: "Abra - Self-hostable brand workflow with managed convenience",
+  title: "Abra - Turn conversations into posts",
   description:
-    "Run Abra yourself or use the managed path to turn calls, notes, and expertise into reviewable content without making operations another job.",
+    "Turn calls, notes, and workshops into reviewable drafts. Run Abra yourself or use managed hosting.",
 };
 
 export default function MarketingLayout({
