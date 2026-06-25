@@ -7,6 +7,7 @@ import { AccountMenu } from "./account-menu";
 
 const DASHBOARD_NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
+  { href: "/dashboard/billing", label: "Billing" },
   { href: "/dashboard/settings", label: "Settings" },
 ] as const;
 
