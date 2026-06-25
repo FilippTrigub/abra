@@ -217,7 +217,33 @@ describe("Stripe billing webhook service", () => {
     });
   });
 
-  it("projects missing subscription state from checkout completion to free", async () => {
+  it("keeps active growth entitlement when checkout completion arrives after subscription events", async () => {
+    await expect(processStripeWebhookEvent(subscriptionEvent({ id: "evt_active_before_checkout", status: "active" })))
+      .resolves.toMatchObject({ projectedTier: "growth" });
+
+    const checkoutWithSubscription = {
+      id: "evt_checkout_with_subscription",
+      object: "event",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_test_with_subscription",
+          object: "checkout.session",
+          client_reference_id: "user_growth",
+          customer: "cus_growth",
+          subscription: "sub_evt_active_before_checkout",
+          metadata: {
+            authUserId: "user_growth",
+            planKey: "growth",
+          },
+        },
+      },
+    } as unknown as Stripe.Event;
+
+    await expect(processStripeWebhookEvent(checkoutWithSubscription)).resolves.toMatchObject({
+      projectedTier: null,
+    });
+
     const event = {
       id: "evt_checkout_no_subscription",
       object: "event",
@@ -238,12 +264,19 @@ describe("Stripe billing webhook service", () => {
     } as unknown as Stripe.Event;
 
     await expect(processStripeWebhookEvent(event)).resolves.toMatchObject({
-      projectedTier: "free",
+      projectedTier: null,
     });
     expect(firestoreMock.docs.get("accounts/user_growth/summaries/billing")).toMatchObject({
-      tier: "free",
-      status: "missing",
+      tier: "growth",
+      status: "active",
       hardBlocked: false,
+    });
+    expect(firestoreMock.docs.get("accounts/user_growth/billing/internal")).toMatchObject({
+      stripeCustomerId: "cus_growth",
+      stripeSubscriptionId: "sub_evt_active_before_checkout",
+      stripeLastEventId: "evt_checkout_no_subscription",
+      stripeLastEventType: "checkout.session.completed",
+      tier: "growth",
     });
   });
 

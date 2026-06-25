@@ -231,6 +231,20 @@ function createProjectionWrites(input: {
   };
 }
 
+function createCheckoutLinkageWrites(input: {
+  event: Stripe.Event;
+  customerId: string | null;
+  subscriptionId: string | null;
+}) {
+  return {
+    ...(input.customerId ? { stripeCustomerId: input.customerId } : {}),
+    ...(input.subscriptionId ? { stripeSubscriptionId: input.subscriptionId } : {}),
+    stripeLastEventId: input.event.id,
+    stripeLastEventType: input.event.type,
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+}
+
 function projectablePayloadFromEvent(event: Stripe.Event) {
   const stripeObject = event.data.object;
   const authUserId = getEventAccountId(event, stripeObject);
@@ -238,10 +252,10 @@ function projectablePayloadFromEvent(event: Stripe.Event) {
   if (event.type === "checkout.session.completed") {
     const session = stripeObject as Stripe.Checkout.Session;
     return {
+      type: "checkout" as const,
       authUserId,
       customerId: customerIdFromStripeObject(session.customer),
       subscriptionId: subscriptionIdFromSession(session),
-      subscription: null,
     };
   }
 
@@ -252,6 +266,7 @@ function projectablePayloadFromEvent(event: Stripe.Event) {
   ) {
     const subscription = stripeObject as Stripe.Subscription;
     return {
+      type: "subscription" as const,
       authUserId,
       customerId: customerIdFromStripeObject(subscription.customer),
       subscriptionId: subscription.id,
@@ -288,6 +303,31 @@ export async function processStripeWebhookEvent(event: Stripe.Event): Promise<St
         projectedTier: null,
         createdAt: FieldValue.serverTimestamp(),
       });
+
+      return {
+        eventId: event.id,
+        duplicate: false,
+        projectedTier: null,
+      };
+    }
+
+    if (payload.type === "checkout") {
+      const internal = createCheckoutLinkageWrites({
+        event,
+        customerId: payload.customerId,
+        subscriptionId: payload.subscriptionId,
+      });
+
+      transaction.set(eventRef, {
+        eventId: event.id,
+        type: event.type,
+        processed: true,
+        ignored: false,
+        accountId: payload.authUserId,
+        projectedTier: null,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      transaction.set(firestore.doc(internalBillingPath(payload.authUserId)), internal, { merge: true });
 
       return {
         eventId: event.id,

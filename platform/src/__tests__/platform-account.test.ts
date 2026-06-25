@@ -112,63 +112,73 @@ describe("platform-account Firestore integration", () => {
     });
   });
 
-  describe("getSubscriptionInfo", () => {
-    it("should return active/free for account with default values", () => {
-      const account = {
-        subscription_plan: "free",
-        subscription_status: "active",
-        subscription_cancellation_reason: null,
-      };
+});
 
-      const subInfo = getSubscriptionInfo(account);
+describe("getSubscriptionInfo", () => {
+  it("should return active/free for account with default values", () => {
+    const account = {
+      subscription_plan: "free",
+      subscription_status: "active",
+      subscription_cancellation_reason: null,
+    };
 
-      expect(subInfo.status).toBe("active");
-      expect(subInfo.plan).toBe("free");
-      expect(subInfo.cancellationReason).toBe(null);
+    const subInfo = getSubscriptionInfo(account);
+
+    expect(subInfo.status).toBe("active");
+    expect(subInfo.plan).toBe("free");
+    expect(subInfo.cancellationReason).toBe(null);
+  });
+
+  it("should support the managed growth plan", () => {
+    const subInfo = getSubscriptionInfo({
+      subscription_plan: "growth",
+      subscription_status: "active",
     });
 
-    it("should fall back to active/free for missing fields", () => {
-      const account = null;
-      const subInfo = getSubscriptionInfo(account);
+    expect(subInfo.status).toBe("active");
+    expect(subInfo.plan).toBe("growth");
+  });
 
-      expect(subInfo.status).toBe("missing");
-      expect(subInfo.plan).toBe("unknown");
-    });
+  it("should return missing/unknown for a missing account", () => {
+    const subInfo = getSubscriptionInfo(null);
 
-    it("should fall back to active for missing status but present plan", () => {
-      const account = {
-        subscription_plan: "pro",
+    expect(subInfo.status).toBe("missing");
+    expect(subInfo.plan).toBe("unknown");
+  });
+
+  it("should defensively hide legacy paid plans from user-facing reads", () => {
+    for (const legacyPlan of ["pro", "enterprise", "paid", "team"]) {
+      const subInfo = getSubscriptionInfo({
+        subscription_plan: legacyPlan,
         subscription_status: undefined,
-      };
-
-      const subInfo = getSubscriptionInfo(account);
+      });
 
       expect(subInfo.status).toBe("active");
-      expect(subInfo.plan).toBe("pro");
-    });
-
-    it("should validate subscription status enum", () => {
-      const account = {
-        subscription_plan: "free",
-        subscription_status: "invalid_status",
-      };
-
-      const subInfo = getSubscriptionInfo(account);
-
-      // Invalid status falls back to active
-      expect(subInfo.status).toBe("active");
-    });
-
-    it("should validate subscription plan enum", () => {
-      const account = {
-        subscription_plan: "invalid_plan",
-        subscription_status: "active",
-      };
-
-      const subInfo = getSubscriptionInfo(account);
-
-      // Invalid plan becomes unknown
       expect(subInfo.plan).toBe("unknown");
-    });
+    }
+  });
+
+  it("should validate subscription status enum", () => {
+    const account = {
+      subscription_plan: "free",
+      subscription_status: "invalid_status",
+    };
+
+    const subInfo = getSubscriptionInfo(account);
+
+    // Invalid status falls back to active
+    expect(subInfo.status).toBe("active");
+  });
+
+  it("should validate subscription plan enum", () => {
+    const account = {
+      subscription_plan: "invalid_plan",
+      subscription_status: "active",
+    };
+
+    const subInfo = getSubscriptionInfo(account);
+
+    // Invalid plan becomes unknown
+    expect(subInfo.plan).toBe("unknown");
   });
 });

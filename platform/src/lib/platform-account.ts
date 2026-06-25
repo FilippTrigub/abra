@@ -5,12 +5,20 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 
 export type SubscriptionStatus = "active" | "inactive" | "missing";
-export type SubscriptionPlan = "free" | "pro" | "enterprise" | "unknown";
+export type SubscriptionPlan = "free" | "growth" | "unknown";
 
 export interface SubscriptionInfo {
   status: SubscriptionStatus;
   plan: SubscriptionPlan;
   cancellationReason: string | null;
+}
+
+function normalizeSubscriptionPlan(value: unknown): SubscriptionPlan {
+  return value === "free" || value === "growth" || value === "unknown" ? value : "unknown";
+}
+
+function normalizeSubscriptionStatus(value: unknown): SubscriptionStatus {
+  return value === "active" || value === "inactive" || value === "missing" ? value : "active";
 }
 
 /**
@@ -27,13 +35,10 @@ export function getSubscriptionInfo(account: {
     return { status: "missing", plan: "unknown", cancellationReason: null };
   }
 
-  const rawPlan = (account.subscription_plan ?? "free") as SubscriptionPlan;
-  const validPlans: SubscriptionPlan[] = ["free", "pro", "enterprise", "unknown"];
-  const plan = validPlans.includes(rawPlan) ? rawPlan : "unknown";
-
-  const rawStatus = (account.subscription_status ?? "active") as SubscriptionStatus;
-  const validStatuses: SubscriptionStatus[] = ["active", "inactive", "missing"];
-  const status = validStatuses.includes(rawStatus) ? rawStatus : "active";
+  const plan = account.subscription_plan === undefined || account.subscription_plan === null
+    ? "free"
+    : normalizeSubscriptionPlan(account.subscription_plan);
+  const status = normalizeSubscriptionStatus(account.subscription_status ?? "active");
 
   // If the object exists but has no subscription fields at all, default to active v1.
   const effectiveStatus: SubscriptionStatus =
@@ -113,7 +118,7 @@ export async function ensurePlatformAccount(authUserId: string) {
     const account = {
       id: updatedSnap.id, // doc.id = authUserId, but kept for settings/deployments compatibility
       auth_user_id: data.authUserId,
-      subscription_plan: data.subscriptionPlan,
+      subscription_plan: normalizeSubscriptionPlan(data.subscriptionPlan),
       subscription_status: data.subscriptionStatus,
       subscription_cancellation_reason: data.subscriptionCancellationReason ?? null,
     };
@@ -144,7 +149,7 @@ export async function getPlatformAccount(authUserId: string): Promise<FirestoreA
     return {
       id: docSnap.id,
       authUserId: data.authUserId,
-      subscriptionPlan: data.subscriptionPlan,
+      subscriptionPlan: normalizeSubscriptionPlan(data.subscriptionPlan),
       subscriptionStatus: data.subscriptionStatus,
       subscriptionCancellationReason: data.subscriptionCancellationReason ?? null,
       createdAt: data.createdAt,
