@@ -100,11 +100,11 @@ components:
 
 ## Overview
 
-**Creative North Star: "The Calm Content Operator"**
+**Creative North Star: "Self-hostable Operator Studio"**
 
-Abra should feel like a serious system for experts whose work depends on trust. The product surfaces are warm, clear, and operational. The marketing surfaces are sharper and darker, but they still come from the same brand logic: reduce the blank page, make the next step obvious, and keep the expert in control.
+Abra should feel like a serious operator studio for experts whose work depends on trust and portability. The product surfaces are warm, clear, and operational. The marketing surfaces are sharper, darker, and more inspectable, but they still come from the same brand logic: reduce the blank page, make the next step obvious, and keep the expert in control.
 
-This is not an AI toy, not creator gimmick software, and not a developer control plane pretending to be a brand product. The design needs to make expertise feel visible, organized, and reviewable. That means strong hierarchy, short copy blocks, and interfaces that look deliberate without looking theatrical.
+This is not an AI toy, not creator gimmick software, and not a generic developer tool pretending to be a brand product. The design needs to make expertise feel visible, organized, portable, and reviewable. Technical transparency can support trust, but it must never replace the core promise: turning real source material into publishable drafts the expert can inspect and approve.
 
 **Key Characteristics:**
 
@@ -112,11 +112,12 @@ This is not an AI toy, not creator gimmick software, and not a developer control
 - strong display typography paired with plain-spoken body text
 - rounded surfaces with subtle borders and soft shadows
 - quiet motion, visible focus, and obvious next actions
-- a darker, sharper marketing variant that still feels controlled
+- a darker, sharper operator-console marketing variant that still feels controlled
+- self-hosting and source-access cues used as proof of portability, not as developer theatrics
 
 ## Colors
 
-Abra uses a warm product palette for the main application and a darker, signal-led palette for the marketing landing page.
+Abra uses a warm product palette for the main application and a darker, signal-led palette for the marketing landing page. The landing page keeps the operator-console base: night canvas, mint signal, coral action, hard borders, and controlled dark surfaces.
 
 ### Primary
 - **Warm Coral** (`#FF6045`): the main call-to-action color across product surfaces. Used for primary buttons, active emphasis, and brand-signaling states.
@@ -136,7 +137,7 @@ Abra uses a warm product palette for the main application and a darker, signal-l
 - **Muted Copy** (`#606072`): secondary body and helper text.
 - **Night Canvas** (`#05070B`): the marketing landing-page background.
 
-**The Supporting Mechanics Rule.** Brand color should clarify hierarchy, not become the entire experience. Coral carries action, violet supports it, and green is reserved for signal, not decoration.
+**The Supporting Mechanics Rule.** Brand color should clarify hierarchy, not become the entire experience. Coral carries action, violet supports it, and green is reserved for signal, not decoration. Mint should mark inspectability, status, or source/managed comparison points, not become ornamental terminal noise.
 
 ## Typography
 
@@ -144,7 +145,7 @@ Abra uses a warm product palette for the main application and a darker, signal-l
 **Body Font:** Geist, system-ui, sans-serif  
 **Label/Mono Font:** Geist Mono, ui-monospace, monospace
 
-**Character:** Display type is decisive and modern, but not flashy. Body copy is plain, readable, and workmanlike. Mono labels are used as operational markers, not as an aesthetic blanket.
+**Character:** Display type is decisive and modern, but not flashy. Body copy is plain, readable, and workmanlike. Mono labels are used as operational markers, not as an aesthetic blanket. On the landing page, mono should label repo, config, pipeline, changelog, run-log, and deployment-state concepts only where they help a visitor trust the system.
 
 ### Hierarchy
 - **Display** (800, 3.75rem, 1): for hero headlines and the strongest top-level promise.
@@ -197,7 +198,9 @@ Abra uses soft depth, not dramatic lift. Product surfaces rely on tonal layering
 
 ### Decorative Utilities
 - **Patterns:** grid, dots, nodes, checker, gradients, and abstract shapes exist as optional utilities.
-- **Use:** only when they clarify atmosphere or hierarchy. The value proposition plan explicitly says not to let decorative systems overpower the promise.
+- **Operator motifs:** repo cards, changelog notes, config snippets, pipeline diagrams, run-log strips, source-access proof points, and self-host/managed comparison panels are allowed on the landing page.
+- **Use:** only when they clarify atmosphere, hierarchy, trust, or portability. Technical transparency supports confidence in the system; it should not make the page read like a generic developer-tool launch, enterprise SaaS console, dashboard, or billing interface.
+- **Scope boundary:** no global visual reset, design-token churn, shared primitive churn, dashboard UI work, or billing UI work is required for the landing-page direction. Start with page-level composition and copy before changing shared UI foundations.
 
 ## Do's and Don'ts
 
@@ -205,12 +208,16 @@ Abra uses soft depth, not dramatic lift. Product surfaces rely on tonal layering
 - **Do** use the existing token system as the implementation base for colors, typography, spacing, radii, and shadows.
 - **Do** keep product surfaces warm, organized, and plain-spoken.
 - **Do** let marketing surfaces become sharper and darker when the value proposition needs more contrast.
+- **Do** use repo, config, changelog, pipeline, run-log, and source/managed comparison motifs as proof that Abra is inspectable and self-hostable.
 - **Do** use large, high-contrast headlines and short blocks of supporting copy.
 - **Do** preserve visible focus states, readable body copy, and clear next actions.
+- **Do** keep technical details in service of the expert's review, portability, and trust.
 
 ### Don't:
-- **Don't** lead with skill counts, orchestration complexity, GPU hosting, or infrastructure mechanics.
+- **Don't** lead with skill counts, orchestration complexity, GPU hosting, or infrastructure mechanics unless they directly explain self-hosting or managed convenience.
 - **Don't** make Abra look like a generic AI writer, a creator gimmick, or an autopublishing robot.
+- **Don't** make Abra look like a generic developer-tool page, enterprise SaaS page, dashboard surface, or billing surface.
 - **Don't** default to glassmorphism, heavy gradients, or decorative dashboard screenshots on marketing surfaces.
 - **Don't** use dense feature grids, icon-heavy repetition, or novelty visual language when the page's job is to make the promise obvious.
 - **Don't** let the dashboard drift into playful SaaS cues if the goal is a more credible, operational product feel.
+- **Don't** require global CSS changes, token replacement, shared primitive rewrites, or authenticated dashboard changes for the landing-page redesign.
