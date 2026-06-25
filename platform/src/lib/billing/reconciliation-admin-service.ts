@@ -1,6 +1,6 @@
 import "server-only";
 
-import type { Firestore, QueryDocumentSnapshot } from "firebase-admin/firestore";
+import type { DocumentReference, DocumentSnapshot, Firestore, QueryDocumentSnapshot } from "firebase-admin/firestore";
 
 import { getAdminFirestore } from "@/lib/firebase/admin";
 
@@ -23,10 +23,6 @@ function accountIdFromPath(path: string) {
   return parts[0] === "accounts" && typeof parts[1] === "string" && parts[1].length > 0
     ? parts[1]
     : null;
-}
-
-function isUsageLedgerDocument(snapshot: QueryDocumentSnapshot) {
-  return /^accounts\/[^/]+\/usage\/events\/[^/]+\/current$/.test(snapshot.ref.path);
 }
 
 function isBillingSummaryDocument(snapshot: QueryDocumentSnapshot) {
@@ -73,6 +69,18 @@ function manualBlockStateFromSnapshot(snapshot: QueryDocumentSnapshot): ManualBl
   };
 }
 
+async function readLedgerEventsForAccount(accountRef: DocumentReference) {
+  const eventCollections = await accountRef.collection("usage").doc("events").listCollections();
+  const eventSnapshots = await Promise.all(
+    eventCollections.map((eventCollection) => eventCollection.doc("current").get()),
+  );
+
+  return eventSnapshots
+    .filter((snapshot): snapshot is DocumentSnapshot & { exists: true } => snapshot.exists)
+    .filter((snapshot) => /^accounts\/[^/]+\/usage\/events\/[^/]+\/current$/.test(snapshot.ref.path))
+    .map((snapshot) => snapshot.data() as AdmissionLedgerEventDocument);
+}
+
 export function readBillingReconciliationAdminSecret() {
   return normalizeString(process.env[ADMIN_SECRET_ENV]);
 }
@@ -88,15 +96,13 @@ export async function runInternalUsageReconciliationReport(input: {
   firestore?: Firestore;
 } = {}): Promise<UsageReconciliationReport> {
   const firestore = input.firestore ?? getAdminFirestore();
-  const [currentDocs, summaryDocs, moderationDocs] = await Promise.all([
-    firestore.collectionGroup("current").get(),
+  const [accountRefs, summaryDocs, moderationDocs] = await Promise.all([
+    firestore.collection("accounts").listDocuments(),
     firestore.collectionGroup("summaries").get(),
     firestore.collectionGroup("moderation").get(),
   ]);
 
-  const ledgerEvents = currentDocs.docs
-    .filter(isUsageLedgerDocument)
-    .map((snapshot) => snapshot.data() as AdmissionLedgerEventDocument);
+  const ledgerEvents = (await Promise.all(accountRefs.map(readLedgerEventsForAccount))).flat();
   const billingTierStates = summaryDocs.docs
     .map(billingTierStateFromSnapshot)
     .filter((state): state is BillingTierStateObservation => state !== null);

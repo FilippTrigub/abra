@@ -15,42 +15,62 @@ type StoredDoc = Record<string, unknown>;
 function snapshot(path: string, data: StoredDoc) {
   return {
     ref: { path },
+    exists: true,
     data: () => data,
   };
 }
 
 function createFirestoreMock() {
+  const ledgerSnapshot = snapshot("accounts/acct_reconcile/usage/events/adm_missing/current", {
+    eventId: "adm_missing",
+    accountId: "acct_reconcile",
+    idempotencyKey: "adm_missing",
+    state: "reserved",
+    status: "admitted",
+    unit: "managed_inbound_message",
+    window: {
+      kind: "fixed_utc_week",
+      id: "2026-W26",
+      startsAt: "2026-06-22T00:00:00.000Z",
+      endsAt: "2026-06-29T00:00:00.000Z",
+    },
+    tier: "free",
+    limit: 25,
+    usedAfter: 1,
+    billable: true,
+    denyReason: null,
+    createdAt: NOW,
+    updatedAt: NOW,
+    reservedAt: NOW,
+    committedAt: null,
+    releasedAt: null,
+    deniedAt: null,
+    providerUsageEnvelopes: [],
+    providerUsageUpdatedAt: null,
+  });
+  const settingsCurrentSnapshot = snapshot("accounts/acct_reconcile/settings/current", { ignored: true });
+  const currentDoc = vi.fn((docId: string) => ({
+    get: vi.fn(async () => (docId === "current" ? ledgerSnapshot : { exists: false })),
+  }));
+  const listCollections = vi.fn(async () => [
+    { id: "adm_missing", doc: currentDoc },
+  ]);
+  const usageDoc = vi.fn((docId: string) => ({
+    listCollections: docId === "events" ? listCollections : vi.fn(async () => []),
+  }));
+  const accountCollection = vi.fn((collectionId: string) => ({
+    doc: collectionId === "usage" ? usageDoc : vi.fn(),
+  }));
+  const listDocuments = vi.fn(async () => [{
+    id: "acct_reconcile",
+    path: "accounts/acct_reconcile",
+    collection: accountCollection,
+  }]);
+  const collection = vi.fn((collectionId: string) => ({
+    listDocuments: collectionId === "accounts" ? listDocuments : vi.fn(async () => []),
+  }));
   const groups: Record<string, Array<ReturnType<typeof snapshot>>> = {
-    current: [
-      snapshot("accounts/acct_reconcile/usage/events/adm_missing/current", {
-        eventId: "adm_missing",
-        accountId: "acct_reconcile",
-        idempotencyKey: "adm_missing",
-        state: "reserved",
-        status: "admitted",
-        unit: "managed_inbound_message",
-        window: {
-          kind: "fixed_utc_week",
-          id: "2026-W26",
-          startsAt: "2026-06-22T00:00:00.000Z",
-          endsAt: "2026-06-29T00:00:00.000Z",
-        },
-        tier: "free",
-        limit: 25,
-        usedAfter: 1,
-        billable: true,
-        denyReason: null,
-        createdAt: NOW,
-        updatedAt: NOW,
-        reservedAt: NOW,
-        committedAt: null,
-        releasedAt: null,
-        deniedAt: null,
-        providerUsageEnvelopes: [],
-        providerUsageUpdatedAt: null,
-      }),
-      snapshot("accounts/acct_reconcile/settings/current", { ignored: true }),
-    ],
+    current: [settingsCurrentSnapshot],
     summaries: [
       snapshot("accounts/acct_reconcile/summaries/billing", { tier: "free", status: "active" }),
     ],
@@ -60,9 +80,13 @@ function createFirestoreMock() {
   };
 
   return {
+    collection,
     collectionGroup: vi.fn((group: string) => ({
       get: vi.fn(async () => ({ docs: groups[group] ?? [] })),
     })),
+    listDocuments,
+    listCollections,
+    currentDoc,
   };
 }
 
@@ -115,7 +139,11 @@ describe("internal billing reconciliation admin API", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(firestore.collectionGroup).toHaveBeenCalledWith("current");
+    expect(firestore.collection).toHaveBeenCalledWith("accounts");
+    expect(firestore.listDocuments).toHaveBeenCalledTimes(1);
+    expect(firestore.listCollections).toHaveBeenCalledTimes(1);
+    expect(firestore.currentDoc).toHaveBeenCalledWith("current");
+    expect(firestore.collectionGroup).not.toHaveBeenCalledWith("current");
     expect(firestore.collectionGroup).toHaveBeenCalledWith("summaries");
     expect(firestore.collectionGroup).toHaveBeenCalledWith("moderation");
     expect(payload.report).toMatchObject({
