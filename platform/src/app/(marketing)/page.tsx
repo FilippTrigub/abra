@@ -210,7 +210,7 @@ export default function MarketingPage() {
               alt="An expert reviewing content before starting from existing work"
               fill
               sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover"
+              className="object-cover object-top"
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(5_7_11_/_0.02),rgb(5_7_11_/_0.58))]" />
           </div>
