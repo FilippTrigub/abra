@@ -233,6 +233,11 @@ export const RUNTIME_ENV_DEFINITIONS = [
   runtimeEnvDefinition("AZURE_CLIENT_ID", "Azure client ID", "reserved", "Platform-owned Azure workload identity setting.", reservedNonSecret),
   runtimeEnvDefinition("AZURE_FEDERATED_TOKEN_FILE", "Azure federated token file", "reserved", "Platform-owned Azure workload identity token path.", reserved),
   runtimeEnvDefinition("HERMES_HOME", "Hermes home", "reserved", "Platform-owned Hermes runtime home path.", reservedNonSecret),
+  runtimeEnvDefinition("ABRA_MANAGED_RUNTIME", "Abra managed runtime marker", "reserved", "Platform-owned marker enabling managed admission enforcement. Never user-managed.", reservedInjectableNonSecret),
+  runtimeEnvDefinition("ABRA_MANAGED_ADMISSION_URL", "Abra managed admission URL", "reserved", "Platform-owned admission endpoint used by managed runtimes before processing inbound messages. Never user-managed.", reservedInjectableNonSecret),
+  runtimeEnvDefinition("ABRA_MANAGED_ACCOUNT_ID", "Abra managed account ID", "reserved", "Platform-owned managed billing account identifier injected into runtime admission requests. Never user-managed.", reservedInjectableNonSecret),
+  runtimeEnvDefinition("ABRA_MANAGED_DEPLOYMENT_ID", "Abra managed deployment ID", "reserved", "Platform-owned deployment identifier injected into runtime admission requests. Never user-managed.", reservedInjectableNonSecret),
+  runtimeEnvDefinition("ABRA_MANAGED_RUNTIME_CREDENTIAL", "Abra managed runtime credential", "reserved", "Platform-owned runtime admission credential. Never user-managed or browser-exposed.", reservedInjectable),
 ] as const;
 
 export type RuntimeEnvDefinitionKey = (typeof RUNTIME_ENV_DEFINITIONS)[number]["key"];
@@ -246,6 +251,11 @@ export const RESERVED_RUNTIME_ENV_KEYS = [
   "AZURE_CLIENT_ID",
   "AZURE_FEDERATED_TOKEN_FILE",
   "HERMES_HOME",
+  "ABRA_MANAGED_RUNTIME",
+  "ABRA_MANAGED_ADMISSION_URL",
+  "ABRA_MANAGED_ACCOUNT_ID",
+  "ABRA_MANAGED_DEPLOYMENT_ID",
+  "ABRA_MANAGED_RUNTIME_CREDENTIAL",
   "TELEGRAM_BOT_TOKEN",
   "TELEGRAM_ALLOWED_USERS",
   "TELEGRAM_HOME_CHANNEL",

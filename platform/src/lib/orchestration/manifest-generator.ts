@@ -69,6 +69,14 @@ export interface ManifestInput {
     /** Compatibility alias for older AKS adapter callers. Prefer AZURE_FOUNDRY_API_KEY. */
     azureFoundryApiKey?: string;
   });
+  /** Platform-owned managed runtime admission config; never sourced from user-managed env. */
+  managedAdmission?: {
+    enabled: true;
+    url?: string;
+    accountId: string;
+    deploymentId: string;
+    credential?: string;
+  };
   /** User-level brand profile injected as non-secret runtime context. */
   brandProfile?: {
     markdown: string;
@@ -409,7 +417,7 @@ function buildHydrationInitScript(): string {
     // en.yaml with Abra branding. The main container mounts this volume at /opt/hermes/locales/,
     // overriding the image-baked locale files so the patch survives across init/main boundary.
     "cp -r /opt/hermes/locales/. /locale-override/",
-    "cat > /tmp/_abra_locale_patch.py << 'PYEOF'",
+    "cat > /tmp/_abra_locale_patch_$$.py << 'PYEOF'",
     "import re, sys",
     "p = sys.argv[1]",
     "text = open(p).read()",
@@ -421,13 +429,15 @@ function buildHydrationInitScript(): string {
     "open(p, 'w').write(text)",
     "print('Patched locale: ' + p)",
     "PYEOF",
-    "python3 /tmp/_abra_locale_patch.py /locale-override/en.yaml",
-    "rm -f /tmp/_abra_locale_patch.py",
-    // Copy the hermes gateway directory and patch slash_commands.py to suppress
-    // the model/provider/context info block that appears after /new.
+    "python3 /tmp/_abra_locale_patch_$$.py /locale-override/en.yaml",
+    "rm -f /tmp/_abra_locale_patch_$$.py",
+    // Copy the hermes gateway directory and patch gateway files. slash_commands.py
+    // suppresses the model/provider/context info block that appears after /new;
+    // platforms/base.py enforces managed admission before background/provider work.
     // The main container mounts gateway-override at /opt/hermes/gateway/.
     "cp -r /opt/hermes/gateway/. /gateway-override/",
-    "cat > /tmp/_abra_gateway_patch.py << 'PYEOF'",
+    "cat > /tmp/_abra_gateway_patch_$$.py << 'PYEOF'",
+    "import re",
     "p = '/gateway-override/slash_commands.py'",
     "text = open(p).read()",
     // Neutralize the session_info block: always set to "" so the model/provider/context block never shows
@@ -437,9 +447,118 @@ function buildHydrationInitScript(): string {
     ")",
     "open(p, 'w').write(text)",
     "print('Patched slash_commands.py')",
+    "base_p = '/gateway-override/platforms/base.py'",
+    "base_text = open(base_p).read()",
+    "marker = '# ABRA_MANAGED_ADMISSION_SHIM'",
+    "if marker not in base_text:",
+    "    helper = r'''",
+    "# ABRA_MANAGED_ADMISSION_SHIM",
+    "import asyncio as _abra_asyncio",
+    "import hashlib as _abra_hashlib",
+    "import json as _abra_json",
+    "import os as _abra_os",
+    "import urllib.error as _abra_urlerror",
+    "import urllib.request as _abra_urlrequest",
+    "",
+    "def _abra_managed_env(name):",
+    "    value = _abra_os.environ.get(name)",
+    "    return value.strip() if isinstance(value, str) and value.strip() else None",
+    "",
+    "def _abra_managed_enabled():",
+    "    if _abra_managed_env('ABRA_MANAGED_RUNTIME') == '1':",
+    "        return True",
+    "    return any(_abra_managed_env(name) for name in (",
+    "        'ABRA_MANAGED_ADMISSION_URL',",
+    "        'ABRA_MANAGED_ACCOUNT_ID',",
+    "        'ABRA_MANAGED_DEPLOYMENT_ID',",
+    "        'ABRA_MANAGED_RUNTIME_CREDENTIAL',",
+    "    ))",
+    "",
+    "def _abra_jsonable(value):",
+    "    if value is None or isinstance(value, (str, int, float, bool)):",
+    "        return value",
+    "    if isinstance(value, dict):",
+    "        return {str(k): _abra_jsonable(v) for k, v in value.items()}",
+    "    if isinstance(value, (list, tuple, set)):",
+    "        return [_abra_jsonable(v) for v in value]",
+    "    data = getattr(value, '__dict__', None)",
+    "    if isinstance(data, dict):",
+    "        return {k: _abra_jsonable(v) for k, v in data.items() if not str(k).startswith('_')}",
+    "    return repr(value)",
+    "",
+    "def _abra_get_path(value, path):",
+    "    current = value",
+    "    for part in path:",
+    "        if current is None:",
+    "            return None",
+    "        if isinstance(current, dict):",
+    "            current = current.get(part)",
+    "        else:",
+    "            current = getattr(current, part, None)",
+    "    if isinstance(current, (str, int)) and str(current).strip():",
+    "        return str(current).strip()",
+    "    return None",
+    "",
+    "def _abra_event_request_id(event):",
+    "    for path in (",
+    "        ('message_id',), ('messageId',), ('id',), ('event_id',), ('update_id',),",
+    "        ('message', 'message_id'), ('message', 'id'), ('raw_event', 'message_id'),",
+    "        ('raw_event', 'message', 'message_id'), ('raw', 'message_id'), ('raw', 'id'),",
+    "    ):",
+    "        found = _abra_get_path(event, path)",
+    "        if found:",
+    "            return found",
+    "    stable = _abra_json.dumps(_abra_jsonable(event), sort_keys=True, separators=(',', ':'))",
+    "    return 'event:' + _abra_hashlib.sha256(stable.encode('utf-8')).hexdigest()[:32]",
+    "",
+    "def _abra_post_managed_admission(payload, url, credential):",
+    "    body = _abra_json.dumps(payload).encode('utf-8')",
+    "    request = _abra_urlrequest.Request(",
+    "        url, data=body, method='POST',",
+    "        headers={",
+    "            'Authorization': 'Bearer ' + credential,",
+    "            'Content-Type': 'application/json',",
+    "        },",
+    "    )",
+    "    with _abra_urlrequest.urlopen(request, timeout=3) as response:",
+    "        raw = response.read().decode('utf-8') or '{}'",
+    "        if response.status < 200 or response.status >= 300:",
+    "            raise RuntimeError('admission endpoint rejected with status %s' % response.status)",
+    "        data = _abra_json.loads(raw)",
+    "        if data.get('allow') is not True:",
+    "            raise RuntimeError('admission endpoint denied request')",
+    "",
+    "async def _abra_managed_admission_before_handle(event):",
+    "    if not _abra_managed_enabled():",
+    "        return",
+    "    url = _abra_managed_env('ABRA_MANAGED_ADMISSION_URL')",
+    "    account_id = _abra_managed_env('ABRA_MANAGED_ACCOUNT_ID')",
+    "    deployment_id = _abra_managed_env('ABRA_MANAGED_DEPLOYMENT_ID')",
+    "    credential = _abra_managed_env('ABRA_MANAGED_RUNTIME_CREDENTIAL')",
+    "    if not all((url, account_id, deployment_id, credential)):",
+    "        raise RuntimeError('Abra managed admission is enabled but not fully configured')",
+    "    request_id = _abra_event_request_id(event)",
+    "    payload = {",
+    "        'accountId': account_id,",
+    "        'deploymentId': deployment_id,",
+    "        'requestId': request_id,",
+    "        'channelMessageId': request_id,",
+    "    }",
+    "    try:",
+    "        await _abra_asyncio.to_thread(_abra_post_managed_admission, payload, url, credential)",
+    "    except (_abra_urlerror.URLError, TimeoutError, OSError) as exc:",
+    "        raise RuntimeError('Abra managed admission endpoint is unreachable') from exc",
+    "'''",
+    "    pattern = r'(    async def handle_message\\(self, event[^\\n]*\\):\\n)'",
+    "    patched, count = re.subn(pattern, r'\\1        await _abra_managed_admission_before_handle(event)\\n', base_text, count=1)",
+    "    if count != 1:",
+    "        raise RuntimeError('Could not patch BaseAdapter.handle_message for Abra managed admission')",
+    "    base_text = patched + '\\n' + helper + '\\n'",
+    "open(base_p, 'w').write(base_text)",
+    "print('Patched platforms/base.py managed admission')",
     "PYEOF",
-    "python3 /tmp/_abra_gateway_patch.py",
-    "rm -f /tmp/_abra_gateway_patch.py",
+    "python3 /tmp/_abra_gateway_patch_$$.py",
+    "rm -f /tmp/_abra_gateway_patch_$$.py",
     `chown -R 10000:10000 ${HERMES_DATA_DIR}`,
     `chmod 700 ${HERMES_PROFILE_DIR}`,
     "echo 'Hydration complete.'",
@@ -722,6 +841,14 @@ function buildResolvedRuntimeEnvValues(input: ManifestInput): Map<string, string
   const legacyAzureFoundryApiKey = getLegacyAzureFoundryApiKey(input);
   if (legacyAzureFoundryApiKey) {
     values.set(AZURE_FOUNDRY_ENV_KEY, legacyAzureFoundryApiKey);
+  }
+
+  if (input.managedAdmission?.enabled) {
+    values.set("ABRA_MANAGED_RUNTIME", "1");
+    values.set("ABRA_MANAGED_ACCOUNT_ID", input.managedAdmission.accountId);
+    values.set("ABRA_MANAGED_DEPLOYMENT_ID", input.managedAdmission.deploymentId);
+    setRuntimeEnvValue(values, "ABRA_MANAGED_ADMISSION_URL", input.managedAdmission.url);
+    setRuntimeEnvValue(values, "ABRA_MANAGED_RUNTIME_CREDENTIAL", input.managedAdmission.credential);
   }
 
   for (const definition of SUPPORTED_RUNTIME_ENV_DEFINITIONS) {

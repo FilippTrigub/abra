@@ -409,5 +409,3 @@ export class BillingAdmissionService {
     });
   }
 }
-
-export const billingAdmissionService = new BillingAdmissionService();

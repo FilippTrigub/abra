@@ -11,6 +11,7 @@ import {
   type ManifestInput,
   type ManifestNameOverrides,
 } from "./manifest-generator";
+import { resolveManagedAdmissionRuntimeConfig } from "@/lib/billing/managed-admission-runtime";
 import type {
   AkRuntimeMetadata,
   AdapterMetadata,
@@ -174,6 +175,10 @@ function buildManifestInput(input: {
     ...(azureFoundryApiKey ? { azureFoundryApiKey } : {}),
     ...(payloadRuntimeEnv ?? {}),
   };
+  const managedAdmission = resolveManagedAdmissionRuntimeConfig({
+    accountId: input.accountId,
+    deploymentId: input.deploymentId,
+  });
 
   return {
     accountId: input.accountId,
@@ -185,6 +190,7 @@ function buildManifestInput(input: {
     ...(useServiceAccount !== undefined ? { useServiceAccount } : {}),
     ...(agentConfig ? { agentConfig } : {}),
     ...(Object.keys(runtimeEnv).length > 0 ? { runtimeEnv } : {}),
+    ...(managedAdmission ? { managedAdmission } : {}),
     ...(brandProfile ? { brandProfile } : {}),
   };
 }

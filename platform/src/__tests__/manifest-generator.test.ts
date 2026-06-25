@@ -50,7 +50,7 @@ function rewriteHydrationScriptForTest(script: string) {
   mkdirSync(secretsDir, { recursive: true });
   mkdirSync(localesDir, { recursive: true });
   mkdirSync(localeOverrideDir, { recursive: true });
-  mkdirSync(gatewayDir, { recursive: true });
+  mkdirSync(join(gatewayDir, "platforms"), { recursive: true });
   mkdirSync(gatewayOverrideDir, { recursive: true });
 
   writeFileSync(join(configDir, "config.yaml"), "model:\n  default: gpt-5.5\n");
@@ -67,6 +67,10 @@ function rewriteHydrationScriptForTest(script: string) {
     join(gatewayDir, "slash_commands.py"),
     "        try:\n            session_info = self._format_session_info()\n        except Exception:\n            session_info = \"\"\n"
   );
+  writeFileSync(
+    join(gatewayDir, "platforms", "base.py"),
+    "class BaseAdapter:\n    async def handle_message(self, event):\n        await self._process_message_background(event)\n"
+  );
 
   return {
     executableScript: script
@@ -80,7 +84,8 @@ function rewriteHydrationScriptForTest(script: string) {
       .replace("cp -r /opt/hermes/locales/. /locale-override/", `cp -r ${localesDir}/. ${localeOverrideDir}/`)
       .replaceAll("/locale-override/en.yaml", `${localeOverrideDir}/en.yaml`)
       .replace("cp -r /opt/hermes/gateway/. /gateway-override/", `cp -r ${gatewayDir}/. ${gatewayOverrideDir}/`)
-      .replaceAll("'/gateway-override/slash_commands.py'", `'${gatewayOverrideDir}/slash_commands.py'`),
+      .replaceAll("'/gateway-override/slash_commands.py'", `'${gatewayOverrideDir}/slash_commands.py'`)
+      .replaceAll("'/gateway-override/platforms/base.py'", `'${join(gatewayOverrideDir, "platforms", "base.py")}'`),
     hydratedHermesConfigPath: join(hermesData, "profiles", "abra", "config.yaml"),
     hydratedHermesAuthPath: join(hermesData, "profiles", "abra", "auth.json"),
     hydratedBrandPath: join(hermesData, "profiles", "abra", "BRAND.md"),
@@ -532,6 +537,10 @@ describe("StatefulSet manifest", () => {
     const patchedGateway = readFileSync(join(gatewayOverrideDir, "slash_commands.py"), "utf8");
     expect(patchedGateway).toContain('session_info = ""  # Abra: model info suppressed');
     expect(patchedGateway).not.toContain("self._format_session_info()");
+
+    const patchedBase = readFileSync(join(gatewayOverrideDir, "platforms", "base.py"), "utf8");
+    expect(patchedBase).toContain("# ABRA_MANAGED_ADMISSION_SHIM");
+    expect(patchedBase).toContain("await _abra_managed_admission_before_handle(event)");
   });
 
   test("applies custom image pull policy", () => {
