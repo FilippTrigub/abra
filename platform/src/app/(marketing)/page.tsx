@@ -63,7 +63,7 @@ export default function MarketingPage() {
                 size="lg"
                 className="w-full px-7 text-center"
               >
-                Try managed hosting
+                Start free
               </Button>
               <Button
                 href={repoUrl}
@@ -170,7 +170,7 @@ export default function MarketingPage() {
                 size="lg"
                 className="w-full px-7 text-center"
               >
-                Try managed hosting
+                Start free
               </Button>
               <Button
                 href={repoUrl}

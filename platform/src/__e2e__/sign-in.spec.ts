@@ -15,7 +15,7 @@ test.describe("Sign-in page", () => {
     await expect(repoCta).toBeVisible();
     await expect(repoCta).toHaveAttribute("href", repoUrl);
 
-    const managedCta = page.getByRole("link", { name: "Try managed hosting" }).first();
+    const managedCta = page.getByRole("link", { name: "Start free" }).first();
     await expect(managedCta).toBeVisible();
     await expect(managedCta).toHaveAttribute("href", "/sign-in");
 
