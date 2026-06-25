@@ -34,6 +34,24 @@ export function Navbar() {
 
         <div className="flex items-center gap-4">
           <Link
+            href="https://github.com/FilippTrigub/abra"
+            className="hidden text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-colors duration-150 hover:text-white focus-ring-brand sm:inline-flex"
+          >
+            Repo
+          </Link>
+          <Link
+            href="#self-host"
+            className="hidden text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-colors duration-150 hover:text-white focus-ring-brand sm:inline-flex"
+          >
+            Self-host
+          </Link>
+          <Link
+            href="#pricing"
+            className="hidden text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-colors duration-150 hover:text-white focus-ring-brand sm:inline-flex"
+          >
+            Pricing
+          </Link>
+          <Link
             href="/sign-in"
             className="inline-flex min-h-11 items-center justify-center rounded-md border border-white/12 bg-white/5 px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-100 transition-colors duration-150 hover:border-white/25 hover:bg-white/10 hover:text-white focus-ring-brand sm:text-[13px]"
           >

@@ -21,10 +21,11 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: {
-    default: "Abra — Brand Management Platform",
+    default: "Abra — Self-hostable brand workspace",
     template: "%s | Abra",
   },
-  description: "Hosted control plane for personal brand management. AI-powered, multi-channel content pipeline.",
+  description:
+    "Self-hostable brand workspace for turning calls, notes, and expertise into reviewable content, with managed convenience when you want less operational work.",
 };
 
 export default function RootLayout({
