@@ -110,7 +110,7 @@ export default function MarketingPage() {
             />
             <div className="absolute inset-0 bg-[linear-gradient(90deg,rgb(5_7_11_/_0.08),rgb(5_7_11_/_0.2)_42%,rgb(5_7_11_/_0.7))]" />
             <div className="absolute inset-x-0 bottom-0 z-10 border-t border-white/15 bg-[linear-gradient(180deg,transparent,rgb(5_7_11_/_0.94))] p-5 sm:p-7">
-              <SectionLabel>Review first</SectionLabel>
+              <SectionLabel>Human approval</SectionLabel>
               <p className="mt-3 max-w-md text-[1.55rem] leading-[1.08] font-display font-bold tracking-[-0.04em] text-white sm:text-[2rem]">
                 Abra drafts. You decide.
               </p>
@@ -202,76 +202,36 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="review" className="border-b border-shell-border-strong px-4 py-16 sm:py-20">
-        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-stretch">
-          <div className="marketing-reveal flex flex-col justify-center border border-shell-border-strong bg-shell-panel px-6 py-8 sm:px-8 sm:py-10">
-            <SectionLabel>Review first</SectionLabel>
-            <h2 className="mt-5 text-[2.45rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.15rem]">
-              Review state stays visible.
-            </h2>
-            <p className="mt-5 text-[1.1rem] leading-8 text-zinc-200">
-              Drafts wait for approval instead of slipping straight into the calendar.
-            </p>
-          </div>
-
-          <div className="marketing-reveal marketing-reveal-delay-1 border border-shell-border-strong bg-[color-mix(in_srgb,var(--color-shell-panel)_78%,black)] p-4 sm:p-6">
-            <div className="border border-shell-border-strong bg-black/20 p-4">
-              <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-shell-signal">
-                Review queue
-              </p>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <div className="border border-shell-border-strong bg-shell-panel p-4">
-                  <p className="font-display text-[1.35rem] leading-tight font-bold tracking-[-0.03em] text-white">
-                    LinkedIn draft from workshop objection
-                  </p>
-                  <p className="mt-3 text-[0.95rem] leading-6 text-zinc-300">
-                    Needs expert review before scheduling.
-                  </p>
-                </div>
-                <div className="border border-shell-border-strong bg-shell-panel p-4">
-                  <p className="font-display text-[1.35rem] leading-tight font-bold tracking-[-0.03em] text-white">
-                    Short post from founder note
-                  </p>
-                  <p className="mt-3 text-[0.95rem] leading-6 text-zinc-300">
-                    Voice and source material are visible.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="px-4 py-16 sm:py-20">
-        <div className="marketing-reveal mx-auto grid max-w-6xl gap-6 border border-shell-border-strong bg-[color-mix(in_srgb,var(--color-shell-panel)_82%,black)] px-6 py-8 sm:px-10 sm:py-10 lg:grid-cols-[1fr_0.7fr_auto] lg:items-center">
-          <div>
-            <SectionLabel>Start</SectionLabel>
-            <h2 className="mt-5 max-w-3xl text-[2.65rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.45rem]">
-              Start with work you already have.
-            </h2>
-          </div>
-          <div className="relative min-h-56 overflow-hidden border border-shell-border-strong bg-black/20">
+        <div className="marketing-reveal mx-auto grid max-w-6xl overflow-hidden border border-shell-border-strong bg-[color-mix(in_srgb,var(--color-shell-panel)_82%,black)] lg:grid-cols-2">
+          <div className="relative min-h-[22rem] bg-black/20">
             <Image
               src="/marketing/abra-woman-expert-review-1.png"
               alt="An expert reviewing content before starting from existing work"
               fill
-              sizes="(max-width: 1024px) 100vw, 24vw"
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(5_7_11_/_0.02),rgb(5_7_11_/_0.58))]" />
           </div>
-          <div className="grid gap-3 sm:min-w-[18rem]">
-            <Button href={repoUrl} size="lg" className="w-full px-7 text-center">
-              View the repo
-            </Button>
-            <Button
-              href="/sign-in"
-              size="lg"
-              variant="ghost"
-              className="w-full px-7 text-center"
-            >
-              Try managed hosting
-            </Button>
+          <div className="flex flex-col justify-center px-6 py-8 sm:px-10 sm:py-10">
+            <SectionLabel>Start</SectionLabel>
+            <h2 className="mt-5 max-w-3xl text-[2.65rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.45rem]">
+              Start with work you already have.
+            </h2>
+            <div className="mt-8 grid gap-3 sm:max-w-[22rem]">
+              <Button href={repoUrl} size="lg" className="w-full px-7 text-center">
+                View the repo
+              </Button>
+              <Button
+                href="/sign-in"
+                size="lg"
+                variant="ghost"
+                className="w-full px-7 text-center"
+              >
+                Try managed hosting
+              </Button>
+            </div>
           </div>
         </div>
       </section>
