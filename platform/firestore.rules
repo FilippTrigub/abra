@@ -25,6 +25,36 @@ service cloud.firestore {
       return request.resource != resource;
     }
 
+    // Returns true when a billing summary document contains only fields that
+    // are safe for the account owner to read from a browser client.
+    function isSafeBillingSummary(data) {
+      return data.keys().hasOnly([
+        'tier',
+        'status',
+        'statusReason',
+        'hardBlocked',
+        'blockReason',
+        'quota',
+        'currentPeriod',
+        'updatedAt'
+      ])
+      && (!('quota' in data) || data.quota.keys().hasOnly([
+        'unit',
+        'limit',
+        'used',
+        'remaining',
+        'windowId',
+        'windowStart',
+        'windowEnd',
+        'resetsAt'
+      ]))
+      && (!('currentPeriod' in data) || data.currentPeriod.keys().hasOnly([
+        'startedAt',
+        'endsAt',
+        'cancelAtPeriodEnd'
+      ]));
+    }
+
     // ═══════════════════════════════════════════════════════════════
     // Account documents: accounts/{uid}
     // ═══════════════════════════════════════════════════════════════
@@ -60,6 +90,61 @@ service cloud.firestore {
     }
 
     // ═══════════════════════════════════════════════════════════════
+    // Browser-safe account summaries: accounts/{uid}/summaries/billing
+    // ═══════════════════════════════════════════════════════════════
+    // - Only sanitized owner-safe billing fields may be exposed here
+    // - Server/Admin code owns all writes and bypasses security rules
+
+    match /accounts/{uid}/summaries/billing {
+      allow read: if isAuthenticated() && isOwner(uid) && isSafeBillingSummary(resource.data);
+      allow write: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Server-owned billing, quota, usage, and moderation documents
+    // ═══════════════════════════════════════════════════════════════
+    // - These paths may contain Stripe IDs, raw usage/costs, operator notes,
+    //   provider metadata, and quota ledger state
+    // - Browser clients must never read or write them; server/Admin code bypasses
+    //   security rules for internal projection and ledger updates
+
+    match /accounts/{uid}/billing/internal {
+      allow read, write: if false;
+    }
+
+    match /accounts/{uid}/billing/events/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /accounts/{uid}/billing/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /accounts/{uid}/quota/windows/{windowId} {
+      allow read, write: if false;
+    }
+
+    match /accounts/{uid}/quota/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /accounts/{uid}/usage/events/{eventId} {
+      allow read, write: if false;
+    }
+
+    match /accounts/{uid}/usage/{document=**} {
+      allow read, write: if false;
+    }
+
+    match /accounts/{uid}/moderation/current {
+      allow read, write: if false;
+    }
+
+    match /accounts/{uid}/moderation/{document=**} {
+      allow read, write: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
     // Deployments subcollection: accounts/{uid}/deployments/{deploymentId}
     // ═══════════════════════════════════════════════════════════════
     // - Only the account owner can read/create their deployment records
@@ -81,6 +166,16 @@ service cloud.firestore {
       
       // Delete: not allowed in v1 - deployments are durable historical records
       allow delete: if false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // Stripe webhook idempotency ledger: stripeWebhookEvents/{stripeEventId}
+    // ═══════════════════════════════════════════════════════════════
+    // - Contains provider event IDs and raw processing state
+    // - Server/Admin code owns all reads and writes
+
+    match /stripeWebhookEvents/{stripeEventId} {
+      allow read, write: if false;
     }
   }
 }
