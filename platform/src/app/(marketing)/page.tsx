@@ -9,16 +9,22 @@ const workflowStages = [
     label: "Capture",
     title: "Add real work",
     body: "Calls, notes, or workshops go in.",
+    image: "/marketing/abra-founder-work-moment-1.png",
+    alt: "A founder reviewing notes on a laptop in a dark workspace",
   },
   {
     label: "Draft",
     title: "Get drafts",
     body: "Abra turns the source into reviewable posts.",
+    image: "/marketing/abra-workshop-experts-1.png",
+    alt: "Experts discussing workshop material around a table",
   },
   {
     label: "Approve",
     title: "Make the call",
     body: "The expert approves before anything goes out.",
+    image: "/marketing/abra-woman-expert-review-1.png",
+    alt: "An expert reviewing content on a laptop before approval",
   },
 ];
 
@@ -135,17 +141,29 @@ export default function MarketingPage() {
             {workflowStages.map((stage, index) => (
               <article
                 key={stage.title}
-                className={`marketing-reveal ${index === 1 ? "marketing-reveal-delay-1" : ""} ${index === 2 ? "marketing-reveal-delay-2" : ""} border border-shell-border-strong bg-black/20 p-6 sm:p-7`}
+                className={`marketing-reveal ${index === 1 ? "marketing-reveal-delay-1" : ""} ${index === 2 ? "marketing-reveal-delay-2" : ""} overflow-hidden border border-shell-border-strong bg-black/20`}
               >
-                <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.16em] text-shell-signal sm:text-[13px]">
-                  {stage.label}
-                </p>
-                <h3 className="mt-6 text-[1.55rem] leading-[1.08] font-display font-bold tracking-[-0.03em] text-white sm:text-[1.85rem]">
-                  {stage.title}
-                </h3>
-                <p className="mt-5 text-[1.05rem] leading-7 text-zinc-200">
-                  {stage.body}
-                </p>
+                <div className="relative min-h-52 border-b border-shell-border-strong bg-shell-panel">
+                  <Image
+                    src={stage.image}
+                    alt={stage.alt}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 25vw"
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgb(5_7_11_/_0.08),rgb(5_7_11_/_0.74))]" />
+                  <p className="absolute bottom-4 left-4 font-mono text-[12px] font-semibold uppercase tracking-[0.16em] text-shell-signal sm:text-[13px]">
+                    {stage.label}
+                  </p>
+                </div>
+                <div className="p-6 sm:p-7">
+                  <h3 className="text-[1.55rem] leading-[1.08] font-display font-bold tracking-[-0.03em] text-white sm:text-[1.85rem]">
+                    {stage.title}
+                  </h3>
+                  <p className="mt-5 text-[1.05rem] leading-7 text-zinc-200">
+                    {stage.body}
+                  </p>
+                </div>
               </article>
             ))}
           </div>
