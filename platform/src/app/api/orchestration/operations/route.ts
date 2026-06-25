@@ -5,6 +5,7 @@ import type {
   OrchestrationOperationInput,
 } from "@/lib/orchestration";
 import { requireApiAuth, unauthenticatedResponse } from "@/lib/auth";
+import { evaluateOrchestrationGate, type OrchestrationGateDecision } from "@/lib/orchestration/gate";
 import { NextResponse } from "next/server";
 
 interface RouteRequestBody {
@@ -85,6 +86,18 @@ function toOperationInput(body: RouteRequestBody): {
   };
 }
 
+function gateDeniedResponse(decision: OrchestrationGateDecision) {
+  return NextResponse.json(
+    {
+      error: {
+        code: decision.reasonCode,
+        message: decision.message ?? "The orchestration operation is not allowed.",
+      },
+    },
+    { status: decision.status },
+  );
+}
+
 export async function POST(request: Request) {
   const authResult = await requireApiAuth();
   if ("error" in authResult) {
@@ -94,7 +107,23 @@ export async function POST(request: Request) {
   try {
     const rawBody = (await request.json()) as RouteRequestBody;
     const { action, input } = toOperationInput(rawBody);
-    const operation = await dispatchOrchestrationAction(action, input);
+    const gate = await evaluateOrchestrationGate({
+      authUserId: authResult.user.id,
+      operation: action,
+      requestedAccountId: input.target.accountId,
+    });
+
+    if (!gate.allowed || !gate.accountId) {
+      return gateDeniedResponse(gate);
+    }
+
+    const operation = await dispatchOrchestrationAction(action, {
+      ...input,
+      target: {
+        ...input.target,
+        accountId: gate.accountId,
+      },
+    });
 
     return NextResponse.json(operation, { status: 202 });
   } catch (error) {

@@ -1,22 +1,11 @@
 import { getOrchestrationAdapter } from "@/lib/orchestration";
 import { requireApiAuth, unauthenticatedResponse, permissionDeniedResponse } from "@/lib/auth";
 import { firestoreOperationStore } from "@/lib/orchestration/firestore-operation-store";
-import { getPlatformAccount } from "@/lib/platform-account";
+import { resolveAuthorizedAccountScopes } from "@/lib/orchestration/gate";
 import { NextResponse } from "next/server";
 
 function isTerminalOperationStatus(status: "queued" | "running" | "succeeded" | "failed") {
   return status === "succeeded" || status === "failed";
-}
-
-async function resolveAuthorizedAccountScopes(authUserId: string) {
-  const scopes = new Set<string>([authUserId]);
-  const account = await getPlatformAccount(authUserId);
-
-  if (account?.id) {
-    scopes.add(account.id);
-  }
-
-  return scopes;
 }
 
 export async function GET(
@@ -30,7 +19,7 @@ export async function GET(
 
   const { operationId } = await params;
   try {
-    const authorizedAccountScopes = await resolveAuthorizedAccountScopes(authResult.user.id);
+    const authorizedAccountScopes = (await resolveAuthorizedAccountScopes(authResult.user.id)).scopes;
     const persistedOperation = await firestoreOperationStore.getStatus(operationId);
 
     if (

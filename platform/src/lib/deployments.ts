@@ -16,6 +16,7 @@ import {
 } from "@/lib/orchestration";
 import { synthesizeMockOperation } from "@/lib/orchestration/mock-store";
 import { firestoreOperationStore } from "@/lib/orchestration/firestore-operation-store";
+import { evaluateOrchestrationGate } from "@/lib/orchestration/gate";
 import { toIsoTimestamp } from "@/lib/firestore-serialization";
 import * as admin from "firebase-admin";
 
@@ -97,6 +98,8 @@ interface MemoryDeploymentRecord {
 
 interface CreateDeploymentInput {
   authUserId: string;
+  accountScope?: string;
+  allowMemoryFallback?: boolean;
   request: DashboardDeploymentRequest;
 }
 
@@ -637,9 +640,17 @@ async function persistDeployment(
 
 export async function createDeploymentRecord({
   authUserId,
+  accountScope,
+  allowMemoryFallback = true,
   request,
 }: CreateDeploymentInput) {
-  const account = await resolveAccountScope(authUserId);
+  const account = accountScope
+    ? {
+        accountScope,
+        persistence: "database" as const,
+        warning: null,
+      }
+    : await resolveAccountScope(authUserId);
   const existingDeployment = await getCurrentDeploymentRecord(account.accountScope);
 
   if (existingDeployment && isLiveDeployment(existingDeployment)) {
@@ -772,6 +783,10 @@ export async function createDeploymentRecord({
       };
     }
 
+    if (!allowMemoryFallback) {
+      throw error;
+    }
+
     console.warn("[deployments] create failed, falling back to memory:", error);
 
     const fallbackScope = getMemoryScope(authUserId);
@@ -898,6 +913,16 @@ export async function dispatchDeploymentRequest(deploymentId: string, authUserId
   }
 
   try {
+    const gate = await evaluateOrchestrationGate({
+      authUserId,
+      operation: "create",
+      requestedAccountId: deployment.accountScope,
+    });
+
+    if (!gate.allowed || !gate.accountId) {
+      throw new Error(gate.message ?? "This account cannot start an Abra instance right now.");
+    }
+
     const [runtimeEnv, agentConfig, brandProfile] = await Promise.all([
       decryptRuntimeEnvForOrchestration(authUserId),
       loadAgentConfig(authUserId),
@@ -951,6 +976,16 @@ export async function destroyCurrentDeploymentForUser(authUserId: string) {
   }
 
   try {
+    const gate = await evaluateOrchestrationGate({
+      authUserId,
+      operation: "destroy",
+      requestedAccountId: deployment.accountScope,
+    });
+
+    if (!gate.allowed || !gate.accountId) {
+      throw new Error(gate.message ?? "This account cannot delete this Abra instance.");
+    }
+
     const operation = await dispatchOrchestrationAction(
       "destroy",
       buildDeploymentOperationInput(deployment, null),
@@ -1021,6 +1056,16 @@ export async function updateCurrentDeploymentRuntimeEnvForUser(
   }
 
   try {
+    const gate = await evaluateOrchestrationGate({
+      authUserId,
+      operation: "update",
+      requestedAccountId: deployment.accountScope,
+    });
+
+    if (!gate.allowed || !gate.accountId) {
+      throw new Error(gate.message ?? "This account cannot update this Abra instance right now.");
+    }
+
     const [runtimeEnv, agentConfig, brandProfile] = await Promise.all([
       decryptRuntimeEnvForOrchestration(authUserId),
       loadAgentConfig(authUserId),

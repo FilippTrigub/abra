@@ -8,6 +8,7 @@ import {
 } from "@/lib/deployments";
 import { getUser } from "@/lib/auth/firebase-auth";
 import { loadAgentConfig } from "@/lib/agent-config/service";
+import { evaluateOrchestrationGate } from "@/lib/orchestration/gate";
 import {
   initialDeploymentFormState,
   type DeploymentFormState,
@@ -46,8 +47,23 @@ export async function submitDeploymentRequest(
     };
   }
 
+  const gate = await evaluateOrchestrationGate({
+    authUserId: user.id,
+    operation: "create",
+  });
+
+  if (!gate.allowed || !gate.accountId) {
+    return {
+      ...initialDeploymentFormState,
+      status: "error",
+      message: gate.message ?? "This account cannot start an Abra instance right now.",
+    };
+  }
+
   const { deployment, warning, created } = await createDeploymentRecord({
     authUserId: user.id,
+    accountScope: gate.accountId,
+    allowMemoryFallback: false,
     request: DEFAULT_ABRA_INSTANCE_REQUEST,
   });
 
