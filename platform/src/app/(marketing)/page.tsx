@@ -22,25 +22,6 @@ const workflowStages = [
   },
 ];
 
-const runModes = [
-  {
-    id: "self-host",
-    label: "Self-host",
-    title: "Run Abra yourself",
-    body: "Inspect the source, run it on your stack, and keep control of providers and storage.",
-    cta: "View the repo",
-    href: repoUrl,
-  },
-  {
-    id: "managed",
-    label: "Managed",
-    title: "Use managed hosting",
-    body: "Use the hosted path when you want Abra operated for you.",
-    cta: "Try managed hosting",
-    href: "/sign-in",
-  },
-];
-
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-shell-signal sm:text-[13px]">
@@ -78,19 +59,19 @@ export default function MarketingPage() {
 
             <div className="mt-8 grid gap-3 sm:max-w-[34rem] sm:grid-cols-2">
               <Button
-                href={repoUrl}
+                href="/sign-in"
                 size="lg"
                 className="w-full px-7 text-center"
               >
-                View the repo
+                Try managed hosting
               </Button>
               <Button
-                href="/sign-in"
+                href={repoUrl}
                 size="lg"
                 variant="ghost"
                 className="w-full px-7 text-center"
               >
-                Try managed hosting
+                View the repo
               </Button>
             </div>
           </div>
@@ -166,43 +147,7 @@ export default function MarketingPage() {
         </div>
       </section>
 
-      <section id="run-mode" className="border-b border-shell-border-strong px-4 py-16 sm:py-20">
-        <div className="mx-auto max-w-6xl">
-          <div className="marketing-reveal max-w-3xl">
-            <SectionLabel>Run mode</SectionLabel>
-            <h2 className="mt-5 text-[2.65rem] leading-[1.02] font-display font-bold tracking-[-0.04em] text-white sm:text-[3.45rem]">
-              One choice: control or convenience.
-            </h2>
-          </div>
-
-          <div className="mt-10 grid gap-5 lg:grid-cols-2">
-            {runModes.map((mode, index) => (
-              <article
-                key={mode.id}
-                className={`marketing-reveal ${index === 1 ? "marketing-reveal-delay-1" : ""} border border-shell-border-strong bg-shell-panel p-6 sm:p-8`}
-              >
-                <p className="font-mono text-[12px] font-semibold uppercase tracking-[0.18em] text-shell-signal sm:text-[13px]">
-                  {mode.label}
-                </p>
-                <h3 className="mt-6 max-w-lg text-[2rem] leading-[1.05] font-display font-bold tracking-[-0.04em] text-white sm:text-[2.55rem]">
-                  {mode.title}
-                </h3>
-                <p className="mt-5 max-w-xl text-[1.08rem] leading-8 text-zinc-200">
-                  {mode.body}
-                </p>
-                <Link
-                  href={mode.href}
-                  className="mt-8 inline-flex min-h-11 items-center justify-center rounded-sm border border-white/12 bg-white/[0.04] px-5 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-100 transition-colors duration-150 hover:border-white/25 hover:bg-white/[0.08] hover:text-white focus-ring-brand sm:text-[13px]"
-                >
-                  {mode.cta}
-                </Link>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="px-4 py-16 sm:py-20">
+      <section id="run-mode" className="px-4 py-16 sm:py-20">
         <div className="marketing-reveal mx-auto grid max-w-6xl overflow-hidden border border-shell-border-strong bg-[color-mix(in_srgb,var(--color-shell-panel)_82%,black)] lg:grid-cols-2">
           <div className="relative min-h-[22rem] bg-black/20">
             <Image
@@ -220,16 +165,20 @@ export default function MarketingPage() {
               Start with work you already have.
             </h2>
             <div className="mt-8 grid gap-3 sm:max-w-[22rem]">
-              <Button href={repoUrl} size="lg" className="w-full px-7 text-center">
-                View the repo
-              </Button>
               <Button
                 href="/sign-in"
+                size="lg"
+                className="w-full px-7 text-center"
+              >
+                Try managed hosting
+              </Button>
+              <Button
+                href={repoUrl}
                 size="lg"
                 variant="ghost"
                 className="w-full px-7 text-center"
               >
-                Try managed hosting
+                View the repo
               </Button>
             </div>
           </div>
