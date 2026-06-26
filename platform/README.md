@@ -105,6 +105,15 @@ See [`.env.example`](./.env.example) for the full list. All variables marked `NE
 
 `RUNTIME_ENV_ENCRYPTION_KEY` is required server-only configuration when Firestore-backed runtime env values are enabled. It encrypts saved user-managed skill/API env values before storage and must never be exposed to the browser or copied into runtime containers.
 
+### Billing contract
+
+Stripe Billing backs the paid Growth tier. Growth is a fixed recurring subscription:
+
+- **Price:** 30 EUR/month, configured in Stripe as the recurring Price referenced by `STRIPE_GROWTH_PRICE_ID`.
+- **Quota:** 100 managed inbound messages per fixed UTC week, enforced by Abra's admission ledger in `src/lib/billing/contracts.ts`.
+
+Stripe is the entitlement source for whether an account has an active Growth subscription; Abra remains the quota authority. Configure `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_GROWTH_PRICE_ID`, `ABRA_MANAGED_ADMISSION_URL`, and `ABRA_MANAGED_RUNTIME_CREDENTIAL_SECRET` as server-only deployment env vars. Do not create `NEXT_PUBLIC_STRIPE_*` secrets.
+
 ### AKS runtime contract
 
 When the AKS adapter is used, the runtime image is resolved in this order:
@@ -145,7 +154,6 @@ The app expects Firebase Auth for sign-in and Firestore for persistence. If Fire
 
 - **Real agent orchestration** — AKS is the normal adapter, but the product still needs fuller runtime configuration hydration beyond the minimal generated `openclaw.json`.
 - **Dashboard scope** — the current product surface is intentionally focused on `/dashboard` and `/dashboard/settings`. Deployment management lives inside the main dashboard feed rather than separate sub-pages.
-- **Subscription / billing** — always returns `active` / `free`. No Stripe or payment provider integration.
 - **Production hosting docs** — no deployment guide. This is a local development dashboard.
 
 ## File structure
