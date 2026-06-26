@@ -9,6 +9,7 @@ import { getAdminFirestore } from "@/lib/firebase/admin";
 import {
   isManagedBillingTier,
   type AdmissionRejectReason,
+  getQuotaExhaustedMessageForTier,
   type ManagedBillingTier,
 } from "./contracts";
 import { BillingAdmissionService, type BillingAdmissionResult } from "./admission-ledger";
@@ -163,7 +164,9 @@ export class ManagedRuntimeAdmissionService {
         return deny({
           status: 402,
           reasonCode: reservation.denyReason === "quota_exhausted" ? "quota_exhausted" : "invalid_request",
-          message: "Managed billing quota is exhausted for the current window.",
+          message: reservation.denyReason === "quota_exhausted"
+            ? getQuotaExhaustedMessageForTier(tier)
+            : "Managed billing admission request is invalid.",
           reservation,
         });
       }

@@ -184,7 +184,11 @@ if mode in ("allow", "deny"):
                 payload = {"allow": True}
             else:
                 self.send_response(402)
-                payload = {"allow": False, "reasonCode": "quota_exhausted"}
+                payload = {
+                    "allow": False,
+                    "reasonCode": "quota_exhausted",
+                    "message": "You've reached your Free message limit. Upgrade to Growth to keep processing managed messages.",
+                }
             self.send_header("content-type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(payload).encode("utf-8"))
@@ -261,7 +265,7 @@ describe("managed admission endpoint", () => {
     expect(firestore.docs.get(quotaWindowPath(ACCOUNT_ID))).toMatchObject({ used: 1, limit: 25 });
   });
 
-  it("denies a managed runtime request at quota without incrementing usage", async () => {
+  it("denies a free managed runtime request at quota with an upgrade message", async () => {
     const firestore = createFirestoreMock([
       [`accounts/${ACCOUNT_ID}/summaries/billing`, { tier: "free" }],
       [quotaWindowPath(ACCOUNT_ID), { used: 25, limit: 25 }],
@@ -286,10 +290,43 @@ describe("managed admission endpoint", () => {
     await expect(response.json()).resolves.toMatchObject({
       allow: false,
       reasonCode: "quota_exhausted",
+      message: "You've reached your Free message limit. Upgrade to Growth to keep processing managed messages.",
       used: 25,
       limit: 25,
     });
     expect(firestore.docs.get(quotaWindowPath(ACCOUNT_ID))).toMatchObject({ used: 25, limit: 25 });
+  });
+
+  it("denies a growth managed runtime request at quota with a follow-up offer message", async () => {
+    const firestore = createFirestoreMock([
+      [`accounts/${ACCOUNT_ID}/summaries/billing`, { tier: "growth" }],
+      [quotaWindowPath(ACCOUNT_ID), { used: 100, limit: 100 }],
+    ]);
+    getAdminFirestoreMock.mockReturnValue(firestore.firestore);
+    const { createManagedRuntimeCredential } = await import("@/lib/billing/managed-admission-runtime");
+    const { POST } = await import("@/app/api/billing/admission/route");
+    const credential = createManagedRuntimeCredential({
+      accountId: ACCOUNT_ID,
+      deploymentId: DEPLOYMENT_ID,
+      secret: "test-platform-secret",
+    });
+
+    const response = await POST(admissionRequest(credential, {
+      accountId: ACCOUNT_ID,
+      deploymentId: DEPLOYMENT_ID,
+      requestId: "runtime-request-growth-limit",
+      channelMessageId: "telegram-message-growth-limit",
+    }));
+
+    expect(response.status).toBe(402);
+    await expect(response.json()).resolves.toMatchObject({
+      allow: false,
+      reasonCode: "quota_exhausted",
+      message: "You've reached your Growth message limit. I will reach out within 24 hours with an offer.",
+      used: 100,
+      limit: 100,
+    });
+    expect(firestore.docs.get(quotaWindowPath(ACCOUNT_ID))).toMatchObject({ used: 100, limit: 100 });
   });
 });
 
@@ -355,7 +392,7 @@ describe("managed admission gateway override", () => {
 
     const denied = runPatchedGatewayCase(sandbox.patchedBasePath, "deny");
     expect(denied.forwarded).toBe(0);
-    expect(denied.raised).toContain("Abra managed admission endpoint is unreachable");
+    expect(denied.raised).toContain("You've reached your Free message limit. Upgrade to Growth to keep processing managed messages.");
 
     const unreachable = runPatchedGatewayCase(sandbox.patchedBasePath, "unreachable");
     expect(unreachable.forwarded).toBe(0);
