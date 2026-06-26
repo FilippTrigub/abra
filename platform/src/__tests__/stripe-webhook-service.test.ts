@@ -173,7 +173,7 @@ describe("Stripe billing webhook service", () => {
       hardBlocked: false,
       quota: {
         unit: "managed_inbound_message",
-        limit: 500,
+        limit: 100,
       },
     });
     expect(firestoreMock.docs.get("accounts/user_growth/billing/internal")).toMatchObject({

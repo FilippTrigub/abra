@@ -227,7 +227,7 @@ export const QUOTA_LIMITS_V1 = [
     tier: "growth",
     unit: QUOTA_UNIT_V1,
     windowKind: QUOTA_WINDOW_KIND_V1,
-    limit: 500,
+    limit: 100,
   },
 ] as const satisfies readonly QuotaLimit[];
 
@@ -239,6 +239,14 @@ export function getQuotaLimitForTier(tier: ManagedBillingTier): QuotaLimit {
   }
 
   return quotaLimit;
+}
+
+export function getQuotaExhaustedMessageForTier(tier: ManagedBillingTier) {
+  if (tier === "growth") {
+    return "You've reached your Growth message limit. I will reach out within 24 hours with an offer.";
+  }
+
+  return "You've reached your Free message limit. Upgrade to Growth to keep processing managed messages.";
 }
 
 export interface QuotaUsageSnapshot {

@@ -5,6 +5,7 @@ import {
   createProviderUsageEnvelope,
   decideAdmission,
   getFixedUtcWeekQuotaWindow,
+  getQuotaExhaustedMessageForTier,
   getQuotaLimitForTier,
   isManagedBillingTier,
   NO_MANUAL_BLOCK,
@@ -124,9 +125,18 @@ describe("quota units, windows, admission, and ledger contracts", () => {
       tier: "growth",
       unit: QUOTA_UNIT_V1,
       windowKind: QUOTA_WINDOW_KIND_V1,
-      limit: 500,
+      limit: 100,
     });
     expect(growthLimit.limit).toBeGreaterThan(freeLimit.limit);
+  });
+
+  test("returns tier-specific quota exhausted messages", () => {
+    expect(getQuotaExhaustedMessageForTier("free")).toBe(
+      "You've reached your Free message limit. Upgrade to Growth to keep processing managed messages.",
+    );
+    expect(getQuotaExhaustedMessageForTier("growth")).toBe(
+      "You've reached your Growth message limit. I will reach out within 24 hours with an offer.",
+    );
   });
 
   test("maps ledger operations to reserve, commit, release, and deny lifecycle states", () => {

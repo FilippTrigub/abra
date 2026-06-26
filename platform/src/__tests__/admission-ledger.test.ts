@@ -184,13 +184,13 @@ describe("BillingAdmissionService", () => {
       admitted: true,
       state: "reserved",
       used: 26,
-      limit: 500,
+      limit: 100,
     });
-    expect(firestoreMock.docs.get(windowPath())).toMatchObject({ used: 26, limit: 500 });
+    expect(firestoreMock.docs.get(windowPath())).toMatchObject({ used: 26, limit: 100 });
   });
 
   it("denies further free admissions after mid-window demotion when usage exceeds the free limit", async () => {
-    seedWindow(firestoreMock.docs, 26, 500);
+    seedWindow(firestoreMock.docs, 26, 100);
 
     const result = await service.reserve({
       accountId: ACCOUNT_ID,
