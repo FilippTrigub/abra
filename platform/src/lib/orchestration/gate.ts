@@ -5,6 +5,7 @@ import { getPlatformAccount } from "@/lib/platform-account";
 import {
   decideManualBlockGate,
   getFixedUtcWeekQuotaWindow,
+  getQuotaExhaustedMessageForTier,
   getQuotaLimitForTier,
   isManagedBillingTier,
   type ManagedBillingTier,
@@ -197,7 +198,7 @@ export async function evaluateOrchestrationGate(input: OrchestrationGateInput): 
         operation: input.operation,
         reasonCode: "quota_exhausted",
         status: 402,
-        message: "Managed billing quota is exhausted for the current window.",
+        message: getQuotaExhaustedMessageForTier(managedBilling.tier),
       });
     }
 

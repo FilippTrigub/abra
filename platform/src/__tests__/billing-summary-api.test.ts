@@ -106,9 +106,13 @@ describe("browser-safe billing summary API", () => {
       tierLabel: "Growth",
       status: "active",
       quota: {
-        limit: 500,
+        limit: 100,
         used: 125,
-        remaining: 375,
+        remaining: 0,
+      },
+      runtime: {
+        state: "quota_exhausted",
+        blockReason: "You've reached your Growth message limit. I will reach out within 24 hours with an offer.",
       },
       action: {
         kind: "manage_billing",
@@ -117,6 +121,31 @@ describe("browser-safe billing summary API", () => {
       },
     });
     expect(JSON.stringify(payload)).not.toContain("cus_secret");
+  });
+
+  it("returns an exhausted free summary with an upgrade invitation", async () => {
+    const payload = await getSummaryResponse(new Map([
+      ["accounts/billing-user/summaries/billing", { tier: "free", status: "active" }],
+      ["accounts/billing-user/quota/windows/2026-W26/current", { used: 25 }],
+    ]));
+
+    expect(payload.summary).toMatchObject({
+      tier: "free",
+      quota: {
+        limit: 25,
+        used: 25,
+        remaining: 0,
+      },
+      runtime: {
+        state: "quota_exhausted",
+        blockReason: "You've reached your Free message limit. Upgrade to Growth to keep processing managed messages.",
+      },
+      action: {
+        kind: "upgrade",
+        endpoint: "/api/billing/checkout",
+        planKey: "growth",
+      },
+    });
   });
 
   it("returns only the sanitized public block reason for blocked users", async () => {

@@ -211,4 +211,44 @@ describe("shared orchestration gate", () => {
       status: 503,
     });
   });
+
+  it("denies free runtime admission at quota with an upgrade message", async () => {
+    getAdminFirestoreMock.mockReturnValue(createFirestoreMock(new Map([
+      ["accounts/account-1/summaries/billing", { tier: "free" }],
+      ["accounts/account-1/quota/windows/2026-W26/current", { used: 25 }],
+    ])));
+    const { evaluateOrchestrationGate } = await import("@/lib/orchestration/gate");
+
+    await expect(evaluateOrchestrationGate({
+      authUserId: "user-1",
+      operation: "admission",
+      requestedAccountId: "account-1",
+      now: "2026-06-25T12:00:00.000Z",
+    })).resolves.toMatchObject({
+      allowed: false,
+      reasonCode: "quota_exhausted",
+      status: 402,
+      message: "You've reached your Free message limit. Upgrade to Growth to keep processing managed messages.",
+    });
+  });
+
+  it("denies growth runtime admission at quota with a follow-up offer message", async () => {
+    getAdminFirestoreMock.mockReturnValue(createFirestoreMock(new Map([
+      ["accounts/account-1/summaries/billing", { tier: "growth" }],
+      ["accounts/account-1/quota/windows/2026-W26/current", { used: 100 }],
+    ])));
+    const { evaluateOrchestrationGate } = await import("@/lib/orchestration/gate");
+
+    await expect(evaluateOrchestrationGate({
+      authUserId: "user-1",
+      operation: "admission",
+      requestedAccountId: "account-1",
+      now: "2026-06-25T12:00:00.000Z",
+    })).resolves.toMatchObject({
+      allowed: false,
+      reasonCode: "quota_exhausted",
+      status: 402,
+      message: "You've reached your Growth message limit. I will reach out within 24 hours with an offer.",
+    });
+  });
 });

@@ -6,6 +6,7 @@ import { getAdminFirestore } from "@/lib/firebase/admin";
 
 import {
   getFixedUtcWeekQuotaWindow,
+  getQuotaExhaustedMessageForTier,
   getQuotaLimitForTier,
   isManagedBillingTier,
   MANAGED_BILLING_TIER_LABELS,
@@ -52,8 +53,6 @@ interface BillingSummaryDocument {
 interface QuotaWindowDocument {
   used?: unknown;
 }
-
-const QUOTA_EXHAUSTED_REASON = "Weekly managed message quota is exhausted. Upgrade or wait for the quota reset.";
 
 function billingSummaryPath(accountId: string) {
   return `accounts/${accountId}/summaries/billing`;
@@ -134,7 +133,7 @@ export async function getBrowserSafeBillingSummary(input: {
       blockReason: manualBlockSummary.isManuallyBlocked
         ? manualBlockSummary.reason
         : runtimeState === "quota_exhausted"
-          ? QUOTA_EXHAUSTED_REASON
+          ? getQuotaExhaustedMessageForTier(tier)
           : null,
     },
     action: actionForTier(tier),
