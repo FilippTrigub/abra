@@ -101,7 +101,7 @@ export function DeploymentConsole({
   // fall through to the disabled "Stopping…" state instead of leaving the
   // confirm step active and re-clickable.
   const confirmingStop =
-    deployment !== null && confirmingStopFor === deployment.id && !isTransitioning(deployment);
+    canStop(deployment) && confirmingStopFor === deployment?.id;
 
   const skipNextRefresh = useRef(true);
   useEffect(() => {
