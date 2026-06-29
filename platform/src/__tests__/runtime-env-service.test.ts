@@ -24,6 +24,23 @@ function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
+function isPlainObject(value: unknown): value is StoredDoc {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function mergeFirestoreMaps(existing: StoredDoc, next: StoredDoc): StoredDoc {
+  const merged: StoredDoc = { ...existing };
+
+  for (const [key, value] of Object.entries(next)) {
+    const previous = merged[key];
+    merged[key] = isPlainObject(previous) && isPlainObject(value)
+      ? mergeFirestoreMaps(previous, value)
+      : value;
+  }
+
+  return merged;
+}
+
 function createFirestoreMock() {
   const docs = new Map<string, StoredDoc>();
   const docCalls: string[] = [];
@@ -44,7 +61,7 @@ function createFirestoreMock() {
         set: vi.fn().mockImplementation((data: StoredDoc, options?: { merge?: boolean }) => {
           const next = clone(data);
           if (options?.merge && docs.has(path)) {
-            docs.set(path, { ...docs.get(path), ...next });
+            docs.set(path, mergeFirestoreMaps(docs.get(path) ?? {}, next));
           } else {
             docs.set(path, next);
           }

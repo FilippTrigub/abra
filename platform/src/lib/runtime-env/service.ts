@@ -220,7 +220,7 @@ async function persistNewSnapshot(
 
   await firestore.doc(versionDocPath(authUserId, versionId)).set(versionDocument);
   await firestore.doc(auditDocPath(authUserId, eventId)).set(auditEvent);
-  await firestore.doc(currentDocPath(authUserId)).set(activeDocument, { merge: true });
+  await firestore.doc(currentDocPath(authUserId)).set(activeDocument);
 
   return {
     success: true,
