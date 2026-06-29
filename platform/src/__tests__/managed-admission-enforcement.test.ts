@@ -117,8 +117,10 @@ function buildHydrationSandbox(script: string) {
   writeFileSync(
     join(gatewayDir, "platforms", "base.py"),
     [
+      "from __future__ import annotations",
+      "",
       "class BaseAdapter:",
-      "    async def handle_message(self, event):",
+      "    async def handle_message(self, event: MessageEvent) -> None:",
       "        await self._process_message_background(event)",
       "",
     ].join("\n"),

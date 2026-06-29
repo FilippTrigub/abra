@@ -69,7 +69,7 @@ function rewriteHydrationScriptForTest(script: string) {
   );
   writeFileSync(
     join(gatewayDir, "platforms", "base.py"),
-    "class BaseAdapter:\n    async def handle_message(self, event):\n        await self._process_message_background(event)\n"
+    "from __future__ import annotations\n\nclass BaseAdapter:\n    async def handle_message(self, event: MessageEvent) -> None:\n        await self._process_message_background(event)\n"
   );
 
   return {

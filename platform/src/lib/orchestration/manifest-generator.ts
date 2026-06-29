@@ -561,7 +561,7 @@ function buildHydrationInitScript(): string {
     "    except (_abra_urlerror.URLError, TimeoutError, OSError) as exc:",
     "        raise RuntimeError('Abra managed admission endpoint is unreachable') from exc",
     "'''",
-    "    pattern = r'(    async def handle_message\\(self, event[^\\n]*\\):\\n)'",
+    "    pattern = r'(    async def handle_message\\(self, event[^\\n]*:\\n)'",
     "    patched, count = re.subn(pattern, r'\\1        await _abra_managed_admission_before_handle(event)\\n', base_text, count=1)",
     "    if count != 1:",
     "        raise RuntimeError('Could not patch BaseAdapter.handle_message for Abra managed admission')",
