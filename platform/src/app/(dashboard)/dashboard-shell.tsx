@@ -51,18 +51,12 @@ export function DashboardShell({
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  <path
-                    d="M3 4.5H9.5L13 8L9.5 11.5H3V4.5Z"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinejoin="round"
-                  />
-                  <path
-                    d="M5.5 8H10.5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
+                  <line x1="2.5" y1="6.5" x2="2.5" y2="9.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="5" y1="5" x2="5" y2="11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="7.5" y1="3.5" x2="7.5" y2="12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="10" y1="5.5" x2="10" y2="10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="12.5" y1="7" x2="12.5" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                  <circle cx="14.3" cy="8" r="0.7" fill="currentColor" />
                 </svg>
               </span>
               <span className="font-mono text-[12px] font-semibold uppercase tracking-[0.22em] text-white sm:text-[13px]">
