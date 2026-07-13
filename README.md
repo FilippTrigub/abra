@@ -1,10 +1,10 @@
-<img src="./docs/assets/abra-mark.svg" alt="" width="64" height="64" align="left" />
+<p align="center">
+  <img src="./docs/assets/abra-mark.png" alt="Abra" width="240" />
+</p>
 
 # Abra — Agent de Branding
 
 **Turn the work you already did into a post you can approve.**
-
-<br clear="left" />
 
 Abra is a content capture and brand-management system for independent
 experts, consultants, and founder-led operators who sell through trust. Give
