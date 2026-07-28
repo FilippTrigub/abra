@@ -30,6 +30,7 @@ class ResendProvider(EmailProvider):
         return {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
+            "User-Agent": "claw-parade-email-campaigner/1.0",
         }
 
     def send(self, brief: dict[str, Any]) -> dict[str, Any]:
