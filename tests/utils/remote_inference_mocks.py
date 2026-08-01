@@ -86,6 +86,10 @@ class FakeRunpodProvider:
         return [out]
 
 
+class FakeModalProvider(FakeRunpodProvider):
+    pass
+
+
 class FakeReplicateProvider:
     def __init__(self, remote):
         self.remote = remote

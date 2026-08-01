@@ -4,9 +4,11 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-_KEY_ID_ENV = "BACKBLAZE_B2_RUNPOD_KEY_ID"
-_APP_KEY_ENV = "BACKBLAZE_B2_RUNPOD_APPLICATION_KEY"
-_BUCKET_ENV = "BACKBLAZE_B2_RUNPOD_BUCKET_NAME"
+_ENV_ALIASES = {
+    "key_id": ("BACKBLAZE_B2_REMOTE_KEY_ID", "BACKBLAZE_B2_RUNPOD_KEY_ID"),
+    "app_key": ("BACKBLAZE_B2_REMOTE_APPLICATION_KEY", "BACKBLAZE_B2_RUNPOD_APPLICATION_KEY"),
+    "bucket_name": ("BACKBLAZE_B2_REMOTE_BUCKET_NAME", "BACKBLAZE_B2_RUNPOD_BUCKET_NAME"),
+}
 
 
 @dataclass(frozen=True)
@@ -17,18 +19,17 @@ class B2StagingConfig:
 
     @classmethod
     def from_env(cls) -> B2StagingConfig:
-        missing = [
-            k for k in (_KEY_ID_ENV, _APP_KEY_ENV, _BUCKET_ENV)
-            if not os.environ.get(k, "").strip()
-        ]
+        values = {
+            name: next((os.environ[key].strip() for key in keys if os.environ.get(key, "").strip()), "")
+            for name, keys in _ENV_ALIASES.items()
+        }
+        missing = [keys[0] for name, keys in _ENV_ALIASES.items() if not values[name]]
         if missing:
             raise ValueError(
                 f"Missing required B2 staging environment variables: {', '.join(missing)}"
             )
         return cls(
-            key_id=os.environ[_KEY_ID_ENV].strip(),
-            app_key=os.environ[_APP_KEY_ENV].strip(),
-            bucket_name=os.environ[_BUCKET_ENV].strip(),
+            **values,
         )
 
     def _api(self):

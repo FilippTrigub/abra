@@ -4,11 +4,15 @@ import os
 from collections.abc import Collection, Mapping
 from dataclasses import dataclass
 
-VALID_REMOTE_PROVIDERS: frozenset[str] = frozenset({"huggingface", "replicate", "runpod"})
+VALID_REMOTE_PROVIDERS: frozenset[str] = frozenset({"huggingface", "replicate", "runpod", "modal"})
+GLOBAL_REMOTE_PROVIDER_ENV = "ABRA_REMOTE_GPU_PROVIDER"
 
 DEFAULT_HF_TOKEN_ENV = "HF_TOKEN"
 DEFAULT_REPLICATE_API_KEY_ENV = "REPLICATE_API_TOKEN"
 DEFAULT_RUNPOD_API_KEY_ENV = "RUNPOD_API_KEY"
+DEFAULT_MODAL_TOKEN_ID_ENV = "MODAL_TOKEN_ID"
+DEFAULT_MODAL_TOKEN_SECRET_ENV = "MODAL_TOKEN_SECRET"
+DEFAULT_MODAL_APP_NAME = "abra-media"
 DEFAULT_REMOTE_TIMEOUT_SECONDS = 300
 
 REMOTE_PROVIDER_CONFIG_KEYS: tuple[str, ...] = (
@@ -18,6 +22,10 @@ REMOTE_PROVIDER_CONFIG_KEYS: tuple[str, ...] = (
     "replicate_api_key_env",
     "runpod_api_key_env",
     "runpod_endpoint_id_env",
+    "modal_token_id_env",
+    "modal_token_secret_env",
+    "modal_app_name",
+    "modal_function_name",
     "remote_timeout_seconds",
 )
 
@@ -30,6 +38,10 @@ class RemoteProviderConfig:
     replicate_api_key_env: str = DEFAULT_REPLICATE_API_KEY_ENV
     runpod_api_key_env: str = DEFAULT_RUNPOD_API_KEY_ENV
     runpod_endpoint_id_env: str | None = None
+    modal_token_id_env: str = DEFAULT_MODAL_TOKEN_ID_ENV
+    modal_token_secret_env: str = DEFAULT_MODAL_TOKEN_SECRET_ENV
+    modal_app_name: str = DEFAULT_MODAL_APP_NAME
+    modal_function_name: str | None = None
     remote_timeout_seconds: int = DEFAULT_REMOTE_TIMEOUT_SECONDS
 
     @property
@@ -46,6 +58,13 @@ def normalize_provider(provider: object) -> str | None:
     normalized = provider.strip().lower()
     if normalized in {"", "local", "none"}:
         return None
+    if normalized == "remote":
+        configured = os.environ.get(GLOBAL_REMOTE_PROVIDER_ENV, "").strip().lower()
+        if configured not in {"modal", "runpod"}:
+            raise ValueError(
+                f"'{GLOBAL_REMOTE_PROVIDER_ENV}' must be 'modal' or 'runpod' when provider is 'remote'"
+            )
+        return configured
     if normalized not in VALID_REMOTE_PROVIDERS:
         valid = ", ".join(sorted(VALID_REMOTE_PROVIDERS))
         raise ValueError(f"'provider' must be one of: {valid}, local, none")
@@ -61,6 +80,10 @@ def merge_remote_provider_overrides(
     replicate_api_key_env: str | None = None,
     runpod_api_key_env: str | None = None,
     runpod_endpoint_id_env: str | None = None,
+    modal_token_id_env: str | None = None,
+    modal_token_secret_env: str | None = None,
+    modal_app_name: str | None = None,
+    modal_function_name: str | None = None,
     remote_timeout_seconds: int | None = None,
 ) -> dict[str, object]:
     merged = dict(cfg)
@@ -77,6 +100,14 @@ def merge_remote_provider_overrides(
         merged["runpod_api_key_env"] = runpod_api_key_env
     if runpod_endpoint_id_env is not None:
         merged["runpod_endpoint_id_env"] = runpod_endpoint_id_env
+    if modal_token_id_env is not None:
+        merged["modal_token_id_env"] = modal_token_id_env
+    if modal_token_secret_env is not None:
+        merged["modal_token_secret_env"] = modal_token_secret_env
+    if modal_app_name is not None:
+        merged["modal_app_name"] = modal_app_name
+    if modal_function_name is not None:
+        merged["modal_function_name"] = modal_function_name
     if remote_timeout_seconds is not None:
         merged["remote_timeout_seconds"] = remote_timeout_seconds
 
@@ -106,6 +137,16 @@ def remote_provider_from_config(
     runpod_endpoint_id_env = _string_config_value(
         cfg, "runpod_endpoint_id_env", None, allow_empty=True
     )
+    modal_token_id_env = _required_string_config_value(
+        cfg, "modal_token_id_env", DEFAULT_MODAL_TOKEN_ID_ENV
+    )
+    modal_token_secret_env = _required_string_config_value(
+        cfg, "modal_token_secret_env", DEFAULT_MODAL_TOKEN_SECRET_ENV
+    )
+    modal_app_name = _required_string_config_value(
+        cfg, "modal_app_name", DEFAULT_MODAL_APP_NAME
+    )
+    modal_function_name = _string_config_value(cfg, "modal_function_name", None, allow_empty=True)
     remote_model = _string_config_value(cfg, "remote_model", None, allow_empty=True)
     timeout = _positive_int_config_value(
         cfg, "remote_timeout_seconds", DEFAULT_REMOTE_TIMEOUT_SECONDS
@@ -119,6 +160,10 @@ def remote_provider_from_config(
             replicate_api_key_env=replicate_api_key_env,
             runpod_api_key_env=runpod_api_key_env,
             runpod_endpoint_id_env=runpod_endpoint_id_env,
+            modal_token_id_env=modal_token_id_env,
+            modal_token_secret_env=modal_token_secret_env,
+            modal_app_name=modal_app_name,
+            modal_function_name=modal_function_name,
             remote_timeout_seconds=timeout,
         )
 
@@ -139,6 +184,10 @@ def remote_provider_from_config(
         replicate_api_key_env=replicate_api_key_env,
         runpod_api_key_env=runpod_api_key_env,
         runpod_endpoint_id_env=runpod_endpoint_id_env,
+        modal_token_id_env=modal_token_id_env,
+        modal_token_secret_env=modal_token_secret_env,
+        modal_app_name=modal_app_name,
+        modal_function_name=modal_function_name,
         remote_timeout_seconds=timeout,
     )
 
@@ -150,6 +199,8 @@ def provider_api_key_env(remote: RemoteProviderConfig) -> str:
         return remote.replicate_api_key_env
     if remote.provider == "runpod":
         return remote.runpod_api_key_env
+    if remote.provider == "modal":
+        return remote.modal_token_secret_env
     raise ValueError("remote provider is not enabled")
 
 

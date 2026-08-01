@@ -6,6 +6,7 @@
   "provider": "local",
   "runpod_api_key_env": "RUNPOD_API_KEY",
   "runpod_endpoint_id_env": "RUNPOD_ENDPOINT_ID_FRAME_INTERPOLATOR",
+  "modal_function_name": "frame_interpolator",
   "runpod_gpu_type": "NVIDIA RTX 4090",
   "remote_timeout_seconds": 600
 }

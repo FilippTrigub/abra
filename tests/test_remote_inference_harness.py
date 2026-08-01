@@ -102,6 +102,26 @@ def test_runpod_provider_in_valid_providers() -> None:
     assert normalize_provider(None) is None
 
 
+def test_modal_and_global_remote_provider_resolution(monkeypatch) -> None:
+    from skills._providers.config import normalize_provider
+
+    assert normalize_provider("modal") == "modal"
+    monkeypatch.setenv("ABRA_REMOTE_GPU_PROVIDER", "modal")
+    assert normalize_provider("remote") == "modal"
+
+
+def test_global_remote_provider_requires_a_supported_value(monkeypatch) -> None:
+    from skills._providers.config import normalize_provider
+
+    monkeypatch.delenv("ABRA_REMOTE_GPU_PROVIDER", raising=False)
+    try:
+        normalize_provider("remote")
+    except ValueError as exc:
+        assert "ABRA_REMOTE_GPU_PROVIDER" in str(exc)
+    else:
+        raise AssertionError("Expected a clear global-provider configuration error")
+
+
 def test_runpod_config_fields_round_trip() -> None:
     """RunPod config fields survive a merge → parse round trip."""
     from skills._providers.config import (

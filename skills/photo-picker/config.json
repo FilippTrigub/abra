@@ -8,6 +8,7 @@
   "provider": "local",
   "runpod_api_key_env": "RUNPOD_API_KEY",
   "runpod_endpoint_id_env": "RUNPOD_ENDPOINT_ID_PHOTO_PICKER",
+  "modal_function_name": "photo_picker",
   "runpod_gpu_type": "NVIDIA RTX 3090",
   "remote_timeout_seconds": 300
 }

@@ -855,6 +855,19 @@ function buildResolvedRuntimeEnvValues(input: ManifestInput): Map<string, string
     values.set(AZURE_FOUNDRY_ENV_KEY, legacyAzureFoundryApiKey);
   }
 
+  // GPU inference credentials are platform-owned for managed deployments.
+  // Self-hosted installs provide the same keys through their runtime env.
+  for (const key of [
+    "MODAL_TOKEN_ID",
+    "MODAL_TOKEN_SECRET",
+    "ABRA_REMOTE_GPU_PROVIDER",
+    "BACKBLAZE_B2_REMOTE_KEY_ID",
+    "BACKBLAZE_B2_REMOTE_APPLICATION_KEY",
+    "BACKBLAZE_B2_REMOTE_BUCKET_NAME",
+  ]) {
+    setRuntimeEnvValue(values, key, process.env[key]);
+  }
+
   if (input.managedAdmission?.enabled) {
     values.set("ABRA_MANAGED_RUNTIME", "1");
     values.set("ABRA_MANAGED_ACCOUNT_ID", input.managedAdmission.accountId);

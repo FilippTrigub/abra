@@ -11,5 +11,6 @@ dependencies = [
     "numpy",
     "b2sdk",
     "runpod",
+    "modal",
     "fal-client",
 ]

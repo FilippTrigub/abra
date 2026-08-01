@@ -12,6 +12,7 @@ dependencies = [
     "opencv-python-headless",
     "b2sdk",
     "runpod",
+    "modal",
     "fal-client",
 ]
 

@@ -16,6 +16,7 @@ This repo supports **optional remote inference** for selected skills.
 | HuggingFace | `HF_TOKEN` | audio-transcriber, image-captioner, image-generator |
 | Replicate | `REPLICATE_API_TOKEN` | audio-transcriber, image-captioner, image-generator, music-generator |
 | RunPod | `RUNPOD_API_KEY` + per-skill endpoint ID | video-editor, video-matte, frame-interpolator, bokeh-effect, background-remover, audio-splitter, photo-picker |
+| Modal | `MODAL_TOKEN_ID` + `MODAL_TOKEN_SECRET` | video-editor, video-matte, frame-interpolator, bokeh-effect, background-remover, audio-splitter, photo-picker |
 
 ---
 
@@ -143,3 +144,26 @@ python scripts/vace.py --input ./input --output ./output --prompt "..."
 - No streaming support
 - No HuggingFace music generation
 - RunPod B2 staging files are not automatically cleaned up (use B2 lifecycle rules)
+
+## Modal
+
+Modal is a first-class alternative to RunPod for the same seven skills. Deploy
+the shared app once, then select it globally for skills configured with
+`"provider": "remote"`:
+
+```bash
+modal secret create abra-remote-b2 \
+  BACKBLAZE_B2_REMOTE_KEY_ID=... \
+  BACKBLAZE_B2_REMOTE_APPLICATION_KEY=... \
+  BACKBLAZE_B2_REMOTE_BUCKET_NAME=...
+modal deploy modal_apps/abra_media.py
+
+export MODAL_TOKEN_ID=...
+export MODAL_TOKEN_SECRET=...
+export ABRA_REMOTE_GPU_PROVIDER=modal
+```
+
+The Modal app uses the existing per-skill Docker images, B2 artifact staging,
+and a separate Modal Volume per skill for model caches. `provider: "runpod"`
+always remains an explicit alternative; failures never silently move work
+between providers.

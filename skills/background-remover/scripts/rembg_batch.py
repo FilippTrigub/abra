@@ -227,14 +227,14 @@ def main() -> None:
         cfg["device"] = args.device
 
     _provider_name = cfg.get("provider")
-    if _provider_name == "runpod":
+    if _provider_name in {"runpod", "modal", "remote"}:
         import importlib
         _cfg_mod = importlib.import_module("_providers.config")
-        remote = _cfg_mod.remote_provider_from_config(cfg, supported_providers={"runpod"})
+        remote = _cfg_mod.remote_provider_from_config(cfg, supported_providers={"runpod", "modal"})
         input_dir = Path(cfg.get("input_dir", "./input"))
         output_dir = Path(cfg.get("output_dir", "./output"))
-        _rp = importlib.import_module("_providers.runpod")
-        _rp.RunpodProvider(remote).run_skill(input_dir, output_dir, cfg)
+        provider = importlib.import_module(f"_providers.{remote.provider}")
+        getattr(provider, f"{remote.provider.title()}Provider")(remote).run_skill(input_dir, output_dir, cfg)
         return
 
     import tempfile, json as _json

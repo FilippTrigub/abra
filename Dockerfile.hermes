@@ -16,7 +16,7 @@ RUN apt-get update && \
         texlive-science dvisvgm dvipng \
     && rm -rf /var/lib/apt/lists/* \
     && /opt/hermes/.venv/bin/python3 -m ensurepip --upgrade \
-    && /opt/hermes/.venv/bin/python3 -m pip install --no-cache-dir manim \
+    && /opt/hermes/.venv/bin/python3 -m pip install --no-cache-dir manim modal b2sdk \
     && GOPATH=/usr/local go install github.com/xdevplatform/xurl@latest
 
 # Bake Abra profile data into the image so the AKS init container can hydrate

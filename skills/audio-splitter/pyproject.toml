@@ -9,5 +9,6 @@ dependencies = [
     "ffmpeg-python",
     "b2sdk",
     "runpod",
+    "modal",
     "fal-client",
 ]

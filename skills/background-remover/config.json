@@ -8,6 +8,7 @@
   "provider": "local",
   "runpod_api_key_env": "RUNPOD_API_KEY",
   "runpod_endpoint_id_env": "RUNPOD_ENDPOINT_ID_BACKGROUND_REMOVER",
+  "modal_function_name": "background_remover",
   "runpod_gpu_type": "NVIDIA RTX 3090",
 "remote_timeout_seconds": 300
 }
